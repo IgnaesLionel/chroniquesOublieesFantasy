@@ -1,0 +1,197 @@
+import { describe, expect, it } from "vitest";
+import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import {
+  CREATION_DEFAUT,
+  compterCapacites,
+  coutRang,
+  creationProfil,
+  etatCreation,
+  localiserCapacite,
+  niveauMinRang,
+  normaliserNomCapacite,
+  peutApprendre,
+  peutDesapprendre,
+  pointsCapaciteTotal,
+  talentsRang1Disponibles,
+  talentsRang2Gratuits,
+} from "@/src/lib/rules/creation";
+
+describe("création niv. 1 : points de capacité (COF V2)", () => {
+  it("config par profil : cas standard + 4 Mages", () => {
+    expect(CREATION_DEFAUT).toEqual({ points: 2 });
+    for (const p of ["Ensorceleur", "Forgesort", "Magicien", "Sorcier"]) {
+      expect(creationProfil(p)).toEqual({ points: 2, rang2Gratuit: true, voieRemplacement: "Voie du mage" });
+    }
+    for (const p of ["Guerrier", "Prêtre", "Rôdeur", "Barbare", "Inconnu", ""]) {
+      expect(creationProfil(p)).toEqual({ points: 2 });
+    }
+  });
+
+  it("localiserCapacite : profil d'abord, suffixes ignorés", () => {
+    expect(localiserCapacite("Bénédiction", "Prêtre", "Elfe haut", false))
+      .toMatchObject({ rang: 1, voie: "Voie de la prière", source: "profil" });
+    // Collision : Archer émérite existe en Rôdeur R1 et sylvain R3 -> profil gagne.
+    expect(localiserCapacite("Archer émérite", "Rôdeur", "Demi-Elfe", false))
+      .toMatchObject({ rang: 1, source: "profil" });
+    expect(localiserCapacite("Diversité", "Sorcier", "Humain", true))
+      .toMatchObject({ rang: 1, source: "peuple" });
+    expect(localiserCapacite("Maîtrise de la magie", "Sorcier", "Humain", true))
+      .toMatchObject({ rang: 2, source: "mage" });
+    // Sans adoption de la voie du mage : sort de mage = inconnu.
+    expect(localiserCapacite("Maîtrise de la magie", "Sorcier", "Humain", false)).toBeUndefined();
+    expect(localiserCapacite("Flèche sanglante (L)", "Rôdeur", "Demi-Elfe", false))
+      .toMatchObject({ rang: 4, source: "peuple" });
+    expect(localiserCapacite("Boule de feu", "Guerrier", "Nain", false)).toBeUndefined();
+    expect(normaliserNomCapacite("Flèche sanglante (L)")).toBe("flèche sanglante");
+  });
+
+  it("seeds conformes : 2 pts dépensés, gratuités OK, zéro alerte", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const e1 = etatCreation(mirabel)!;
+    expect(e1.points).toBe(2);
+    expect(e1.depense).toBe(2);
+    expect(e1.restants).toBe(0);
+    expect(e1.peupleOk).toBe(true);
+    expect(e1.rang2Nom).toBe("Maîtrise de la magie");
+    expect(e1.alertes).toEqual([]);
+
+    for (const id of ["pj-rodeur-demi-elfe", "pj-pretre-elfe-haut", "pj-guerrier-nain"]) {
+      const e = etatCreation(SEED_CHARACTERS.find((x) => x.id === id)!)!;
+      expect(e.depense).toBe(2);
+      expect(e.restants).toBe(0);
+      expect(e.peupleOk).toBe(true);
+      expect(e.rang2Nom).toBeNull();
+      expect(e.alertes).toEqual([]);
+    }
+  });
+
+  it("coûts, niveaux min, points totaux", () => {
+    expect([1, 2, 3, 4, 5].map(coutRang)).toEqual([1, 1, 2, 2, 2]);
+    expect([1, 2, 3, 4, 5].map(niveauMinRang)).toEqual([1, 2, 3, 4, 5]);
+    expect(pointsCapaciteTotal(1)).toBe(2);
+    expect(pointsCapaciteTotal(3)).toBe(6);
+  });
+
+  it("écarts : dépassement, rang > 1, peuple manquant, hors voies, hors Mage", () => {
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // 3e rang 1 -> dépassement.
+    const trop = etatCreation({ ...base, capacites: [...base.capacites, "Vivacité"] })!;
+    expect(trop.depense).toBe(3);
+    expect(trop.restants).toBe(-1);
+    expect(trop.alertes.some((a) => a.includes("3 pts dépensés pour 2 disponibles"))).toBe(true);
+    // Rang 2 sans gratuité -> alerte.
+    const r2 = etatCreation({ ...base, capacites: ["Protéger un allié", "Parer un coup"] })!;
+    expect(r2.alertes.some((a) => a.includes("Parer un coup"))).toBe(true);
+    // Rang 1 de peuple manquant.
+    const sansPeuple = etatCreation({ ...base, traitsPeuple: [] })!;
+    expect(sansPeuple.peupleOk).toBe(false);
+    expect(sansPeuple.alertes.some((a) => a.includes("Habitant des tunnels"))).toBe(true);
+    // Capacité d'un autre profil.
+    const autre = etatCreation({ ...base, capacites: ["Protéger un allié", "Bénédiction"] })!;
+    expect(autre.alertes.some((a) => a.includes("Bénédiction") && a.includes("inconnue"))).toBe(true);
+    // Voie du mage hors famille Mage.
+    const mage = etatCreation({ ...base, voieMage: true })!;
+    expect(mage.alertes.some((a) => a.includes("hors famille Mage"))).toBe(true);
+    // Niveau > 1 : règle non applicable.
+    expect(etatCreation({ ...base, niveau: 2 })).toBeNull();
+  });
+
+  it("peutApprendre : le cas Frakzor (Armure lourde bloquée), prérequis et niveaux", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // Guerrier niv. 1, 0 pt restant : Armure lourde (résistance R3) bloquée.
+    const bloque = peutApprendre(dorain, { nom: "Armure lourde", voie: "Voie de la résistance", rang: 3 });
+    expect(bloque.ok).toBe(false);
+    expect(bloque.raisons.some((r) => r.includes("niveau 3 requis"))).toBe(true);
+    expect(bloque.raisons.some((r) => r.includes("requiert") && r.includes("rang 2"))).toBe(true);
+    expect(bloque.raisons.some((r) => r.includes("pas assez de points"))).toBe(true);
+    // Chaîne valide au niv. 3 : R1+R2 connus, 6 pts au total.
+    const niv3 = { ...dorain, niveau: 3, capacites: ["Robustesse", "Résilient"] };
+    const ok = peutApprendre(niv3, { nom: "Armure lourde", voie: "Voie de la résistance", rang: 3 });
+    expect(ok).toEqual({ ok: true, raisons: [], cout: 2, gratuit: false, connu: false });
+    // Saut de rang interdit même avec points et niveau.
+    const saut = peutApprendre({ ...niv3, capacites: ["Robustesse"] }, { nom: "Armure lourde", voie: "Voie de la résistance", rang: 3 });
+    expect(saut.ok).toBe(false);
+    expect(saut.raisons.some((r) => r.includes("requiert Voie de la résistance rang 2"))).toBe(true);
+    // R2 non gratuit au niv. 1 : niveau requis même avec des points.
+    const faelyn1 = { ...SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!, capacites: ["Survie"] };
+    const r2 = peutApprendre(faelyn1, { nom: "Tir chirurgical", voie: "Voie de l'archer", rang: 2 });
+    expect(r2.ok).toBe(false);
+    expect(r2.raisons.some((r) => r.includes("niveau 2 requis"))).toBe(true);
+    // Gratuité Mage : contourne le niveau, pas le prérequis.
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const vierge = { ...mirabel, capacites: ["Malédiction", "Saignements"] };
+    const free = peutApprendre(vierge, { nom: "Maîtrise de la magie", voie: "Voie du mage", rang: 2 });
+    expect(free.ok).toBe(true);
+    expect(free.gratuit).toBe(true);
+    // Hors voies accessibles.
+    const hors = peutApprendre(dorain, { nom: "Bénédiction", voie: "Voie de la prière", rang: 1 });
+    expect(hors.ok).toBe(false);
+    expect(hors.raisons.some((r) => r.includes("hors voies accessibles"))).toBe(true);
+    // Création maison (sans voie) : espace MJ, libre.
+    expect(peutApprendre(dorain, { nom: "Truc du MJ" }).ok).toBe(true);
+    // Déjà connue.
+    expect(peutApprendre(dorain, { nom: "Robustesse", voie: "Voie de la résistance", rang: 1 }).raisons).toContain("déjà connue");
+  });
+
+  it("compterCapacites : sorts comptés, customs ignorés, peuple R1 gratuit", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const avecSort = {
+      ...dorain,
+      sorts: [{ id: "s1", nom: "Bénédiction", type: "defensif" as const, voie: "Voie de la prière", rang: 1, cout: { ressource: "mana", montant: 1 } }],
+    };
+    const cpt = compterCapacites(avecSort);
+    expect(cpt.depense).toBe(3); // 2 talents + 1 sort compté
+    expect(cpt.alertes.some((a) => a.includes("Bénédiction"))).toBe(true);
+    // Talent doublon d'un sort connu : compté une seule fois.
+    const dup = compterCapacites({ ...avecSort, capacites: [...dorain.capacites, "Bénédiction"] });
+    expect(dup.depense).toBe(3);
+  });
+  it("sélecteurs : rangs 1 apprenables + gratuité R2 Mage", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // 2/2 dépensés : plus de rang 1 à prendre (5 voies = 5 rangs 1, 2 pris).
+    expect(talentsRang1Disponibles(dorain)).toHaveLength(3);
+    expect(talentsRang2Gratuits(dorain)).toEqual([]);
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    expect(talentsRang2Gratuits(mirabel)).toEqual([]); // gratuité consommée
+    const vierge = { ...mirabel, capacites: ["Malédiction", "Saignements"] };
+    // Rangs 2 Sorcier (Beauté, Masque, Baiser...) + mage (Maîtrise) proposés.
+    const noms = talentsRang2Gratuits(vierge).map((o) => o.nom);
+    expect(noms).toContain("Beauté de la succube");
+    expect(noms).toContain("Maîtrise de la magie");
+  });
+
+  it("peutDesapprendre : du haut vers le bas, jamais de saut", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const avance = { ...dorain, niveau: 3, capacites: ["Robustesse", "Résilient", "Armure lourde"] };
+    // R2 bloqué tant que le R3 est connu.
+    const bloque = peutDesapprendre(avance, "Résilient", "talents");
+    expect(bloque.ok).toBe(false);
+    expect(bloque.raisons.some((r) => r.includes("Voie de la résistance rang 3"))).toBe(true);
+    // Le R3 se retire librement, puis le R2 se libère.
+    expect(peutDesapprendre(avance, "Armure lourde", "talents")).toEqual({ ok: true, raisons: [] });
+    expect(peutDesapprendre({ ...avance, capacites: ["Robustesse", "Résilient"] }, "Résilient", "talents").ok).toBe(true);
+    // R1 seul : libre.
+    expect(peutDesapprendre(dorain, "Robustesse", "talents").ok).toBe(true);
+    // Inconnue : retirable (corrige l'écart).
+    const inconnue = { ...dorain, capacites: [...dorain.capacites, "Boule de feu"] };
+    expect(peutDesapprendre(inconnue, "Boule de feu", "talents").ok).toBe(true);
+    // Absente : non.
+    expect(peutDesapprendre(dorain, "Vivacité", "talents")).toEqual({ ok: false, raisons: ["non apprise"] });
+    // Sort maison (sans voie) : libre.
+    const custom = { ...dorain, sorts: [{ id: "x", nom: "Truc", type: "utilitaire" as const }] };
+    expect(peutDesapprendre(custom, "Truc", "sorts").ok).toBe(true);
+    // Sort à voie bloqué par un rang supérieur connu.
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const sortsMage = {
+      ...mirabel,
+      sorts: [
+        { id: "a", nom: "Maîtrise de la magie", type: "utilitaire" as const, voie: "Voie du mage", rang: 2, cout: { ressource: "mana", montant: 2 } },
+        { id: "b", nom: "Tour de magie", type: "utilitaire" as const, voie: "Voie du mage", rang: 3, cout: { ressource: "mana", montant: 3 } },
+      ],
+    };
+    const bloqueSort = peutDesapprendre(sortsMage, "Maîtrise de la magie", "sorts");
+    expect(bloqueSort.ok).toBe(false);
+    expect(bloqueSort.raisons.some((r) => r.includes("Voie du mage rang 3"))).toBe(true);
+    expect(peutDesapprendre(sortsMage, "Tour de magie", "sorts")).toEqual({ ok: true, raisons: [] });
+  });
+});

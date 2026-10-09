@@ -1,0 +1,236 @@
+"use client";
+import { useMemo, useState } from "react";
+import { SEED_CHARACTERS, SEED_MONSTERS } from "@/src/lib/data/seeds";
+import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
+import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
+import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
+import type { Item } from "@/src/lib/rules/world/types";
+import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
+import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
+import { applyDamage, applyHeal, applySpellCost, castSoutien, resolveAttack } from "@/src/lib/rules/combat/attack";
+import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
+import { createEffect } from "@/src/lib/rules/effects/effects";
+import { CombatTable } from "@/src/components/combat/CombatTable";
+import { AttackPanel } from "@/src/components/combat/AttackPanel";
+import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
+import { CombatLog } from "@/src/components/combat/CombatLog";
+import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
+
+export default function CombatPage() {
+  const { items: characters } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
+  const { items: monsters } = useLocalCollection<MonsterTemplate>("cof.monsters.v2", SEED_MONSTERS);
+  const { items: catalogue } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
+
+  const [staging, setStaging] = useState<CombatParticipant[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [combat, setCombat] = useState<CombatState | null>(null);
+  const [attackerId, setAttackerId] = useState<string | null>(null);
+  const [attackId, setAttackId] = useState<string | null>(null);
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [last, setLast] = useState<AttackResolution | null>(null);
+
+  const active = combat ? getActive(combat) : null;
+
+  const addPJ = (c: Character) => {
+    setStaging((s) => (s.some((p) => p.templateId === c.id) ? s : [...s, participantFromCharacter(c, catalogue)]));
+  };
+  const addMonsters = (m: MonsterTemplate) => {
+    const n = Math.max(1, Math.min(12, quantities[m.id] ?? 1));
+    setStaging((s) => [...s, ...monsterInstances(m, n)]);
+  };
+
+  const start = () => {
+    if (staging.length < 2) return;
+    const rolled = rollInitiatives(createCombat(staging));
+    setCombat(rolled);
+    setAttackerId(rolled.participants[rolled.tourIndex]?.instanceId ?? null);
+    setTargetId(rolled.participants.find((p) => p.instanceId !== rolled.participants[rolled.tourIndex]?.instanceId && p.statut === "actif")?.instanceId ?? null);
+    setAttackId(null);
+    setLast(null);
+  };
+
+  const rollAttack = () => {
+    if (!combat || !attackerId || !targetId) return;
+    const atk = combat.participants.find((p) => p.instanceId === attackerId);
+    const aid = attackId ?? atk?.attaques[0]?.id;
+    if (!atk || !aid) return;
+    try {
+      // Sort offensif : paie le coût (mana) avant le jet.
+      let s = combat;
+      const sort = aid.startsWith("sort:") ? atk.sorts.find((x) => `sort:${x.id}` === aid) : undefined;
+      if (sort?.cout) s = applySpellCost(s, attackerId, sort);
+      const { state, resolution } = resolveAttack(s, attackerId, targetId, aid);
+      setCombat(state);
+      setLast(resolution);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Attaque impossible.";
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+      );
+    }
+  };
+
+  const selectedParticipant = combat?.participants.find((p) => p.instanceId === attackerId) ?? null;
+
+  const opponentsOf = useMemo(() => {
+    if (!combat || !attackerId) return [];
+    const atk = combat.participants.find((p) => p.instanceId === attackerId);
+    return combat.participants.filter((p) => p.statut === "actif" && p.instanceId !== attackerId && p.camp !== atk?.camp);
+  }, [combat, attackerId]);
+
+  if (!combat) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">Combat — préparation</h1>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
+            <h2 className="font-bold text-sm uppercase text-zinc-400">Personnages</h2>
+            {characters.map((c) => (
+              <div key={c.id} className="flex justify-between items-center text-sm py-1 border-b border-zinc-800/50">
+                <span>{c.nom} <span className="text-zinc-500">({c.pv}/{c.pvMax})</span></span>
+                <button onClick={() => addPJ(c)} className="px-2.5 py-1 rounded bg-blue-900 text-xs hover:bg-blue-800">+ Ajouter</button>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
+            <h2 className="font-bold text-sm uppercase text-zinc-400">Monstres (quantité puis ajouter)</h2>
+            {monsters.map((m) => (
+              <div key={m.id} className="flex justify-between items-center text-sm py-1 border-b border-zinc-800/50 gap-2">
+                <span className="flex-1">{m.nom} <span className="text-zinc-500">({m.pv} PV)</span></span>
+                <input
+                  type="number" min={1} max={12} value={quantities[m.id] ?? 1}
+                  onChange={(e) => setQuantities((q) => ({ ...q, [m.id]: Number(e.target.value) }))}
+                  className="w-14 bg-zinc-800 rounded px-1.5 py-1 text-center"
+                />
+                <button onClick={() => addMonsters(m)} className="px-2.5 py-1 rounded bg-red-900 text-xs hover:bg-red-800">+ Ajouter</button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Rencontre ({staging.length})</h2>
+          {staging.length === 0 && <p className="text-sm text-zinc-500">Ajoutez PJ + monstres. Ex : 4 PJ + Gobelin ×4.</p>}
+          <div className="flex flex-wrap gap-2">
+            {staging.map((p) => (
+              <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800">
+                {p.nom} <button onClick={() => setStaging((s) => s.filter((x) => x.instanceId !== p.instanceId))} className="text-red-400 ml-1">✕</button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>
+            <button onClick={start} disabled={staging.length < 2} className="flex-1 py-2.5 rounded bg-amber-400 text-black font-bold disabled:opacity-40">
+              Lancer les initiatives ({staging.length})
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className={`rounded-lg p-4 text-center font-bold text-lg border ${combat.termine ? "bg-green-900/40 border-green-700" : "bg-amber-400 text-black"}`}>
+        {combat.termine
+          ? `COMBAT TERMINÉ — ${combat.gagnant === "pj" ? "victoire des PJ" : combat.gagnant === "monstre" ? "victoire des monstres" : "égalité"}`
+          : `TOUR : ${active?.nom?.toUpperCase() ?? "—"} — manche ${combat.manche}`}
+      </div>
+
+      {active && !combat.termine && (
+        <div className="rounded-lg border border-amber-400/50 bg-zinc-900 p-3 text-sm flex flex-wrap gap-x-4 gap-y-1 items-center">
+          <span className="font-bold text-amber-300">{active.nom}</span>
+          <span className="font-mono">{active.pv}/{active.pvMax} PV · Déf {active.defense}</span>
+          <span className="text-zinc-400">{active.attaques.map((a) => `${a.nom} +${a.bonus} (${a.degats})`).join(" · ")}</span>
+          {active.effets.length > 0 && (
+            <span className="text-violet-300">✦ {active.effets.map((e) => `${e.nom} (${e.toursRestants ?? "∞"})`).join(", ")}</span>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-2 flex-wrap">
+        <button onClick={() => setCombat((c) => (c ? prevTurn(c) : c))} className="flex-1 min-w-28 py-2.5 rounded bg-zinc-800 font-semibold hover:bg-zinc-700">◀ Précédent</button>
+        <button
+          onClick={() => setCombat((c) => {
+            if (!c) return c;
+            const n = nextTurn(c);
+            setAttackerId(n.participants[n.tourIndex]?.instanceId ?? null);
+            return n;
+          })}
+          className="flex-[2] min-w-40 py-2.5 rounded bg-amber-400 text-black font-bold hover:bg-amber-300"
+        >
+          Tour suivant ▶
+        </button>
+        <button
+          onClick={() => setCombat((c) => (c ? { ...c, termine: true, log: [...c.log, { id: `end-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: "Combat terminé manuellement par le MJ." }] } : c))}
+          className="flex-1 min-w-28 py-2.5 rounded bg-zinc-800 font-semibold hover:bg-zinc-700"
+        >
+          Terminer
+        </button>
+        <button onClick={() => { setCombat(null); setStaging([]); setLast(null); }} className="px-4 py-2.5 rounded bg-zinc-900 border border-zinc-800 text-sm text-zinc-400">
+          Nouvelle rencontre
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-3">
+        <div className="lg:col-span-2 space-y-3">
+          <CombatTable
+            combat={combat}
+            attackerId={attackerId}
+            onSelectAttacker={(id) => {
+              setAttackerId(id);
+              setAttackId(null);
+              const others = combat.participants.filter((p) => p.instanceId !== id && p.statut === "actif");
+              const atk = combat.participants.find((p) => p.instanceId === id);
+              const foes = others.filter((p) => p.camp !== atk?.camp);
+              setTargetId((foes[0] ?? others[0])?.instanceId ?? null);
+            }}
+            onHit={(id, n) => setCombat((c) => (c ? applyDamage(c, id, n) : c))}
+            onHeal={(id, n) => setCombat((c) => (c ? applyHeal(c, id, n) : c))}
+          />
+          <CombatLog log={combat.log} />
+        </div>
+        <div className="space-y-3">
+          <AttackPanel
+            participants={combat.participants}
+            attackerId={attackerId}
+            attackId={attackId ?? combat.participants.find((p) => p.instanceId === attackerId)?.attaques[0]?.id ?? null}
+            targetId={targetId}
+            last={last}
+            onAttacker={(id) => { setAttackerId(id); setAttackId(null); }}
+            onAttack={(id) => setAttackId(id)}
+            onTarget={(id) => setTargetId(id)}
+            onRoll={rollAttack}
+          />
+          <SoutienPanel
+            participants={combat.participants}
+            lanceurId={attackerId}
+            onCast={(lanceurId, cibleId, sort) => {
+              try {
+                const { state } = castSoutien(combat, lanceurId, cibleId, sort);
+                setCombat(state);
+                setLast(null);
+              } catch (e) {
+                const message = e instanceof Error ? e.message : "Sort impossible.";
+                setCombat((c) =>
+                  c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+                );
+              }
+            }}
+          />
+          <EffectsPanel
+            participant={selectedParticipant}
+            onAdd={(key, duree) =>
+              setCombat((c) => (c && attackerId ? addParticipantEffect(c, attackerId, createEffect(key, { dureeTours: duree })) : c))
+            }
+            onRemove={(effetId) =>
+              setCombat((c) => (c && attackerId ? removeParticipantEffect(c, attackerId, effetId) : c))
+            }
+          />
+          {opponentsOf.length > 0 && attackerId && (
+            <div className="text-xs text-zinc-500">Cibles suggérées : {opponentsOf.map((p) => p.nom).join(", ")}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
