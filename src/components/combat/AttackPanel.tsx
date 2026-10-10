@@ -30,15 +30,30 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           ))}
         </select>
       </label>
-      {attacker && (
-        <label className="block text-sm">Arme / attaque
-          <select value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-            {attacker.attaques.map((a) => (
-              <option key={a.id} value={a.id}>{a.nom} +{a.bonus}{modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""} · {a.degats}</option>
-            ))}
-          </select>
-        </label>
-      )}
+      {attacker && (() => {
+        const mana = attacker.ressources["mana"];
+        const coutDe = (id: string) => {
+          if (!id.startsWith("sort:")) return 0;
+          return attacker.sorts.find((x) => `sort:${x.id}` === id)?.cout?.montant ?? 0;
+        };
+        const jouable = (id: string) => (mana?.actuel ?? 0) >= coutDe(id);
+        return (
+          <label className="block text-sm">Arme / sort
+            {mana && <span className="ml-2 font-mono text-xs text-violet-300">mana {mana.actuel}/{mana.max}</span>}
+            <select value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+              {attacker.attaques.map((a) => {
+                const cout = coutDe(a.id);
+                const manque = !jouable(a.id);
+                return (
+                  <option key={a.id} value={a.id} disabled={manque}>
+                    {a.nom} +{a.bonus}{modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""} · {a.degats === "1d1-1" ? "effet" : a.degats}{cout > 0 ? ` · ${cout} PM` : ""}{manque ? " (manque de mana)" : ""}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+        );
+      })()}
       {bloque && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
           {attacker?.nom} ne peut pas agir (Étourdi/Immobilisé) — retirez l'effet ou passez son tour.

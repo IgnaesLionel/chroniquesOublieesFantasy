@@ -63,9 +63,48 @@ describe("inventaire, armes et sorts", () => {
     const p = participantFromCharacter(mage, SEED_ITEMS);
     expect(p.attaques.map((a) => a.id)).toContain("sort:sort-projectile");
     expect(p.attaques.map((a) => a.id)).toContain("sort:sort-feu");
+    // Bonus d'attaque magique par défaut = niv + VOL (1+4 = 5 ici).
+    expect(p.attaques.find((a) => a.id === "sort:sort-feu")?.bonus).toBe(5);
     const dague = attaqueFromItem(SEED_ITEMS.find((o) => o.id === "item-dague-poison")!);
     expect(dague?.effetTouche?.cle).toBe("empoisonne");
     expect(attaqueFromSort({ id: "x", nom: "Soin", type: "defensif" })).toBeNull();
+  });
+
+  it("sort offensif sans dégâts -> attaque à effet (0 DM, convention 1d1-1)", () => {
+    const malediction = attaqueFromSort({ id: "m", nom: "Malédiction", type: "offensif" }, 3);
+    expect(malediction).not.toBeNull();
+    expect(malediction?.degats).toBe("1d1-1");
+    expect(malediction?.bonus).toBe(3);
+    // Bonus explicite prioritaire sur l'attaque magique.
+    const fixe = attaqueFromSort({ id: "f", nom: "Feu", type: "offensif", degats: "2d6", bonus: 7 }, 3);
+    expect(fixe?.bonus).toBe(7);
+    expect(fixe?.degats).toBe("2d6");
+  });
+
+  it("Mirabel (seed) arrive en combat avec ses sorts d'attaque", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const p = participantFromCharacter(mirabel, SEED_ITEMS);
+    const ids = p.attaques.map((a) => a.id);
+    expect(ids).toContain("sort:mirabel-malediction");
+    expect(ids).toContain("sort:mirabel-saignements");
+    // Malédiction (sans DM) : jet d'attaque + effet, 0 DM.
+    expect(p.attaques.find((a) => a.id === "sort:mirabel-malediction")?.degats).toBe("1d1-1");
+    expect(p.attaques.find((a) => a.id === "sort:mirabel-saignements")?.bonus).toBe(5);
+  });
+
+  it("attaque de sort TOUCHÉE : dégâts appliqués, PV déduits", () => {
+    const lanceur: CombatParticipant = {
+      ...guerrier(), nom: "Mirabel",
+      sorts: [{ id: "s", nom: "Saignements", type: "offensif", degats: "1d4", cout: { ressource: "mana", montant: 1 } }],
+      attaques: [{ id: "sort:s", nom: "✦ Saignements", bonus: 5, degats: "1d4" }],
+      ressources: { mana: { max: 6, actuel: 6 } },
+    };
+    const s = createCombat([lanceur, gobelin()]);
+    // Jet 15 + 5 = 20 vs déf 15 : touché. 1d4 avec rng 0 -> 1 DM.
+    const { state, resolution } = resolveAttack(s, "pj", "m", "sort:s", fixedRng([0.72, 0]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.degatsTotal).toBe(1);
+    expect(state.participants[1].pv).toBe(7);
   });
 
   it("TOUCHÉ avec arme à effet -> effet appliqué à la cible", () => {

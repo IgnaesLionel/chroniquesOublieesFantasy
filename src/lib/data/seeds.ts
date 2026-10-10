@@ -33,7 +33,7 @@ export const SEED_CHARACTERS: Character[] = [
     // + Maîtrise de la magie (rang 2 gratuit, Voie du mage adoptée).
     capacites: ["Malédiction", "Saignements", "Maîtrise de la magie"],
     ressources: {
-      mana: { max: 4, actuel: 4 },
+      mana: { max: 6, actuel: 6 },
       chance: { max: 1, actuel: 1 },
     },
     desRecuperation: { type: "d6", max: 3, actuel: 2 },
@@ -42,7 +42,24 @@ export const SEED_CHARACTERS: Character[] = [
       { itemId: "item-dague", quantite: 1, equipe: true },
       { itemId: "item-grimoire", quantite: 1, equipe: true },
     ],
-    sorts: [],
+    // Sorts lançables en combat (attaque magique = niv+VOL) et en soutien.
+    // Mana = VOL (4) + sorts connus (2).
+    sorts: [
+      {
+        id: "mirabel-malediction", nom: "Malédiction", type: "offensif",
+        voie: "Voie du démon", rang: 1,
+        description: "Test opposé d'attaque magique (20 m) : dé malus au prochain test de la victime. 1/combat par cible.",
+        familles: ["Sorcier"],
+        cout: { ressource: "mana", montant: 1 },
+      },
+      {
+        id: "mirabel-saignements", nom: "Saignements", type: "offensif",
+        voie: "Voie du sang", rang: 1,
+        description: "Test d'attaque magique diff 10+CON (10 m) : 1d4 DM par round pendant INT rounds.",
+        familles: ["Sorcier"],
+        degats: "1d4", cout: { ressource: "mana", montant: 1 },
+      },
+    ],
   },
   {
     id: "pj-rodeur-demi-elfe", kind: "personnage", nom: "Faelyn", classe: "Rôdeur", niveau: 1,
@@ -76,13 +93,31 @@ export const SEED_CHARACTERS: Character[] = [
     // Création : 2 pts -> Bénédiction + Récupération mineure (rang 1 Prêtre).
     capacites: ["Bénédiction", "Récupération mineure"],
     ressources: {
-      mana: { max: 2, actuel: 2 },
+      mana: { max: 4, actuel: 4 },
       chance: { max: 6, actuel: 6 },
     },
     desRecuperation: { type: "d8", max: 4, actuel: 3 },
     effets: [], notes: "", exemple: false,
     inventaire: [{ itemId: "item-baton-ferre", quantite: 1, equipe: true }],
-    sorts: [],
+    // Sorts de soutien (mana = VOL (2) + sorts connus (2)).
+    sorts: [
+      {
+        id: "aelion-benediction", nom: "Bénédiction", type: "defensif",
+        voie: "Voie de la prière", rang: 1,
+        description: "Chant : alliés en vue +1 aux tests et attaques pendant CHA minutes.",
+        familles: ["Prêtre"],
+        effetCle: "bonus-attaque", effetDuree: null,
+        cout: { ressource: "mana", montant: 1 },
+      },
+      {
+        id: "aelion-recuperation", nom: "Récupération mineure", type: "defensif",
+        voie: "Voie des soins", rang: 1,
+        description: "Mains au contact (ou soi) : 1d4+CHA PV.",
+        familles: ["Prêtre"],
+        soin: "1d4",
+        cout: { ressource: "mana", montant: 1 },
+      },
+    ],
   },
   {
     id: "pj-guerrier-nain", kind: "personnage", nom: "Dorain", classe: "Guerrier", niveau: 1,

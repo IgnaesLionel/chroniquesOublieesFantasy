@@ -54,9 +54,9 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(d.chanceMax).toBe(1);
     expect(d.drType).toBe("d6");
     expect(d.drNombre).toBe(3);
-    expect(d.manaMax).toBe(4);
+    expect(d.manaMax).toBe(6); // VOL 4 + 2 sorts connus
     expect(d.attaques).toEqual({ contact: 0, distance: 2, magique: 5 });
-    expect(c.ressources.mana.max).toBe(4);
+    expect(c.ressources.mana.max).toBe(6);
     expect(verifierPersonnage(c)).toEqual([]);
   });
 
@@ -84,7 +84,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(d.chanceMax).toBe(6);
     expect(d.drType).toBe("d8");
     expect(d.drNombre).toBe(4);
-    expect(d.manaMax).toBe(2);
+    expect(d.manaMax).toBe(4); // VOL 2 + 2 sorts connus
     expect(d.attaques).toEqual({ contact: 1, distance: 1, magique: 3 });
     expect(verifierPersonnage(c)).toEqual([]);
   });
@@ -129,9 +129,9 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     // Guerrier (Combattant, CON+3) : 2+3 = 5 max, 2 au départ.
     const guerrier = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     expect(guerrier.desRecuperation).toEqual({ type: "d10", max: 5, actuel: 2 });
-    // Chance et mana démarrent pleins (prêtre : 6/6 chance, 2/2 mana).
+    // Chance et mana démarrent pleins (prêtre : 6/6 chance, 4/4 mana = VOL 2 + 2 sorts).
     expect(pretre.ressources.chance).toEqual({ max: 6, actuel: 6 });
-    expect(pretre.ressources.mana).toEqual({ max: 2, actuel: 2 });
+    expect(pretre.ressources.mana).toEqual({ max: 4, actuel: 4 });
   });
 
   it("normaliser + recalculer sans DR : réserve initiale, pas le max", () => {
@@ -165,6 +165,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const c = {
       ...SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!,
       pv: 2,
+      sorts: [],
       ressources: {
         mana: { max: 2, actuel: 0 },
         chance: { max: 6, actuel: 1 },

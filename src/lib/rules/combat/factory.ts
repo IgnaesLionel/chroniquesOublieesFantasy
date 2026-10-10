@@ -20,21 +20,25 @@ export function attaqueFromItem(item: Item): AttackDef | null {
   };
 }
 
-/** Convertit un sort offensif en attaque. */
-export function attaqueFromSort(sort: Sort): AttackDef | null {
-  if (sort.type !== "offensif" || !sort.degats) return null;
+/** Convertit un sort offensif en attaque.
+ * Sans dégâts (Malédiction, Peur...) : jet d'attaque + effet éventuel, 0 DM
+ * (convention du moteur : 0 = "1d1-1"). Sans bonus explicite : attaque
+ * magique du lanceur (passée par participantFromCharacter : niv+VOL). */
+export function attaqueFromSort(sort: Sort, bonusMagique = 0): AttackDef | null {
+  if (sort.type !== "offensif") return null;
   return {
     id: `sort:${sort.id}`,
     nom: `✦ ${sort.nom}`,
-    bonus: sort.bonus ?? 0,
-    degats: sort.degats,
+    bonus: sort.bonus ?? bonusMagique,
+    degats: sort.degats ?? "1d1-1",
     effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null } : undefined,
   };
 }
 
 /**
  * PJ -> participant (initiative à lancer ensuite).
- * Les armes ÉQUIPÉES de l'inventaire et les sorts offensifs deviennent des attaques.
+ * Les armes ÉQUIPÉES de l'inventaire et les sorts offensifs deviennent des attaques
+ * (bonus d'attaque magique = niv+VOL, sauf bonus explicite du sort).
  */
 export function participantFromCharacter(c: Character, catalogue: Item[] = []): CombatParticipant {
   const attaques: AttackDef[] = [...c.attaques];
@@ -45,8 +49,9 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     const a = attaqueFromItem(item);
     if (a) attaques.push(a);
   }
+  const magique = c.niveau + c.caracteristiques.VOL;
   for (const sort of c.sorts ?? []) {
-    const a = attaqueFromSort(sort);
+    const a = attaqueFromSort(sort, magique);
     if (a) attaques.push(a);
   }
   return {

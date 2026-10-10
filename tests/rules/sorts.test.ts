@@ -45,17 +45,17 @@ describe("grimoire des sorts (DRS)", () => {
 
   it("apprendreSort : copie avec nouvel id + mana recalculé (VOL + sorts)", () => {
     const pretre = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
-    expect(pretre.sorts).toHaveLength(0);
-    const modele = SEED_SORTS.find((s) => s.id === "sort-recuperation-mineure")!;
+    expect(pretre.sorts).toHaveLength(2); // Bénédiction + Récupération mineure (seeds)
+    const modele = SEED_SORTS.find((s) => s.id === "sort-sanctuaire")!;
     const r = apprendreSort(pretre, modele);
-    expect(r.sorts).toHaveLength(1);
-    expect(r.sorts[0].nom).toBe("Récupération mineure");
-    expect(r.sorts[0].voie).toBe("Voie des soins");
-    expect(r.sorts[0].id).not.toBe(modele.id);
-    expect(modele.id).toBe("sort-recuperation-mineure"); // le modèle n'est pas muté
-    expect(r.ressources.mana.max).toBe(manaMax(2, 1)); // VOL 2 + 1 sort = 3
+    expect(r.sorts).toHaveLength(3);
+    expect(r.sorts[2].nom).toBe("Sanctuaire");
+    expect(r.sorts[2].voie).toBe("Voie de la prière");
+    expect(r.sorts[2].id).not.toBe(modele.id);
+    expect(modele.id).toBe("sort-sanctuaire"); // le modèle n'est pas muté
+    expect(r.ressources.mana.max).toBe(manaMax(2, 3)); // VOL 2 + 3 sorts = 5
     const r2 = apprendreSort(r, SEED_SORTS.find((s) => s.id === "sort-benediction")!);
-    expect(r2.sorts).toHaveLength(2);
-    expect(r2.ressources.mana.max).toBe(4);
+    expect(r2.sorts).toHaveLength(4);
+    expect(r2.ressources.mana.max).toBe(6);
   });
 });
