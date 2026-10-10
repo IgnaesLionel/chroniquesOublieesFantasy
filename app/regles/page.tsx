@@ -83,14 +83,11 @@ export default function ReglesPage() {
 
       <Section id="aconfirmer" titre="⚠ Points à confirmer">
         <ul className="list-disc pl-5 space-y-1 text-sm">
-          <li>Critique : 20 naturel = touche auto, 1 naturel = échec auto, dégâts ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} <Src de="Supposition" /></li>
-          <li>Points de chance : +10 à un test (lu sur fiche) — l&apos;appli suit la réserve mais n&apos;applique pas le bonus auto <Src de="Fiches" /></li>
+          <li>Points de chance : +10 à un test, utilisables sur tout test (détection, crochetage…) — en combat c&apos;est appliqué, hors combat au jugement MJ <Src de="Règle" /></li>
           <li>Dés de récupération : soin (d + 1/2 niveau) PV (lu sur fiche) — boutons ±1 manuels pour l&apos;instant <Src de="Fiches" /></li>
-          <li>Coût d&apos;un sort = son rang (déduit de l&apos;absence de coûts dans le DRS + « seulement 3 PM » de Rune de garde) <Src de="Supposition" /></li>
-          <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Supposition" /></li>
           <li>Dé évolutif au-delà de d8 (d10 au 12, d12 au 15, d20 au 18+) : extrapolé du « etc. » <Src de="Supposition" /></li>
           <li>Note « 2* » du tableau des rangs : lue comme l&apos;exception R2 gratuit des Mages <Src de="Supposition" /></li>
-          <li>Mana = VOL + sorts connus (exemple 2+3 = 5 PM validé) <Src de="Règle" /></li>
+          <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Supposition" /></li>
         </ul>
       </Section>
 
@@ -112,7 +109,7 @@ export default function ReglesPage() {
             </tbody>
           </table>
         </div>
-        <Formule>Chance = 2 + CHA (+1 si Aventurier, soit 3 + CHA)<Src de="Tableau" /></Formule>
+        <Formule>Chance = 2 + CHA (+1 si Aventurier, soit 3 + CHA) · 1 PC = +10 à un test, après le résultat, même sur un 1 naturel<Src de="Tableau" /><Src de="Règle" /></Formule>
         <p>Dés de récupération : type selon famille ({FAMILLES.map((f) => `${f} ${DE_RECUP_PAR_FAMILLE[f]}${f === "Mystique" ? "+1" : ""}`).join(" · ")}), nombre 2 + CON (+1 si Mystique), réserve initiale sans le CON : 2 dés (3 si Mystique).<Src de="Tableau" /><Src de="Règle" /></p>
         <Formule>Contact = niv + FOR · Distance = niv + AGI · Magique = niv + VOL (attaques capées niv. 10, sorts : niv + VOL)<Src de="Fiches" /></Formule>
         <Formule>Mana = VOL + sorts connus · coût d&apos;un sort = son rang (Rune de garde : 3 PM)<Src de="Règle" /></Formule>
@@ -182,7 +179,7 @@ export default function ReglesPage() {
 
       <Section id="combat" titre="Combat">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto (critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur}), 1 naturel = échec auto.<Src de="Supposition" /></li>
+          <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle" /></li>
           <li>0 PV = KO. Initiative 1d20+mod, tri décroissant, tours + manches, KO sautés.<Src de="Supposition" /></li>
           <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle" /></li>
           <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM déduits avant le jet.</li>

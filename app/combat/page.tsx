@@ -7,7 +7,7 @@ import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, applySpellCost, castSoutien, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, applySpellCost, castSoutien, depenserChanceApresCoup, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
@@ -30,6 +30,7 @@ export default function CombatPage() {
   const [attackId, setAttackId] = useState<string | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [last, setLast] = useState<AttackResolution | null>(null);
+  const [lastAttaque, setLastAttaque] = useState<{ attackerId: string; targetId: string; attackId: string } | null>(null);
 
   const active = combat ? getActive(combat) : null;
 
@@ -66,8 +67,23 @@ export default function CombatPage() {
       const { state, resolution } = resolveAttack(s, attackerId, targetId, aid);
       setCombat(state);
       setLast(resolution);
+      setLastAttaque({ attackerId, targetId, attackId: aid });
     } catch (e) {
       const message = e instanceof Error ? e.message : "Attaque impossible.";
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+      );
+    }
+  };
+
+  const useChance = () => {
+    if (!combat || !last || !lastAttaque) return;
+    try {
+      const { state, resolution } = depenserChanceApresCoup(combat, lastAttaque.attackerId, lastAttaque.targetId, lastAttaque.attackId, last);
+      setCombat(state);
+      setLast(resolution);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Chance impossible.";
       setCombat((c) =>
         c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
       );
@@ -173,7 +189,7 @@ export default function CombatPage() {
         >
           Terminer
         </button>
-        <button onClick={() => { setCombat(null); setStaging([]); setLast(null); }} className="px-4 py-2.5 rounded bg-zinc-900 border border-zinc-800 text-sm text-zinc-400">
+        <button onClick={() => { setCombat(null); setStaging([]); setLast(null); setLastAttaque(null); }} className="px-4 py-2.5 rounded bg-zinc-900 border border-zinc-800 text-sm text-zinc-400">
           Nouvelle rencontre
         </button>
       </div>
@@ -207,6 +223,7 @@ export default function CombatPage() {
             onAttack={(id) => setAttackId(id)}
             onTarget={(id) => setTargetId(id)}
             onRoll={rollAttack}
+            onChance={useChance}
           />
           <SoutienPanel
             participants={combat.participants}

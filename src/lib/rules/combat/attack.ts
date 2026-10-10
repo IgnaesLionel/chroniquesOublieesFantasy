@@ -158,6 +158,93 @@ export function resolveAttack(
 }
 
 /**
+ * Dépense 1 point de chance après un jet manqué : +10 au total.
+ * Règle COF V2 : après avoir vu le résultat, sur tout test — y compris un
+ * 1 naturel (le +10 peut transformer l'échec en touche). Le PC est dépensé
+ * même si le total reste insuffisant. Pas de critique sur un rattrapage.
+ */
+export function depenserChanceApresCoup(
+  state: CombatState,
+  attackerId: string,
+  targetId: string,
+  attackId: string,
+  last: AttackResolution,
+  rng: Rng = Math.random
+): { state: CombatState; resolution: AttackResolution } {
+  const attaquant = state.participants.find((p) => p.instanceId === attackerId);
+  const cible = state.participants.find((p) => p.instanceId === targetId);
+  if (!attaquant) throw new Error("Attaquant introuvable.");
+  if (!cible) throw new Error("Cible introuvable.");
+  const attaque = attaquant.attaques.find((a) => a.id === attackId);
+  if (!attaque) throw new Error("Attaque introuvable.");
+  const chance = attaquant.ressources["chance"];
+  if (!chance || chance.actuel < 1) throw new Error(`${attaquant.nom} n'a plus de point de chance.`);
+  if (!canAct(attaquant.effets)) throw new Error(`${attaquant.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+
+  const modDefense = getModifier(cible.effets, "defense");
+  const defenseEffective = cible.defense + modDefense;
+  const jetTotal = last.jetTotal + 10;
+  const touche = jetTotal >= defenseEffective;
+
+  let degatsDetails: number[] = [];
+  let degatsTotal = 0;
+  if (touche) {
+    const roll = rollDiceExpression(parseDiceExpression(attaque.degats), rng);
+    degatsDetails = roll.rolls;
+    degatsTotal = roll.total;
+  }
+
+  const pvAvant = cible.pv;
+  const pvApres = Math.max(0, pvAvant - degatsTotal);
+  const cibleTombe = pvAvant > 0 && pvApres === 0;
+
+  const effetTouche = touche && attaque.effetTouche
+    ? createEffect(attaque.effetTouche.cle, { dureeTours: attaque.effetTouche.duree, source: attaquant.nom })
+    : null;
+
+  const participants = state.participants.map((p) => {
+    if (p.instanceId === attackerId) {
+      return { ...p, ressources: { ...p.ressources, chance: { ...chance, actuel: chance.actuel - 1 } } };
+    }
+    if (p.instanceId === targetId) {
+      return {
+        ...p,
+        pv: pvApres,
+        statut: pvApres <= 0 ? ("ko" as const) : p.statut,
+        effets: effetTouche ? [...p.effets, effetTouche] : p.effets,
+      };
+    }
+    return p;
+  });
+
+  const id = (s: string) => `${s}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const log = [...state.log];
+  log.push({ id: id("pc"), at: stamp(), manche: state.manche, message: `🍀 ${attaquant.nom} dépense 1 PC : ${last.jetTotal} + 10 = ${jetTotal}` });
+  log.push({ id: id("pchit"), at: stamp(), manche: state.manche, message: touche ? "TOUCHÉ (rattrapé)" : "MANQUÉ (malgré la chance)" });
+  if (touche) {
+    log.push({ id: id("pcdmg"), at: stamp(), manche: state.manche, message: `Dégâts : ${attaque.degats} -> [${degatsDetails.join(", ")}] = ${degatsTotal}` });
+    log.push({ id: id("pcpv"), at: stamp(), manche: state.manche, message: `${cible.nom} : ${pvAvant} -> ${pvApres} PV` });
+    if (effetTouche) log.push({ id: id("pceff"), at: stamp(), manche: state.manche, message: `Effet "${effetTouche.nom}" (${effetTouche.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
+    if (cibleTombe) log.push({ id: id("pcko"), at: stamp(), manche: state.manche, message: `${cible.nom} est hors combat` });
+  }
+
+  const resolution: AttackResolution = {
+    ...last,
+    jetTotal,
+    defenseCible: defenseEffective,
+    touche,
+    critique: false,
+    degatsDetails,
+    degatsTotal,
+    pvAvant,
+    pvApres,
+    cibleTombe,
+  };
+
+  return { state: checkEnd({ ...state, participants, log }), resolution };
+}
+
+/**
  * Paie le coût d'un sort (ex: 2 mana). Lève si ressource insuffisante.
  * Sans coût ou ressource absente (monstres) : ne fait rien.
  */

@@ -49,11 +49,11 @@ export interface CombatState {
 }
 
 export interface CritOptions {
-  /** 20 naturel = touche auto. À confirmer COF V2. */
+  /** 20 naturel = touche auto + critique (confirmé COF V2, physique et magique). */
   nat20ToucheAuto: boolean;
-  /** 1 naturel = échec auto. À confirmer COF V2. */
+  /** 1 naturel = échec auto (confirmé COF V2 ; la chance +10 peut le rattraper). */
   nat1EchecAuto: boolean;
-  /** Multiplicateur de dégâts en critique (ex: 2 = doublés). Configurable. */
+  /** Multiplicateur de dégâts en critique (bonus inclus, confirmé COF V2). */
   multiplicateur: number;
 }
 
@@ -64,7 +64,7 @@ export interface CombatOptions {
 }
 
 export const DEFAULT_COMBAT_OPTIONS: CombatOptions = {
-  // TODO_RULE COF V2 : valider critique / échec auto avec vos livres.
+  // Confirmé COF V2 : nat 20 = touche auto + critique ×2 (bonus inclus, physique et magique).
   critique: { nat20ToucheAuto: true, nat1EchecAuto: true, multiplicateur: 2 },
   sauterKO: true,
 };

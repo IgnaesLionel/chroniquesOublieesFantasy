@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, checkEnd, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, checkEnd, depenserChanceApresCoup, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -136,6 +136,59 @@ describe("moteur de combat", () => {
     const s = checkEnd(createCombat([ko, gobelin("G")]));
     expect(s.termine).toBe(true);
     expect(s.gagnant).toBe("monstre");
+  });
+
+  it("chance +10 après un manqué : rattrapé, PC dépensé, dégâts relancés", () => {
+    const atk = { ...pj("Guerrier"), ressources: { chance: { max: 3, actuel: 2 } } };
+    const s = createCombat([atk, pj("Tank", 18)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 9 + 6 = 15 < 18 : manqué.
+    const manque = resolveAttack(s, a, t, "epee", fixedRng([0.4])).resolution;
+    expect(manque.touche).toBe(false);
+    // +10 : 25 ≥ 18, touché. 1d8+3 avec rng 0.5 -> 4+1... 5+3 = 8.
+    const { state, resolution } = depenserChanceApresCoup(s, a, t, "epee", manque, fixedRng([0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.critique).toBe(false);
+    expect(resolution.jetTotal).toBe(25);
+    expect(resolution.degatsTotal).toBe(8);
+    expect(state.participants[0].ressources.chance.actuel).toBe(1);
+    expect(state.participants[1].pv).toBe(32);
+    expect(state.log.some((l) => l.message.includes("1 PC"))).toBe(true);
+  });
+
+  it("chance +10 : le PC est dépensé même si ça rate encore", () => {
+    const atk = { ...pj("Guerrier"), ressources: { chance: { max: 2, actuel: 1 } } };
+    const s = createCombat([atk, pj("Mur", 30)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const manque = resolveAttack(s, a, t, "epee", fixedRng([0.1])).resolution; // 3+6=9
+    const { state, resolution } = depenserChanceApresCoup(s, a, t, "epee", manque, fixedRng([0.9]));
+    expect(resolution.touche).toBe(false);
+    expect(resolution.degatsTotal).toBe(0);
+    expect(state.participants[0].ressources.chance.actuel).toBe(0);
+    expect(state.participants[1].pv).toBe(40);
+  });
+
+  it("chance +10 : rattrape même un 1 naturel", () => {
+    const atk = { ...gobelin("G"), ressources: { chance: { max: 2, actuel: 2 } } };
+    const s = createCombat([atk, pj("Cible", 12)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const manque = resolveAttack(s, a, t, "dague", fixedRng([0])).resolution; // nat 1
+    expect(manque.jetNaturel).toBe(1);
+    expect(manque.touche).toBe(false);
+    // 5 + 10 = 15 ≥ 12 : touché malgré le 1. 1d6+2 rng 0 -> 1+2 = 3 (cible à 40 PV).
+    const { state, resolution } = depenserChanceApresCoup(s, a, t, "dague", manque, fixedRng([0]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.degatsTotal).toBe(3);
+    expect(state.participants[1].pv).toBe(37);
+  });
+
+  it("chance +10 : erreur sans PC ou sans attaque", () => {
+    const atk = { ...pj("Guerrier"), ressources: { chance: { max: 2, actuel: 0 } } };
+    const s = createCombat([atk, gobelin("G")]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const manque = resolveAttack(s, a, t, "epee", fixedRng([0.1])).resolution;
+    expect(() => depenserChanceApresCoup(s, a, t, "epee", manque)).toThrow(/point de chance/);
+    expect(() => depenserChanceApresCoup(s, a, t, "inexistante", manque)).toThrow(/Attaque introuvable/);
   });
 
   it("sortUtilisable : verrou de niveau, gratuité déduite", () => {

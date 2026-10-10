@@ -13,9 +13,10 @@ interface Props {
   onAttack: (id: string) => void;
   onTarget: (id: string) => void;
   onRoll: () => void;
+  onChance: () => void;
 }
 
-export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttacker, onAttack, onTarget, onRoll }: Props) {
+export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttacker, onAttack, onTarget, onRoll, onChance }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
   const bloque = attacker !== null && !canAct(attacker.effets);
@@ -85,6 +86,20 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           <div className={`font-bold ${last.touche ? "text-green-400" : "text-red-400"}`}>
             → {last.touche ? (last.critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ"}
           </div>
+          {!last.touche && (() => {
+            const lanceur = participants.find((p) => p.instanceId === last.attaquantId);
+            const pc = lanceur?.ressources["chance"]?.actuel ?? 0;
+            return (
+              <button
+                onClick={onChance}
+                disabled={pc < 1 || bloque}
+                title={pc < 1 ? "Plus de point de chance" : "Dépenser 1 PC : +10 au jet, même sur un 1 naturel"}
+                className="w-full mt-1 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold disabled:opacity-40"
+              >
+                🍀 Chance +10 ({pc} PC)
+              </button>
+            );
+          })()}
           {last.touche && (
             <>
               <div>Dégâts : [{last.degatsDetails.join(", ")}] = {last.degatsTotal}</div>
