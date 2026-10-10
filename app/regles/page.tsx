@@ -187,7 +187,7 @@ export default function ReglesPage() {
           <li>Rituel de sang : sans test (touche auto). Briser les cœurs : moitié des dégâts si raté.<Src de="Règle" /></li>
           <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle" /></li>
           <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
-          <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; jets de sauvegarde (CON 10…) et durées en INT appliqués par défaut, MJ arbitre.<Src de="Supposition" /></li>
+          <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Supposition" /></li>
           <li>Passifs (Armure d&apos;os, Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>
         </ul>
       </Section>

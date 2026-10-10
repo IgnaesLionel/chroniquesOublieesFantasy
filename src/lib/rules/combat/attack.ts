@@ -1,7 +1,7 @@
 import { parseDiceExpression, rollDiceExpression, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
 import { niveauMinRang } from "@/src/lib/rules/creation";
-import type { Sort } from "@/src/lib/rules/types";
+import type { ActiveEffect, Sort } from "@/src/lib/rules/types";
 import type {
   AttackResolution,
   Camp,
@@ -64,6 +64,40 @@ export function checkEnd(state: CombatState): CombatState {
     };
   }
   return { ...state, termine, gagnant: termine ? gagnant : null };
+}
+
+/**
+ * Construit l'effet au toucher : jet de sauvegarde éventuel (CON 10 du Pied :
+ * réussi = pas d'effet, les dégâts restent), dégâts par tour lancés
+ * (Saignements...), modificateurs supplémentaires.
+ */
+export function creerEffetTouche(
+  attaque: { effetTouche?: { cle: string; duree: number | null; degatsParTour?: string; mods?: Record<string, number>; sauvegarde?: { carac: string; difficulte: number } } },
+  attaquantNom: string,
+  cible: Pick<CombatParticipant, "nom" | "caracs">,
+  rng: Rng = Math.random
+): { effet: ActiveEffect | null; saveLog: string | null } {
+  const spec = attaque.effetTouche;
+  if (!spec) return { effet: null, saveLog: null };
+  let saveLog: string | null = null;
+  if (spec.sauvegarde) {
+    const sv = spec.sauvegarde;
+    const bonusCarac = cible.caracs?.[sv.carac] ?? 0;
+    const jetS = Math.floor(rng() * 20) + 1;
+    const totalS = jetS + bonusCarac;
+    const reussi = totalS >= sv.difficulte;
+    saveLog = `${cible.nom} : test de ${sv.carac} ${jetS}${bonusCarac !== 0 ? ` (${bonusCarac > 0 ? "+" : ""}${bonusCarac})` : ""} = ${totalS} vs diff ${sv.difficulte} → ${reussi ? `pas de ${spec.cle}` : spec.cle}`;
+    if (reussi) return { effet: null, saveLog };
+  }
+  const mods: Record<string, number> = { ...(spec.mods ?? {}) };
+  if (spec.degatsParTour) {
+    const dot = rollDiceExpression(parseDiceExpression(spec.degatsParTour), rng);
+    mods["pvParTour"] = -Math.max(0, dot.total);
+  }
+  return {
+    effet: { ...createEffect(spec.cle, { dureeTours: spec.duree, source: attaquantNom }), modificateurs: mods },
+    saveLog,
+  };
 }
 
 /**
@@ -156,19 +190,10 @@ export function resolveAttack(
   }
 
   const toucheVraie = touche || attaque.toucheAuto === true;
-  // Effet au toucher : dégâts par tour lancés (Saignements...) + modificateurs.
-  let effetTouche = null as ReturnType<typeof createEffect> | null;
-  if (toucheVraie && attaque.effetTouche) {
-    const mods: Record<string, number> = { ...(attaque.effetTouche.mods ?? {}) };
-    if (attaque.effetTouche.degatsParTour) {
-      const dot = rollDiceExpression(parseDiceExpression(attaque.effetTouche.degatsParTour), rng);
-      mods["pvParTour"] = -Math.max(0, dot.total);
-    }
-    effetTouche = {
-      ...createEffect(attaque.effetTouche.cle, { dureeTours: attaque.effetTouche.duree, source: attaquant.nom }),
-      modificateurs: mods,
-    };
-  }
+  // Effet au toucher : sauvegarde éventuelle, dégâts par tour lancés, modificateurs.
+  const { effet: effetTouche, saveLog } = toucheVraie
+    ? creerEffetTouche(attaque, attaquant.nom, cible, rng)
+    : { effet: null, saveLog: null };
 
   const pvAvant = cible.pv;
   const pvApres = Math.max(0, pvAvant - degatsTotal);
@@ -225,6 +250,7 @@ export function resolveAttack(
     log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${attaque.degats} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${moitie ? " (moitié, raté)" : ""}` });
     log.push({ id: id("pv"), at: stamp(), manche: s.manche, message: `${cible.nom} : ${pvAvant} -> ${pvApres} PV` });
     if (effetTouche) log.push({ id: id("eff"), at: stamp(), manche: s.manche, message: `Effet "${effetTouche.nom}" (${effetTouche.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
+    if (saveLog) log.push({ id: id("save"), at: stamp(), manche: s.manche, message: saveLog });
     if (volLog) log.push({ id: id("vol"), at: stamp(), manche: s.manche, message: volLog });
     if (cibleTombe) log.push({ id: id("ko"), at: stamp(), manche: s.manche, message: `${cible.nom} est hors combat` });
   }
@@ -280,18 +306,9 @@ export function depenserChanceApresCoup(
   const pvApres = Math.max(0, pvAvant - degatsTotal);
   const cibleTombe = pvAvant > 0 && pvApres === 0;
 
-  let effetTouche = null as ReturnType<typeof createEffect> | null;
-  if (touche && attaque.effetTouche) {
-    const mods: Record<string, number> = { ...(attaque.effetTouche.mods ?? {}) };
-    if (attaque.effetTouche.degatsParTour) {
-      const dot = rollDiceExpression(parseDiceExpression(attaque.effetTouche.degatsParTour), rng);
-      mods["pvParTour"] = -Math.max(0, dot.total);
-    }
-    effetTouche = {
-      ...createEffect(attaque.effetTouche.cle, { dureeTours: attaque.effetTouche.duree, source: attaquant.nom }),
-      modificateurs: mods,
-    };
-  }
+  const { effet: effetTouche, saveLog } = touche
+    ? creerEffetTouche(attaque, attaquant.nom, cible, rng)
+    : { effet: null, saveLog: null };
   const sortChance = sortDeAttaque(attaquant, attaque.id);
 
   let volChanceLog: string | null = null;
@@ -326,6 +343,7 @@ export function depenserChanceApresCoup(
     log.push({ id: id("pcdmg"), at: stamp(), manche: state.manche, message: `Dégâts : ${attaque.degats} -> [${degatsDetails.join(", ")}] = ${degatsTotal}` });
     log.push({ id: id("pcpv"), at: stamp(), manche: state.manche, message: `${cible.nom} : ${pvAvant} -> ${pvApres} PV` });
     if (effetTouche) log.push({ id: id("pceff"), at: stamp(), manche: state.manche, message: `Effet "${effetTouche.nom}" (${effetTouche.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
+    if (saveLog) log.push({ id: id("pcsave"), at: stamp(), manche: state.manche, message: saveLog });
     if (volChanceLog) log.push({ id: id("pcvol"), at: stamp(), manche: state.manche, message: volChanceLog });
     if (cibleTombe) log.push({ id: id("pcko"), at: stamp(), manche: state.manche, message: `${cible.nom} est hors combat` });
   }
@@ -412,8 +430,7 @@ export function etatLimite(
   return { ok: true };
 }
 
-function enregistrerUsage(p: CombatParticipant, sortId: string, cibleId?: string): CombatParticipant {
-  const u = lireUsages(p, sortId);
+function enregistrerUsage(p: CombatParticipant, sortId: string, cibleId?: string): CombatParticipant {  const u = lireUsages(p, sortId);
   return {
     ...p,
     usagesSorts: {

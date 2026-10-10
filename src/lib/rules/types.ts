@@ -65,6 +65,8 @@ export interface AttackDef {
     degatsParTour?: string;
     /** Modificateurs supplémentaires fusionnés (ex: { deMalus: 1 }). */
     mods?: Record<string, number>;
+    /** Jet de sauvegarde (ex: CON 10 du Pied) : réussi = pas d'effet. */
+    sauvegarde?: { carac: string; difficulte: number };
   };
 }
 
@@ -116,6 +118,8 @@ export interface Sort {
   effetDegats?: string;
   /** Modificateurs supplémentaires de l'effet (ex: { deMalus: 1 }, Strangulation). */
   effetMods?: Record<string, number>;
+  /** Jet de sauvegarde de l'effet (ex: CON 10 du Pied) : réussi = pas d'effet. */
+  effetSauvegarde?: { carac: string; difficulte: number };
   /** Coût en ressource (ex: { ressource: "mana", montant: 2 }). */
   cout?: { ressource: string; montant: number };
   /** Sacrifice de PV du lanceur au lancer, en dés (ex: "1d4", Pacte démoniaque). Min 0 (KO possible). */

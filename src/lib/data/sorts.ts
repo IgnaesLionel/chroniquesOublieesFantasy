@@ -222,9 +222,9 @@ export const SEED_SORTS: Sort[] = [
     id: "sort-pied-tombe", nom: "Un pied dans la tombe", type: "offensif",
     voie: "Voie de l'outre-tombe", rang: 1,
     action: "attaque",
-    description: "Test opposé d'attaque magique (10 m, vivant) : 1d4°+INT DM, et ralenti 1 round (CON 10 raté — appliqué par défaut, MJ).",
+    description: "Test opposé d'attaque magique (10 m, vivant) : 1d4°+INT DM, et ralenti 1 round (test CON 10 lancé, appliqué si raté).",
     familles: ["Sorcier"],
-    degats: "1d4°+INT", effetCle: "Ralenti", effetDuree: 1,
+    degats: "1d4°+INT", effetCle: "Ralenti", effetDuree: 1, effetSauvegarde: { carac: "CON", difficulte: 10 },
     cout: { ressource: "mana", montant: 1 },
   },
   {

@@ -535,4 +535,39 @@ describe("sorcier (voies du livre)", () => {
     expect(r.pvPerdus).toBe(3);
     expect(r.state.participants[0].pv).toBe(37);
   });
+
+  it("sauvegarde CON 10 (Pied) : ratée = Ralenti 1 round, réussie = dégâts seuls", () => {
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "pb", nom: "✦ Pied", bonus: 10, degats: "1d6", effetTouche: { cle: "Ralenti", duree: 1, sauvegarde: { carac: "CON", difficulte: 10 } } }],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Touché (19+10), 4 DM, sauvegarde 3 < 10 ratée -> Ralenti 1 round.
+    const r1 = resolveAttack(s, a, t, "pb", fixedRng([0.9, 0.5, 0.1]));
+    expect(r1.resolution.touche).toBe(true);
+    expect(r1.state.participants[1].pv).toBe(36);
+    expect(r1.state.participants[1].effets.find((e) => e.nom === "Ralenti")?.toursRestants).toBe(1);
+    expect(r1.state.log.some((l) => l.message.includes("test de CON") && l.message.includes("Ralenti"))).toBe(true);
+    // Touché, 4 DM, sauvegarde 19 ≥ 10 réussie -> dégâts seuls, pas d'effet.
+    const r2 = resolveAttack(s, a, t, "pb", fixedRng([0.9, 0.5, 0.9]));
+    expect(r2.resolution.touche).toBe(true);
+    expect(r2.state.participants[1].pv).toBe(36);
+    expect(r2.state.participants[1].effets).toHaveLength(0);
+    expect(r2.state.log.some((l) => l.message.includes("pas de Ralenti"))).toBe(true);
+  });
+
+  it("sauvegarde utilise la carac de la cible (CON +3)", () => {
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "pb", nom: "✦ Pied", bonus: 10, degats: "1d1-1", effetTouche: { cle: "Ralenti", duree: 1, sauvegarde: { carac: "CON", difficulte: 10 } } }],
+    };
+    const tank = { ...pj("Tank", 10), caracs: { AGI: 0, CON: 3, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 } };
+    const s = createCombat([atk, tank]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Touché, sauvegarde 5+3 = 8 < 10 tout juste ratée -> Ralenti.
+    const r = resolveAttack(s, a, t, "pb", fixedRng([0.9, 0.1, 0.2]));
+    expect(r.state.participants[1].effets.map((e) => e.nom)).toContain("Ralenti");
+    expect(r.state.log.some((l) => l.message.includes("(+3)"))).toBe(true);
+  });
 });

@@ -41,7 +41,7 @@ export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<str
     volDeVie: sort.volDeVie,
     toucheAuto: sort.toucheAuto,
     demiDegatsSiRate: sort.demiDegatsSiRate,
-    effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null, degatsParTour: sort.effetDegats, mods: sort.effetMods } : undefined,
+    effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null, degatsParTour: sort.effetDegats, mods: sort.effetMods, sauvegarde: sort.effetSauvegarde } : undefined,
   };
 }
 

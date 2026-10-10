@@ -51,6 +51,7 @@ describe("grimoire des sorts (DRS)", () => {
     expect(parNom["Armée des morts"].zone).toBe(true);
     expect(parNom["Armée des morts"].limiteCombat).toBe(1);
     expect(parNom["Animation des morts"].invocation?.nom).toBe("Zombie");
+    expect(parNom["Un pied dans la tombe"].effetSauvegarde).toEqual({ carac: "CON", difficulte: 10 });
   });
 
   it("familles = profils lanceurs du DRS", () => {

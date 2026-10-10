@@ -35,6 +35,7 @@ const attackSchema = z.object({
     duree: z.number().int().min(1).nullable(),
     degatsParTour: z.string().optional(),
     mods: z.record(z.string(), z.number()).optional(),
+    sauvegarde: z.object({ carac: z.string(), difficulte: z.number().int().min(1) }).optional(),
   }).optional(),
 });
 
@@ -63,6 +64,7 @@ export const sortSchema = z.object({
   effetDuree: z.number().int().min(1).nullable().optional(),
   effetDegats: z.string().optional(),
   effetMods: z.record(z.string(), z.number()).optional(),
+  effetSauvegarde: z.object({ carac: z.string(), difficulte: z.number().int().min(1) }).optional(),
   cout: z.object({ ressource: z.string(), montant: z.number().min(0) }).optional(),
   coutPV: z.string().optional(),
   volDeVie: z.boolean().optional(),

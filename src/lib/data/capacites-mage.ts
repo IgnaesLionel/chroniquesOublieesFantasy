@@ -185,7 +185,7 @@ export const CAPACITES_MAGE: Record<string, VoieDetail[]> = {
     {
       voie: "Voie de l'outre-tombe",
       capacites: [
-        { nom: "Un pied dans la tombe", rang: 1, resume: "Sort d'attaque : test opposé (10 m, vivant), 1d4°+INT + ralenti 1 round (CON 10 raté, MJ).", sortId: "sort-pied-tombe" },
+        { nom: "Un pied dans la tombe", rang: 1, resume: "Sort d'attaque : test opposé (10 m, vivant), 1d4°+INT + ralenti 1 round (CON 10, test auto).", sortId: "sort-pied-tombe" },
         { nom: "Armure d'os", rang: 2, resume: "Passif : armure d'os +3 DEF (+1 par rang 4 en voie sorcier), sans malus AGI, 10 min d'entretien/jour. MJ : Équip. DEF via Éditer." },
         { nom: "Animation des morts", rang: 3, resume: "Sort (limitée) : anime un cadavre humanoïde récent (zombie : DEF 10, contact 1d4°+2, PV 10+niveau), 1 contrôlé +1 par rang 5 (MJ).", sortId: "sort-animation-morts" },
         { nom: "Ensevelissement", rang: 4, resume: "Sort (limitée), 1/combat : test opposé (20 m), enterré vivant (2d4°/round, inactif, inciblable), sortie FOR/AGI 15 (aides +2, max +10).", sortId: "sort-ensevelissement" },
