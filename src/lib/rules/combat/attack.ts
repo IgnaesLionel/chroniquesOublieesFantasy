@@ -1,5 +1,6 @@
 import { parseDiceExpression, rollDiceExpression, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
+import { niveauMinRang } from "@/src/lib/rules/creation";
 import type { Sort } from "@/src/lib/rules/types";
 import type {
   AttackResolution,
@@ -236,6 +237,19 @@ export interface SoutienResolution {
   pvAvant: number;
   pvApres: number;
   effetNom: string | null;
+}
+
+/**
+ * Un sort est-il lançable à ce niveau ? Utilise le niveau minimum calculé
+ * (gratuité Mage déduite) ou, à défaut, le rang (règle : niveau ≥ rang).
+ */
+export function sortUtilisable(
+  niveau: number,
+  sort: { niveauMin?: number; rang?: number; nom: string }
+): { ok: boolean; raison?: string } {
+  const min = sort.niveauMin ?? (sort.rang ? niveauMinRang(sort.rang) : 1);
+  if (Math.max(1, Math.floor(niveau)) >= min) return { ok: true };
+  return { ok: false, raison: `niveau ${min} requis` };
 }
 
 /**

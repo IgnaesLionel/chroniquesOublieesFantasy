@@ -79,6 +79,8 @@ export interface Sort {
   voie?: string;
   /** Rang dans la voie (1 à 5). Règle COF : le coût PM d'un sort = son rang. */
   rang?: number;
+  /** Niveau minimum calculé (combat) : rang requis, gratuité Mage déduite. */
+  niveauMin?: number;
   /** Type d'action DRS pour l'utiliser (A/M/L/G). */
   action?: ActionDRS;
   /**

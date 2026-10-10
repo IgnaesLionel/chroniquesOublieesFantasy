@@ -11,7 +11,7 @@ function participant(nom: string): CombatParticipant {
     pvMax: 30, pv: 30, defense: 15, initMod: 0, initiative: 10,
     attaques: [{ id: "a", nom: "Épée", bonus: 5, degats: "1d6+2" }],
     effets: [], statut: "actif",
-    sorts: [], capacites: [], ressources: {},
+    sorts: [], capacites: [], niveau: 1, ressources: {},
   };
 }
 

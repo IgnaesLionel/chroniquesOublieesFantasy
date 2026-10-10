@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, checkEnd, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, checkEnd, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -16,6 +16,7 @@ function pj(nom = "Guerrier", defense = 18): CombatParticipant {
     effets: [],
     sorts: [],
     capacites: [],
+    niveau: 1,
     ressources: {},
     statut: "actif",
   };
@@ -29,6 +30,7 @@ function gobelin(nom = "Gobelin", pv = 8): CombatParticipant {
     effets: [],
     sorts: [],
     capacites: [],
+    niveau: 1,
     ressources: {},
     statut: "actif",
   };
@@ -134,6 +136,38 @@ describe("moteur de combat", () => {
     const s = checkEnd(createCombat([ko, gobelin("G")]));
     expect(s.termine).toBe(true);
     expect(s.gagnant).toBe("monstre");
+  });
+
+  it("sortUtilisable : verrou de niveau, gratuité déduite", () => {
+    expect(sortUtilisable(1, { nom: "X", rang: 1 })).toEqual({ ok: true });
+    expect(sortUtilisable(1, { nom: "X", rang: 2 })).toEqual({ ok: false, raison: "niveau 2 requis" });
+    expect(sortUtilisable(1, { nom: "X", rang: 2, niveauMin: 1 })).toEqual({ ok: true });
+    expect(sortUtilisable(4, { nom: "X", rang: 4, niveauMin: 5 }).raison).toBe("niveau 5 requis");
+    expect(sortUtilisable(3, { nom: "X" })).toEqual({ ok: true });
+  });
+
+  it("factory : niveau transmis, niveauMin calculé (gratuité Mage déduite)", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const p = participantFromCharacter(mirabel, []);
+    expect(p.niveau).toBe(1);
+    const sorts = Object.fromEntries(p.sorts.map((s) => [s.nom, s.niveauMin]));
+    // Malédiction / Saignements (R1) : niveau 1.
+    expect(sorts["Malédiction"]).toBe(1);
+    expect(sorts["Saignements"]).toBe(1);
+    // Maîtrise apprise en talent (gratuité R2 consommée) : sort à créer exigible au niveau 2.
+    const sortsMage = {
+      ...mirabel,
+      sorts: [
+        { id: "a", nom: "Maîtrise de la magie", type: "utilitaire" as const, voie: "Voie du mage", rang: 2, cout: { ressource: "mana", montant: 2 } },
+      ],
+    };
+    const p2 = participantFromCharacter(sortsMage, []);
+    expect(p2.sorts[0].niveauMin).toBe(1); // gratuité Mage : lançable au niv. 1
+    // Monstres : niveau du template, sorts vides.
+    const tpl = SEED_MONSTERS[0];
+    const [m] = monsterInstances(tpl, 1);
+    expect(m.niveau).toBe(tpl.niveau);
+    expect(m.sorts).toEqual([]);
   });
 
   it("usages par défaut : Protéger un allié -> Protection sur allié", () => {

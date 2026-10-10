@@ -1,6 +1,7 @@
 "use client";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
+import { sortUtilisable } from "@/src/lib/rules/combat/attack";
 
 interface Props {
   participants: CombatParticipant[];
@@ -32,21 +33,28 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       </label>
       {attacker && (() => {
         const mana = attacker.ressources["mana"];
-        const coutDe = (id: string) => {
-          if (!id.startsWith("sort:")) return 0;
-          return attacker.sorts.find((x) => `sort:${x.id}` === id)?.cout?.montant ?? 0;
+        const info = (id: string) => {
+          if (!id.startsWith("sort:")) return { cout: 0, raisons: [] as string[] };
+          const sort = attacker.sorts.find((x) => `sort:${x.id}` === id);
+          const cout = sort?.cout?.montant ?? 0;
+          const raisons: string[] = [];
+          if ((mana?.actuel ?? 0) < cout) raisons.push("manque de mana");
+          if (sort) {
+            const u = sortUtilisable(attacker.niveau, sort);
+            if (!u.ok && u.raison) raisons.push(u.raison);
+          }
+          return { cout, raisons };
         };
-        const jouable = (id: string) => (mana?.actuel ?? 0) >= coutDe(id);
         return (
           <label className="block text-sm">Arme / sort
             {mana && <span className="ml-2 font-mono text-xs text-violet-300">mana {mana.actuel}/{mana.max}</span>}
             <select value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
               {attacker.attaques.map((a) => {
-                const cout = coutDe(a.id);
-                const manque = !jouable(a.id);
+                const { cout, raisons } = info(a.id);
+                const jouable = raisons.length === 0;
                 return (
-                  <option key={a.id} value={a.id} disabled={manque}>
-                    {a.nom} +{a.bonus}{modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""} · {a.degats === "1d1-1" ? "effet" : a.degats}{cout > 0 ? ` · ${cout} PM` : ""}{manque ? " (manque de mana)" : ""}
+                  <option key={a.id} value={a.id} disabled={!jouable}>
+                    {a.nom} +{a.bonus}{modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""} · {a.degats === "1d1-1" ? "effet" : a.degats}{cout > 0 ? ` · ${cout} PM` : ""}{jouable ? "" : ` (${raisons.join(", ")})`}
                   </option>
                 );
               })}

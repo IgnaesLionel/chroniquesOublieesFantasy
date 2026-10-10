@@ -3,6 +3,7 @@ import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { substituerDeEvolutif, substituerStats } from "@/src/lib/rules/dice/roller";
 import { deEvolutif, niveauAttaque } from "@/src/lib/rules/personnage";
+import { compterCapacites, niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
 
 let counter = 0;
 function uid(prefix: string) {
@@ -57,6 +58,14 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     const a = attaqueFromSort(sort, magique, c.caracteristiques, c.niveau);
     if (a) attaques.push(a);
   }
+  // Verrou de niveau par sort (gratuité Mage déduite) pour les panneaux.
+  const compte = compterCapacites(c);
+  const sorts = (c.sorts ?? []).map((s) => {
+    if (s.voie == null || s.rang == null) return { ...s };
+    const gratuit =
+      compte.rang2Nom != null && normaliserNomCapacite(compte.rang2Nom) === normaliserNomCapacite(s.nom);
+    return { ...s, niveauMin: gratuit ? 1 : niveauMinRang(s.rang) };
+  });
   return {
     instanceId: uid("p"),
     templateId: c.id,
@@ -69,9 +78,10 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     initiative: null,
     attaques,
     effets: [],
-    sorts: c.sorts ?? [],
+    sorts,
     capacites: [...(c.capacites ?? [])],
     ressources: { ...c.ressources },
+    niveau: c.niveau,
     statut: c.pv <= 0 ? "ko" : "actif",
   };
 }
@@ -94,6 +104,7 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     sorts: [],
     capacites: [...(template.capacites ?? [])],
     ressources: {},
+    niveau: template.niveau,
     statut: "actif" as const,
   }));
 }

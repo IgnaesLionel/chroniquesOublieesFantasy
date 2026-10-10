@@ -445,3 +445,25 @@ export function peutDesapprendre(
   }
   return { ok: true, raisons: [] };
 }
+
+/**
+ * Une capacité connue est-elle effective ? Non si son niveau minimum dépasse
+ * le niveau actuel (gratuité Mage déduite). Inconnues : effectives par défaut
+ * (déjà signalées par ailleurs, pas de double peine).
+ */
+export function estEffective(c: Character, nom: string): { effectif: boolean; raison?: string } {
+  const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+  const loc = localiserCapacite(nom, profil, c.peuple, c.voieMage);
+  if (!loc || loc.rang <= 1) return { effectif: true };
+  const compte = compterCapacites(c);
+  if (
+    compte.rang2Nom != null &&
+    normaliserNomCapacite(compte.rang2Nom) === normaliserNomCapacite(nom)
+  ) {
+    return { effectif: true };
+  }
+  const niveau = Math.max(1, Math.floor(c.niveau));
+  const min = niveauMinRang(loc.rang);
+  if (niveau >= min) return { effectif: true };
+  return { effectif: false, raison: `niveau ${min} requis (niveau ${niveau})` };
+}

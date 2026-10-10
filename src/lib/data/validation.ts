@@ -43,6 +43,7 @@ export const sortSchema = z.object({
   description: z.string().optional(),
   voie: z.string().optional(),
   rang: z.number().int().min(1).max(5).optional(),
+  niveauMin: z.number().int().min(1).optional(),
   action: z.enum(["attaque", "mouvement", "limitee", "gratuite"]).optional(),
   /** Profils pouvant apprendre le sort ; vide = toutes classes. */
   familles: z.array(z.string()).default([]),

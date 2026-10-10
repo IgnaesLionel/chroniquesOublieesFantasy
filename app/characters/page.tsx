@@ -20,7 +20,7 @@ import {
   remettreAZeroPersonnage,
   verifierPersonnage,
 } from "@/src/lib/rules/personnage";
-import { etatCreation } from "@/src/lib/rules/creation";
+import { estEffective, etatCreation } from "@/src/lib/rules/creation";
 import {
   VOIE_MAGE,
   adopterVoieMage,
@@ -272,7 +272,26 @@ export default function CharactersPage() {
 
               <div className="text-xs text-zinc-400">
                 {(c.traitsPeuple ?? []).length > 0 && <div>◈ Peuple : {(c.traitsPeuple ?? []).join(", ")}</div>}
-                {c.capacites.length > 0 && <div>✦ {c.capacites.join(" · ")}</div>}
+                {c.capacites.length > 0 && (
+                  <div>
+                    ✦{" "}
+                    {c.capacites.map((t, i) => {
+                      const e = estEffective(c, t);
+                      return (
+                        <span key={`${t}-${i}`}>
+                          {i > 0 && " · "}
+                          {e.effectif ? (
+                            t
+                          ) : (
+                            <span title={`${t} : ${e.raison} — non effectif`} className="line-through opacity-50">
+                              🔒 {t}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 {c.attaques.length > 0 && <div>{c.attaques.map((a) => `⚔ ${a.nom} +${a.bonus} · ${a.degats}`).join(" · ")}</div>}
                 <div className="text-zinc-500 pt-0.5">🎒 {(c.inventaire ?? []).length} objet(s) · ✦ {(c.sorts ?? []).length} sort(s){c.armure?.nom ? ` · 🛡 ${c.armure.nom}${c.armure.def ? ` (+${c.armure.def})` : ""}` : ""}</div>
               </div>

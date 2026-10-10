@@ -8,6 +8,7 @@ import {
   compterCapacites,
   coutRang,
   creationProfil,
+  estEffective,
   etatCreation,
   localiserCapacite,
   niveauMinRang,
@@ -212,6 +213,26 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(bloqueSort.ok).toBe(false);
     expect(bloqueSort.raisons.some((r) => r.includes("Voie du mage rang 3"))).toBe(true);
     expect(peutDesapprendre(sortsMage, "Tour de magie", "sorts")).toEqual({ ok: true, raisons: [] });
+  });
+
+  it("estEffective : inactif sous le niveau requis (baisse de niveau)", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // R1 : toujours effectif.
+    expect(estEffective(dorain, "Robustesse")).toEqual({ effectif: true });
+    // R3 appris au niv. 3 puis redescente au niv. 1 : inactif, raison affichable.
+    const haut = { ...dorain, niveau: 3, capacites: ["Robustesse", "Résilient", "Armure lourde"] };
+    expect(estEffective(haut, "Armure lourde")).toEqual({ effectif: true });
+    const bas = { ...haut, niveau: 1 };
+    expect(estEffective(bas, "Armure lourde")).toEqual({
+      effectif: false,
+      raison: "niveau 3 requis (niveau 1)",
+    });
+    expect(estEffective(bas, "Robustesse")).toEqual({ effectif: true });
+    // Gratuité Mage : effective malgré le niveau.
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    expect(estEffective(mirabel, "Maîtrise de la magie")).toEqual({ effectif: true });
+    // Inconnue : effective par défaut (déjà signalée ailleurs).
+    expect(estEffective(dorain, "Boule de feu")).toEqual({ effectif: true });
   });
 
   it("sortDuTalent + apprendreTalentComplet : un talent-sort devient lançable", () => {

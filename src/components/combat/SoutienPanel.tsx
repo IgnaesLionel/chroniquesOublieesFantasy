@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { Sort } from "@/src/lib/rules/types";
 import { canAct } from "@/src/lib/rules/effects/effects";
+import { sortUtilisable } from "@/src/lib/rules/combat/attack";
 
 interface Props {
   participants: CombatParticipant[];
@@ -17,7 +18,8 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
   const [cibleId, setCibleId] = useState<string | null>(null);
 
   if (!lanceur || soutiens.length === 0) return null;
-  const sort = soutiens.find((s) => s.id === sortId) ?? soutiens[0];
+  const jouables = soutiens.filter((s) => sortUtilisable(lanceur.niveau, s).ok);
+  const sort = soutiens.find((s) => s.id === sortId && sortUtilisable(lanceur.niveau, s).ok) ?? jouables[0] ?? soutiens[0];
   const allies = participants.filter((p) => p.statut === "actif" && p.camp === lanceur.camp);
   const cible = allies.find((p) => p.instanceId === cibleId) ?? allies[0] ?? null;
   const bloque = !canAct(lanceur.effets);
@@ -35,11 +37,14 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
       )}
       <label className="block text-sm">Sort
         <select value={sort.id} onChange={(e) => setSortId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-          {soutiens.map((s) => (
-            <option key={s.id} value={s.id}>
-              🛡 {s.nom}{s.soin ? ` (+${s.soin})` : ""}{s.cout ? ` · ${s.cout.montant} ${s.cout.ressource}` : ""}
-            </option>
-          ))}
+          {soutiens.map((s) => {
+            const u = sortUtilisable(lanceur.niveau, s);
+            return (
+              <option key={s.id} value={s.id} disabled={!u.ok}>
+                🛡 {s.nom}{s.soin ? ` (+${s.soin})` : ""}{s.cout ? ` · ${s.cout.montant} ${s.cout.ressource}` : ""}{u.ok ? "" : ` (${u.raison})`}
+              </option>
+            );
+          })}
         </select>
       </label>
       <label className="block text-sm">Bénéficiaire

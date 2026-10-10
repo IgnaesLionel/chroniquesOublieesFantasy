@@ -21,6 +21,8 @@ export interface CombatParticipant {
   effets: ActiveEffect[];
   /** Sorts connus (offensifs fusionnés dans attaques, défensifs lançables en soutien). */
   sorts: Sort[];
+  /** Niveau du personnage (verrous de niveau des sorts : niveauMin). */
+  niveau: number;
   /** Talents connus (noms) : utilisables tels quels via le panneau Capacités. */
   capacites: string[];
   /** Copie des ressources du personnage (ex: mana) pour les coûts de sorts. */
