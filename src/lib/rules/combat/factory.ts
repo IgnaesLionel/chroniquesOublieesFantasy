@@ -89,7 +89,6 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     ressources: { ...c.ressources },
     niveau: c.niveau,
     statut: c.pv <= 0 ? "ko" : "actif",
-    budget: { action: true, mouvement: true },
     bonusMagique: magique,
     caracs: { ...c.caracteristiques },
     usagesSorts: {},
@@ -116,7 +115,6 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     ressources: {},
     niveau: template.niveau,
     statut: "actif" as const,
-    budget: { action: true, mouvement: true },
     usagesSorts: {},
   }));
 }

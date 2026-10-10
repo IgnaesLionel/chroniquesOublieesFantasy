@@ -60,7 +60,7 @@ export default function CombatPage() {
     const aid = attackId ?? atk?.attaques[0]?.id;
     if (!atk || !aid) return;
     try {
-      // Coûts (mana + PV), budget et limites vérifiés dans le moteur.
+      // Coûts (mana + PV) et limites vérifiés dans le moteur.
       const { state, resolution } = resolveAttack(combat, attackerId, targetId, aid);
       setCombat(state);
       setLast(resolution);

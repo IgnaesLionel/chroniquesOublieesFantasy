@@ -28,8 +28,6 @@ export interface CombatParticipant {
   /** Copie des ressources du personnage (ex: mana) pour les coûts de sorts. */
   ressources: Record<string, { max: number; actuel: number }>;
   statut: Statut;
-  /** Budget d'actions du tour (A+M ou L, G gratuit). Absent = illimité (compat). */
-  budget?: { action: boolean; mouvement: boolean };
   /** Bonus d'attaque magique (niv+VOL) : invocations, jets MJ. */
   bonusMagique?: number;
   /** Caractéristiques (substitution "1d4°+INT" des attaques accordées). */

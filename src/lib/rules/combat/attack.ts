@@ -1,7 +1,7 @@
 import { parseDiceExpression, rollDiceExpression, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
 import { niveauMinRang } from "@/src/lib/rules/creation";
-import type { ActionDRS, Sort } from "@/src/lib/rules/types";
+import type { Sort } from "@/src/lib/rules/types";
 import type {
   AttackResolution,
   Camp,
@@ -67,7 +67,7 @@ export function checkEnd(state: CombatState): CombatState {
 }
 
 /**
- * Résout une attaque complète : budget -> limites -> coûts (mana + PV) ->
+ * Résout une attaque complète : limites -> coûts (mana + PV) ->
  * jet d'attaque (dé bonus/malus) -> dégâts -> PV -> effet -> vol de vie.
  * Toucher par défaut : 1d20 + bonus >= défense (les tests opposés COF sont
  * approximés par ce seuil ; voir page Règles).
@@ -89,9 +89,6 @@ export function resolveAttack(
   const attaque = attaquant.attaques.find((a) => a.id === attackId) ?? attaquant.attaques[0];
   if (!attaque) throw new Error(`${attaquant.nom} n'a aucune attaque.`);
   if (!canAct(attaquant.effets)) throw new Error(`${attaquant.nom} ne peut pas agir (Étourdi/Immobilisé).`);
-  const action = actionDeAttaque(attaque);
-  const budget = budgetOk(attaquant, action);
-  if (!budget.ok) throw new Error(`${attaquant.nom} : ${budget.raison}.`);
   const sort = sortDeAttaque(attaquant, attaque.id);
   if (sort) {
     const lim = etatLimite(attaquant, sort, targetId);
@@ -183,10 +180,9 @@ export function resolveAttack(
 
   let participants = s.participants.map((p) => {
     if (p.instanceId === attackerId) {
-      let q = consommerBudget(p, action);
       // Tentatives (limiteCombat) au lancer ; par-cible au touché (ci-dessous).
-      if (sort && !sort.limiteParCible) q = enregistrerUsage(q, sort.id);
-      return q;
+      if (sort && !sort.limiteParCible) return enregistrerUsage(p, sort.id);
+      return p;
     }
     if (p.instanceId === targetId) {
       return {
@@ -381,48 +377,6 @@ export interface CapaciteResolution {
   effetNom: string | null;
 }
 
-/** Action consommée par une attaque (défaut : attaque). */
-export function actionDeAttaque(attaque: { action?: ActionDRS }): ActionDRS {
-  return attaque.action ?? "attaque";
-}
-
-/**
- * Économie d'actions COF V2 : 1 action (A) + 1 mouvement (M) par tour,
- * ou 1 action limitée (L) qui consomme le tour complet. (G) = gratuit.
- * Sans budget (compat) : illimité.
- */
-export function budgetOk(p: CombatParticipant, action: ActionDRS | undefined): { ok: boolean; raison?: string } {
-  const b = p.budget;
-  const a = action ?? "attaque";
-  if (!b) return { ok: true };
-  if (a === "gratuite") return { ok: true };
-  if (a === "limitee") {
-    return b.action && b.mouvement
-      ? { ok: true }
-      : { ok: false, raison: "tour déjà entamé (une limitée exige le tour complet)" };
-  }
-  if (a === "attaque") return b.action ? { ok: true } : { ok: false, raison: "action déjà utilisée ce tour" };
-  return b.mouvement ? { ok: true } : { ok: false, raison: "mouvement déjà utilisé ce tour" };
-}
-
-/** Consomme le budget (lève si insuffisant). Sans budget : participant inchangé. */
-export function consommerBudget(p: CombatParticipant, action: ActionDRS | undefined): CombatParticipant {
-  const b = p.budget;
-  const a = action ?? "attaque";
-  if (!b) return p;
-  const v = budgetOk(p, a);
-  if (!v.ok) throw new Error(`${p.nom} : ${v.raison}.`);
-  if (a === "gratuite") return p;
-  if (a === "limitee") return { ...p, budget: { action: false, mouvement: false } };
-  if (a === "attaque") return { ...p, budget: { ...b, action: false } };
-  return { ...p, budget: { ...b, mouvement: false } };
-}
-
-/** Budget plein (début de tour). */
-export function budgetPlein(): { action: boolean; mouvement: boolean } {
-  return { action: true, mouvement: true };
-}
-
 /** Sort à l'origine d'une attaque "sort:<id>" (armes : indéfini). */
 export function sortDeAttaque(attaquant: CombatParticipant, attackId: string): Sort | undefined {
   if (!attackId.startsWith("sort:")) return undefined;
@@ -511,8 +465,8 @@ export function applyCoutPV(
  * Utilise un talent connu sur une cible : paie le sacrifice de PV éventuel
  * (Pacte démoniaque), applique l'effet éventuel (buff/debuff/DoT, avec
  * modificateurs) et journalise dans tous les cas.
- * Pas de jet, pas de coût PM : le MJ arbitre le timing (ex. réaction).
- * Pas de budget d'action (talents libres/passifs, (G) gratuit).
+ * Pas de jet, pas de coût PM : le MJ arbitre le timing (ex. réaction)
+ * et les actions (talents libres/passifs, (G) gratuit, géré en réel).
  */
 export function utiliserCapacite(
   state: CombatState,
@@ -582,7 +536,7 @@ export interface InvocationResolution {
 }
 
 /**
- * Invoque un serviteur (démon, zombie) : paie les coûts, consomme le budget,
+ * Invoque un serviteur (démon, zombie) : paie les coûts,
  * ajoute un participant au camp du lanceur (agit en fin d'ordre).
  */
 export function invoquer(
@@ -596,8 +550,6 @@ export function invoquer(
   const inv = sort.invocation;
   if (!inv) throw new Error(`${sort.nom} n'invoque rien.`);
   if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
-  const budget = budgetOk(lanceur, sort.action);
-  if (!budget.ok) throw new Error(`${lanceur.nom} : ${budget.raison}.`);
   const lim = etatLimite(lanceur, sort);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
 
@@ -626,12 +578,11 @@ export function invoquer(
     niveau: lanceurApres.niveau,
     ressources: {},
     statut: "actif",
-    budget: budgetPlein(),
     usagesSorts: {},
   };
   const participants = [
     ...s.participants.map((p) =>
-      p.instanceId === lanceurId ? enregistrerUsage(consommerBudget(p, sort.action), sort.id) : p
+      p.instanceId === lanceurId ? enregistrerUsage(p, sort.id) : p
     ),
     frais,
   ];
@@ -660,8 +611,6 @@ export function frapperZone(
   if (!lanceur) throw new Error("Lanceur introuvable.");
   if (!sort.zone) throw new Error(`${sort.nom} n'est pas une frappe de zone.`);
   if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
-  const budget = budgetOk(lanceur, sort.action);
-  if (!budget.ok) throw new Error(`${lanceur.nom} : ${budget.raison}.`);
   const lim = etatLimite(lanceur, sort);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
 
@@ -701,7 +650,7 @@ export function frapperZone(
   const touches: ZoneResolution["touches"] = [];
   const participants = s.participants.map((p) => {
     if (p.instanceId === lanceurId) {
-      return enregistrerUsage(consommerBudget(p, sort.action), sort.id);
+      return enregistrerUsage(p, sort.id);
     }
     if (!ennemis.has(p.instanceId)) return p;
     const pvAvant = p.pv;
@@ -742,8 +691,7 @@ export function sortUtilisable(
 }
 
 /**
- * Lance un sort défensif/utilitaire sur un allié (ou soi) : vérifie le budget
- * et les limites, paie les coûts (mana + PV), applique le soin éventuel,
+ * Lance un sort défensif/utilitaire sur un allié (ou soi) : vérifie les limites, paie les coûts (mana + PV), applique le soin éventuel,
  * l'effet éventuel (+ modificateurs), l'attaque accordée (griffes, contact)
  * ou l'invocation (démon, zombie). Pas de jet d'attaque.
  */
@@ -777,8 +725,6 @@ export function castSoutien(
     };
   }
   if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
-  const budget = budgetOk(lanceur, sort.action);
-  if (!budget.ok) throw new Error(`${lanceur.nom} : ${budget.raison}.`);
   const lim = etatLimite(lanceur, sort, cibleId);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
 
@@ -817,7 +763,6 @@ export function castSoutien(
     // Lanceur et cible peuvent être le même (soutien sur soi) : cumuler.
     let q = p;
     if (p.instanceId === lanceurId) {
-      q = consommerBudget(q, sort.action);
       q = enregistrerUsage(q, sort.id, sort.limiteParCible ? cibleId : undefined);
     }
     if (p.instanceId === cibleId) {

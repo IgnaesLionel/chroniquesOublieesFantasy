@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, budgetOk, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -283,7 +283,6 @@ function sorcier(nom = "Sorcier"): CombatParticipant {
     niveau: 5,
     ressources: { mana: { max: 10, actuel: 10 } },
     statut: "actif",
-    budget: { action: true, mouvement: true },
     bonusMagique: 8,
     caracs: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 2, VOL: 3 },
     usagesSorts: {},
@@ -408,7 +407,7 @@ describe("sorcier (voies du livre)", () => {
   it("limite 1/combat (Ensevelissement) : 2e lancer refusé", () => {
     const sort = { id: "e", nom: "Ensevelissement", type: "offensif" as const, limiteCombat: 1, cout: { ressource: "mana", montant: 4 } };
     const atk = {
-      ...sorcier(), budget: undefined,
+      ...sorcier(),
       attaques: [{ id: "sort:e", nom: "✦ Ensevelissement", bonus: 10, degats: "1d1-1" }],
       sorts: [sort],
     };
@@ -422,7 +421,7 @@ describe("sorcier (voies du livre)", () => {
   it("limite par cible (Malédiction) : même cible refusée, autre acceptée", () => {
     const sort = { id: "m", nom: "Malédiction", type: "offensif" as const, limiteParCible: true, cout: { ressource: "mana", montant: 1 } };
     const atk = {
-      ...sorcier(), budget: undefined,
+      ...sorcier(),
       attaques: [{ id: "sort:m", nom: "✦ Malédiction", bonus: 10, degats: "1d1-1", effetTouche: { cle: "Dé malus", duree: 1, mods: { deMalus: 1 } } }],
       sorts: [sort],
     };
@@ -434,32 +433,6 @@ describe("sorcier (voies du livre)", () => {
     expect(() => resolveAttack(r1.state, a, ga, "sort:m", fixedRng([0.9, 0.1]))).toThrow(/déjà affectée/);
     const r2 = resolveAttack(r1.state, a, gb, "sort:m", fixedRng([0.9, 0.1]));
     expect(r2.resolution.touche).toBe(true);
-  });
-
-  it("budget A+M ou L : seconde action refusée, mouvement libre, limitée consomme tout", () => {
-    const base = { ...pj("A"), budget: { action: false, mouvement: true } };
-    const s = createCombat([base, pj("Tank", 10)]);
-    const [a, t] = s.participants.map((p) => p.instanceId);
-    expect(() => resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.5]))).toThrow(/action déjà utilisée/);
-    expect(budgetOk(s.participants[0], "mouvement").ok).toBe(true);
-    const sobre = {
-      ...pj("B"),
-      budget: { action: true, mouvement: true },
-      attaques: [{ id: "m", nom: "M", bonus: 10, degats: "1d6", action: "mouvement" as const }],
-    };
-    const s2 = createCombat([sobre, pj("Tank", 10)]);
-    const [a2, t2] = s2.participants.map((p) => p.instanceId);
-    const r = resolveAttack(s2, a2, t2, "m", fixedRng([0.9, 0.5]));
-    expect(r.state.participants[0].budget).toEqual({ action: true, mouvement: false });
-    const limitee = {
-      ...pj("C"),
-      budget: { action: true, mouvement: true },
-      attaques: [{ id: "l", nom: "L", bonus: 10, degats: "1d6", action: "limitee" as const }],
-    };
-    const s3 = createCombat([limitee, pj("Tank", 10)]);
-    const [a3, t3] = s3.participants.map((p) => p.instanceId);
-    const r3 = resolveAttack(s3, a3, t3, "l", fixedRng([0.9, 0.5]));
-    expect(r3.state.participants[0].budget).toEqual({ action: false, mouvement: false });
   });
 
   it("soutien : attaque accordée (Beauté) + effet, INT substitué", () => {
@@ -480,7 +453,6 @@ describe("sorcier (voies du livre)", () => {
     expect(accordee!.volDeVie).toBe(true);
     expect(moi.effets.map((e) => e.nom)).toContain("Beauté de la succube");
     expect(moi.ressources.mana.actuel).toBe(8);
-    expect(moi.budget).toEqual({ action: false, mouvement: false });
   });
 
   it("soutien : invocation (démon) au camp du lanceur, PV niveau×5", () => {
@@ -513,7 +485,7 @@ describe("sorcier (voies du livre)", () => {
       effetCle: "Armée des morts", effetDuree: null, effetDegats: "2d4",
       limiteCombat: 1, zone: true, cout: { ressource: "mana", montant: 5 },
     };
-    const caster = { ...sorcier(), budget: undefined, sorts: [armee] };
+    const caster = { ...sorcier(), sorts: [armee] };
     const s = createCombat([caster, pj("Allié"), gobelin("A", 8), gobelin("B", 8)]);
     const [a] = s.participants.map((p) => p.instanceId);
     // 2d4 : 3+3 = 6 immédiats, DoT 2d4 : -6/round.
@@ -550,8 +522,6 @@ describe("sorcier (voies du livre)", () => {
     const { state } = castSoutien(s, a, a, aspect, fixedRng([0.9]));
     expect(state.participants[0].effets[0].modificateurs).toMatchObject({ defense: 5 });
     expect(state.participants[0].attaques.some((x) => x.nom === "✦ Griffes du démon")).toBe(true);
-    // Action (A) consommée, mouvement libre.
-    expect(state.participants[0].budget).toEqual({ action: false, mouvement: true });
   });
 
   it("etatLimite + applyCoutPV unitaires", () => {

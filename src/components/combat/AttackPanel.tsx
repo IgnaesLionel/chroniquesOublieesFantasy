@@ -1,7 +1,7 @@
 "use client";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
-import { budgetOk, etatLimite, sortUtilisable } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable } from "@/src/lib/rules/combat/attack";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
@@ -27,14 +27,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
-      <h2 className="font-bold text-sm uppercase text-zinc-400">
-        Attaque
-        {attacker?.budget && (
-          <span className="ml-2 font-mono normal-case text-xs" title="Économie d'actions : 1 action + 1 mouvement par tour, ou 1 limitée">
-            A{attacker.budget.action ? "•" : "○"} M{attacker.budget.mouvement ? "•" : "○"}
-          </span>
-        )}
-      </h2>
+      <h2 className="font-bold text-sm uppercase text-zinc-400">Attaque</h2>
       <label className="block text-sm">Attaquant
         <select value={attackerId ?? ""} onChange={(e) => onAttacker(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
           {participants.map((p) => (
@@ -56,8 +49,6 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             const lim = etatLimite(attacker, sort, targetId ?? undefined);
             if (!lim.ok && lim.raison) raisons.push(lim.raison);
           }
-          const b = budgetOk(attacker, attaque?.action ?? sort?.action);
-          if (!b.ok && b.raison) raisons.push(b.raison);
           return { cout, raisons, sort, attaque };
         };
         return (

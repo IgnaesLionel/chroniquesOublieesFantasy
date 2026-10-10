@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { Sort } from "@/src/lib/rules/types";
 import { canAct } from "@/src/lib/rules/effects/effects";
-import { budgetOk, sortUtilisable } from "@/src/lib/rules/combat/attack";
+import { sortUtilisable } from "@/src/lib/rules/combat/attack";
 
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
 
@@ -26,13 +26,11 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
   const cible = allies.find((p) => p.instanceId === cibleId) ?? allies[0] ?? null;
   const bloque = !canAct(lanceur.effets);
   const mana = lanceur.ressources["mana"];
-  const budget = budgetOk(lanceur, sort.action);
 
   return (
     <div className="rounded-lg border border-violet-900 bg-zinc-900 p-4 space-y-2.5">
       <h2 className="font-bold text-sm uppercase text-violet-300">
         Sort de soutien{mana ? <span className="ml-2 font-mono normal-case">mana {mana.actuel}/{mana.max}</span> : null}
-        {lanceur.budget && <span className="ml-2 font-mono normal-case text-xs" title="1 action + 1 mouvement par tour, ou 1 limitée">A{lanceur.budget.action ? "•" : "○"} M{lanceur.budget.mouvement ? "•" : "○"}</span>}
       </h2>
       {bloque && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
@@ -69,11 +67,10 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
       </label>
       <button
         onClick={() => { if (cible) onCast(lanceur.instanceId, cible.instanceId, sort); }}
-        disabled={bloque || !cible || !budget.ok}
-        title={!budget.ok ? budget.raison : undefined}
+        disabled={bloque || !cible}
         className="w-full py-2.5 rounded bg-violet-700 hover:bg-violet-600 font-bold disabled:opacity-40"
       >
-        Lancer {sort.nom}{!budget.ok ? ` (${budget.raison})` : ""}
+        Lancer {sort.nom}
       </button>
     </div>
   );

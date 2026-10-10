@@ -179,7 +179,7 @@ export default function ReglesPage() {
       </Section>
 
       <Section id="actions" titre="Actions (A+M ou L) et coûts des sorts">
-        <Formule>Par tour : 1 action (A) + 1 mouvement (M), OU 1 action limitée (L) = tour complet. (G) = gratuit.<Src de="Règle" /></Formule>
+        <Formule>Par tour : 1 action (A) + 1 mouvement (M), OU 1 action limitée (L) = tour complet. (G) = gratuit — géré en réel, pas suivi par l&apos;app.<Src de="Règle" /></Formule>
         <ul className="list-disc pl-5 space-y-1">
           <li>Sorts : coût PM = rang, payé avant le jet. Certains sacrifient aussi des PV en dés (Pacte démoniaque, Invocation, Rituel : 1d4°), payés au lancer.<Src de="Règle" /></li>
           <li>Vol de vie (Baiser du vampire, Succube) : le lanceur récupère autant de PV que de DM infligés.<Src de="Règle" /></li>
@@ -197,7 +197,7 @@ export default function ReglesPage() {
           <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle" /></li>
           <li>0 PV = KO. Initiative 1d20+mod, tri décroissant, tours + manches, KO sautés.<Src de="Supposition" /></li>
           <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle" /></li>
-          <li>Budget appliqué : A+M ou L par tour (pastilles dans les panneaux), sorts à effet sans dégâts (Malédiction, Peur…), dégâts par tour lancés au toucher (Saignements, Ensevelissement…).</li>
+          <li>Sorts à effet sans dégâts (Malédiction, Peur…), dégâts par tour lancés au toucher (Saignements, Ensevelissement…). Les lettres A/M/L des attaques et sorts sont indicatives (économie gérée en réel).</li>
           <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM (+ PV) déduits avant le jet. Soutien : invocations, attaques accordées (griffes, contact). Zone (Armée) : tous les ennemis.</li>
         </ul>
       </Section>

@@ -49,7 +49,7 @@ export interface AttackDef {
   degats: string;
   /** Affichage d'origine si normalisée (ex: "1d8+8+1d8", "DM 1"). */
   degatsAffiche?: string;
-  /** Type d'action COF (A/M/L/G). Défaut : "attaque". Sert au budget du tour. */
+  /** Type d'action COF (A/M/L/G). Défaut : "attaque". Indicatif (géré en réel). */
   action?: ActionDRS;
   /** Touche automatique (pas de jet, ex. Rituel de sang) : dégâts + effet si applicable. */
   toucheAuto?: boolean;
