@@ -143,6 +143,8 @@ export interface Character extends CreatureBase {
   travers?: string;
   /** Traits du peuple cochés / connus (textes informatifs). */
   traitsPeuple?: string[];
+  /** Migration sorts effectuée (talents-sorts -> entrées lançables). */
+  migreSorts?: boolean;
   /** Voie du mage adoptée (famille Mage) : remplace la voie du peuple en gardant son rang 1. */
   voieMage?: boolean;
   /** Armure portée (bonus DEF + AGI max éventuelle). */

@@ -1,7 +1,9 @@
 import { CAPACITES } from "@/src/lib/data/capacites";
-import { VOIES_PEUPLE, VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
+import { VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
 import type { Character, Sort } from "@/src/lib/rules/types";
-import { ajouterCapacite, apprendreSort } from "@/src/lib/rules/personnage";
+import { ajouterCapacite, apprendreSort, normaliserNomCapacite, sortDuTalent } from "@/src/lib/rules/personnage";
+
+export { normaliserNomCapacite, sortDuTalent };
 
 // Règle de création COF Fantasy V2 (niveau 1) :
 //   - 2 points de capacité -> 2 capacités de rang 1 parmi les voies du profil (1 pt chacune).
@@ -35,11 +37,6 @@ export const CREATION_PROFILS: Record<string, CreationProfil> = {
 
 export function creationProfil(profil: string): CreationProfil {
   return CREATION_PROFILS[profil?.trim()] ?? CREATION_DEFAUT;
-}
-
-/** Normalise un nom de capacité ("Flèche sanglante (L)" -> "flèche sanglante"). */
-export function normaliserNomCapacite(nom: string): string {
-  return nom.replace(/\s*\([A-Z]\)\s*$/, "").trim().toLowerCase();
 }
 
 export type SourceCapacite = "profil" | "peuple" | "mage";
@@ -359,25 +356,6 @@ export function talentsRang2Gratuits(c: Character): { nom: string; voie: string 
       .filter((x) => x.rang === 2 && !prises.has(normaliserNomCapacite(x.nom)))
       .map((x) => ({ nom: x.nom, voie: v.voie }))
   );
-}
-
-/**
- * Retrouve l'entrée grimoire d'un talent qui est aussi un sort (via sortId),
- * dans les voies de profils comme du peuple/mage. Indéfini sinon.
- */
-export function sortDuTalent(nom: string, grimoire: Sort[]): Sort | undefined {
-  const q = normaliserNomCapacite(nom);
-  const cherche = (voies: { capacites: { nom: string; sortId?: string }[] }[]): string | undefined => {
-    for (const v of voies) {
-      const cap = v.capacites.find((x) => x.sortId && normaliserNomCapacite(x.nom) === q);
-      if (cap?.sortId) return cap.sortId;
-    }
-    return undefined;
-  };
-  const id =
-    cherche(Object.values(CAPACITES).flat()) ?? cherche(VOIES_PEUPLE) ?? cherche([VOIE_MAGE]);
-  if (!id) return undefined;
-  return grimoire.find((s) => s.id === id);
 }
 
 /**

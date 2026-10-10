@@ -63,7 +63,7 @@ export interface CapaciteCatalogue {
   action?: ActionDRS;
 }
 
-function slug(texte: string): string {
+export function slug(texte: string): string {
   return texte
     .toLowerCase()
     .normalize("NFD")

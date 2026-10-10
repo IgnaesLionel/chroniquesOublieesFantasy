@@ -2,7 +2,9 @@
 // Pur TypeScript, sans React. Source de vérité pour les dérivations.
 
 import type { Character, Sort } from "@/src/lib/rules/types";
-import { traitsInitiaux } from "@/src/lib/data/peuples";
+import { CAPACITES, slug } from "@/src/lib/data/capacites";
+import { VOIES_PEUPLE, VOIE_MAGE, traitsInitiaux } from "@/src/lib/data/peuples";
+import { SEED_SORTS } from "@/src/lib/data/sorts";
 
 export interface Caracteristiques {
   AGI: number;
@@ -315,6 +317,30 @@ export function caracteristiquesDepuisLegacy(stats: Record<string, number>): Car
  * Normalise un objet quelconque (vieille sauvegarde v2, import partiel) en Character COF
  * complet, sans recalculer les valeurs (utiliser recalculerPersonnage ensuite si besoin).
  */
+/** Normalise un nom de capacité ("Flèche sanglante (L)" -> "flèche sanglante"). */
+export function normaliserNomCapacite(nom: string): string {
+  return nom.replace(/\s*\([A-Z]\)\s*$/, "").trim().toLowerCase();
+}
+
+/**
+ * Retrouve l'entrée grimoire d'un talent qui est aussi un sort (via sortId),
+ * dans les voies de profils comme du peuple/mage. Indéfini sinon.
+ */
+export function sortDuTalent(nom: string, grimoire: Sort[]): Sort | undefined {
+  const q = normaliserNomCapacite(nom);
+  const cherche = (voies: { capacites: { nom: string; sortId?: string }[] }[]): string | undefined => {
+    for (const v of voies) {
+      const cap = v.capacites.find((x) => x.sortId && normaliserNomCapacite(x.nom) === q);
+      if (cap?.sortId) return cap.sortId;
+    }
+    return undefined;
+  };
+  const id =
+    cherche(Object.values(CAPACITES).flat()) ?? cherche(VOIES_PEUPLE) ?? cherche([VOIE_MAGE]);
+  if (!id) return undefined;
+  return grimoire.find((s) => s.id === id);
+}
+
 export function normaliserPersonnage(input: Record<string, unknown>): Character {
   const o = (input ?? {}) as Record<string, unknown>;
   const legacy = o.stats as Record<string, number> | undefined;
@@ -335,6 +361,31 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     max: drNombre(caracteristiques.CON, profil, famille),
     actuel: drInitial(caracteristiques.CON, profil, famille),
   };
+  const capacites: string[] = Array.isArray(o.capacites) ? (o.capacites as string[]) : [];
+  // Migration sorts (one-shot) : un talent qui est aussi un sort obtient son
+  // entrée lançable (id déterministe). Une suppression volontaire postérieure
+  // n'est jamais réimportée (drapeau migreSorts).
+  let sorts: Sort[] = Array.isArray(o.sorts) ? (o.sorts as Sort[]) : [];
+  let migreSorts = o.migreSorts === true;
+  if (!migreSorts) {
+    const connus = new Set(sorts.map((s) => normaliserNomCapacite(s.nom)));
+    const ajouts: Sort[] = [];
+    for (const t of capacites) {
+      const q = normaliserNomCapacite(t);
+      if (connus.has(q)) continue;
+      const modele = sortDuTalent(t, SEED_SORTS);
+      if (!modele) continue;
+      connus.add(q);
+      ajouts.push({ ...modele, id: `sort-auto-${slug(t)}` });
+    }
+    if (ajouts.length > 0) sorts = [...sorts, ...ajouts];
+    migreSorts = true;
+  }
+  // Le max de mana suit VOL + sorts connus (l'actuel est conservé, plafonné).
+  const manaFormule = Math.max(0, manaMax(caracteristiques.VOL, sorts.length));
+  const mana = ressources.mana
+    ? { max: Math.max(ressources.mana.max, manaFormule), actuel: Math.min(ressources.mana.actuel, Math.max(ressources.mana.max, manaFormule)) }
+    : { max: manaFormule, actuel: manaFormule };
   return {
     id: String(o.id ?? `pj-${Date.now().toString(36)}`),
     kind: "personnage",
@@ -359,17 +410,18 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     defenseMod: typeof o.defenseMod === "number" ? o.defenseMod : undefined,
     desRecuperation,
     attaques: Array.isArray(o.attaques) ? (o.attaques as Character["attaques"]) : [],
-    capacites: Array.isArray(o.capacites) ? (o.capacites as string[]) : [],
+    capacites,
     ressources: {
       ...ressources,
-      mana: ressources.mana ?? { max: Math.max(0, caracteristiques.VOL), actuel: Math.max(0, caracteristiques.VOL) },
+      mana,
       chance: ressources.chance ?? { max: Math.max(0, 2 + caracteristiques.CHA), actuel: Math.max(0, 2 + caracteristiques.CHA) },
     },
     effets: Array.isArray(o.effets) ? (o.effets as Character["effets"]) : [],
     inventaire: Array.isArray(o.inventaire) ? (o.inventaire as Character["inventaire"]) : [],
-    sorts: Array.isArray(o.sorts) ? (o.sorts as Character["sorts"]) : [],
+    sorts,
     notes: typeof o.notes === "string" ? o.notes : undefined,
     exemple: o.exemple === true,
+    migreSorts,
   };
 }
 

@@ -9,6 +9,7 @@ import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
 import { applyDamage, applyHeal, applySpellCost, castSoutien, resolveAttack } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
+import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
 import { CombatTable } from "@/src/components/combat/CombatTable";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
@@ -32,8 +33,8 @@ export default function CombatPage() {
   const active = combat ? getActive(combat) : null;
 
   const addPJ = (c: Character) => {
-    // Remplace si déjà présent : les attaques/sorts suivent la fiche à jour.
-    const frais = participantFromCharacter(c, catalogue);
+    // Normalisé (migration sorts incluse) puis reconstruit : les attaques/sorts suivent la fiche à jour.
+    const frais = participantFromCharacter(normaliserPersonnage(c as unknown as Record<string, unknown>), catalogue);
     setStaging((s) => (s.some((p) => p.templateId === c.id) ? s.map((p) => (p.templateId === c.id ? frais : p)) : [...s, frais]));
   };
   const addMonsters = (m: MonsterTemplate) => {

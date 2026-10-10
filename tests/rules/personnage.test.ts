@@ -237,4 +237,30 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const ecarts = verifierPersonnage(impossible);
     expect(ecarts.some((e) => e.includes("Sorcier") && e.includes("Aventurier"))).toBe(true);
   });
+
+  it("migration sorts : un talent-sort sans entrée devient lançable (one-shot)", () => {
+    // Sorcier legacy : "Un pied dans la tombe" connu en talent seul, sans sort.
+    const legacy = {
+      ...SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!,
+      capacites: ["Un pied dans la tombe"],
+      sorts: [],
+      ressources: { mana: { max: 4, actuel: 4 }, chance: { max: 1, actuel: 1 } },
+    };
+    const migre = normaliserPersonnage(legacy as unknown as Record<string, unknown>);
+    expect(migre.migreSorts).toBe(true);
+    expect(migre.sorts.map((s) => s.nom)).toContain("Un pied dans la tombe");
+    expect(migre.sorts).toHaveLength(1);
+    // Mana recalculé (VOL 4 + 1 sort), actuel conservé.
+    expect(migre.ressources.mana).toEqual({ max: 5, actuel: 4 });
+    // Idempotent : pas de doublon au second passage.
+    const re = normaliserPersonnage(migre as unknown as Record<string, unknown>);
+    expect(re.sorts).toHaveLength(1);
+    // Suppression volontaire post-migration : jamais réimportée.
+    const sans = normaliserPersonnage({ ...migre, sorts: [] } as unknown as Record<string, unknown>);
+    expect(sans.sorts).toHaveLength(0);
+    // Talent pur : aucun sort créé, drapeau posé quand même.
+    const pur = normaliserPersonnage({ ...legacy, capacites: ["Robustesse"] } as unknown as Record<string, unknown>);
+    expect(pur.sorts).toHaveLength(0);
+    expect(pur.migreSorts).toBe(true);
+  });
 });

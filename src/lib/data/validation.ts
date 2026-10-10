@@ -75,6 +75,7 @@ export const characterSchema = z.object({
   travers: z.string().optional(),
   traitsPeuple: z.array(z.string()).default([]),
   voieMage: z.boolean().optional(),
+  migreSorts: z.boolean().optional(),
   armure: z.object({ nom: z.string().optional(), def: z.number().int().optional(), agiMax: z.number().int().nullable().optional() }).optional(),
   defenseEquipement: z.number().int().optional(),
   defenseMod: z.number().int().optional(),
