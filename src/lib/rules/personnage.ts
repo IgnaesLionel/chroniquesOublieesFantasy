@@ -14,6 +14,8 @@ export interface Caracteristiques {
   CHA: number;
   INT: number;
   VOL: number;
+  /** Indexation par nom (substitution "1d4°+INT", calculs génériques). */
+  [stat: string]: number;
 }
 
 export type FamilleCOF = "Combattant" | "Aventurier" | "Mystique" | "Mage";

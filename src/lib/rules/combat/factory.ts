@@ -1,6 +1,7 @@
 import type { AttackDef, Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import { substituerStats } from "@/src/lib/rules/dice/roller";
 
 let counter = 0;
 function uid(prefix: string) {
@@ -23,14 +24,15 @@ export function attaqueFromItem(item: Item): AttackDef | null {
 /** Convertit un sort offensif en attaque.
  * Sans dégâts (Malédiction, Peur...) : jet d'attaque + effet éventuel, 0 DM
  * (convention du moteur : 0 = "1d1-1"). Sans bonus explicite : attaque
- * magique du lanceur (passée par participantFromCharacter : niv+VOL). */
-export function attaqueFromSort(sort: Sort, bonusMagique = 0): AttackDef | null {
+ * magique du lanceur (passée par participantFromCharacter : niv+VOL).
+ * Les caracs dans les dégâts ("1d4°+INT") sont substituées ("1d4°+2"). */
+export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<string, number> = {}): AttackDef | null {
   if (sort.type !== "offensif") return null;
   return {
     id: `sort:${sort.id}`,
     nom: `✦ ${sort.nom}`,
     bonus: sort.bonus ?? bonusMagique,
-    degats: sort.degats ?? "1d1-1",
+    degats: sort.degats ? substituerStats(sort.degats, caracs) : "1d1-1",
     effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null } : undefined,
   };
 }
@@ -51,7 +53,7 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
   }
   const magique = c.niveau + c.caracteristiques.VOL;
   for (const sort of c.sorts ?? []) {
-    const a = attaqueFromSort(sort, magique);
+    const a = attaqueFromSort(sort, magique, c.caracteristiques);
     if (a) attaques.push(a);
   }
   return {

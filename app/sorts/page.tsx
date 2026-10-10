@@ -11,11 +11,12 @@ import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
 import { ajouterCapacite, apprendreSort, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { apprendreTalentComplet, peutApprendre } from "@/src/lib/rules/creation";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
-import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
+import { parseDiceExpression, substituerStats } from "@/src/lib/rules/dice/roller";
 
 function desValide(expr: string): boolean {
   try {
-    parseDiceExpression(expr);
+    // ° accepté, caracs (INT, CHA...) substituées à 0 pour la validation.
+    parseDiceExpression(substituerStats(expr, {}));
     return true;
   } catch {
     return false;

@@ -89,6 +89,21 @@ describe("moteur de combat", () => {
     expect(resolution.pvApres).toBe(8);
   });
 
+  it("dégâts explosifs en attaque : 4 relancé + modificateur", () => {
+    const lanceur = { ...pj("Mage"), attaques: [{ id: "sort", nom: "✦ Pied dans la tombe", bonus: 5, degats: "1d4°+2" }] };
+    const s = createCombat([lanceur, gobelin("Gob")]);
+    // Jet 15+5=20 vs déf 15 : touché ; d4 : 4 (relance 3) -> 4+3+2 = 9.
+    const { resolution } = resolveAttack(
+      s, s.participants[0].instanceId, s.participants[1].instanceId, "sort",
+      fixedRng([0.72, 0.99, 0.5])
+    );
+    expect(resolution.touche).toBe(true);
+    expect(resolution.degatsDetails).toEqual([4, 3]);
+    expect(resolution.degatsTotal).toBe(9);
+    expect(resolution.pvApres).toBe(0);
+    expect(resolution.cibleTombe).toBe(true);
+  });
+
   it("0 PV -> KO + journal hors combat, victoire PJ", () => {
     let s = createCombat([pj("Héros"), gobelin("G1", 5), gobelin("G2", 5)]);
     s = applyDamage(s, s.participants[1].instanceId, 5);

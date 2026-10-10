@@ -13,6 +13,8 @@ export interface Caracteristiques {
   CHA: number;
   INT: number;
   VOL: number;
+  /** Indexation par nom (substitution "1d4°+INT", calculs génériques). */
+  [stat: string]: number;
 }
 
 /** Ancien bloc de stats (D&D-like) conservé pour migration des sauvegardes v2. */

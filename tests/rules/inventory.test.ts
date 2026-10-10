@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Character } from "@/src/lib/rules/types";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { characterSchema, itemSchema } from "@/src/lib/data/validation";
 import { attaqueFromItem, attaqueFromSort, participantFromCharacter } from "@/src/lib/rules/combat/factory";
@@ -90,6 +91,16 @@ describe("inventaire, armes et sorts", () => {
     // Malédiction (sans DM) : jet d'attaque + effet, 0 DM.
     expect(p.attaques.find((a) => a.id === "sort:mirabel-malediction")?.degats).toBe("1d1-1");
     expect(p.attaques.find((a) => a.id === "sort:mirabel-saignements")?.bonus).toBe(5);
+  });
+
+  it("sort à carac : INT substituée dans les dégâts", () => {
+    const sort = { id: "p", nom: "Pied dans la tombe", type: "offensif" as const, degats: "1d4°+INT" };
+    const a = attaqueFromSort(sort, 3, { INT: 2 });
+    expect(a?.degats).toBe("1d4°+2");
+    expect(a?.bonus).toBe(3);
+    // Donnée grimoire : Un pied dans la tombe = 1d4°+INT.
+    const grimoire = SEED_SORTS.find((s) => s.id === "sort-pied-tombe")!;
+    expect(grimoire.degats).toBe("1d4°+INT");
   });
 
   it("attaque de sort TOUCHÉE : dégâts appliqués, PV déduits", () => {

@@ -7,7 +7,9 @@ export interface DiceExpression {
   count: number;
   sides: number;
   modifier: number;
-  /** Expression normalisée, ex: "2d6+3" */
+  /** Dé explosif (notation °) : tout dé au max est relancé une fois et ajouté. */
+  explosif: boolean;
+  /** Expression normalisée, ex: "2d6+3", "1d4°+2" */
   normalized: string;
 }
 
@@ -20,14 +22,15 @@ export interface DiceRollResult {
   subtotal: number;
 }
 
-const DICE_RE = /^\s*(?:(\d*)\s*[dD]\s*(\d+))\s*([+-]\s*\d+)?\s*$/;
+const DICE_RE = /^\s*(?:(\d*)\s*[dD]\s*(\d+))\s*(°)?\s*([+-]\s*\d+)?\s*$/;
 
 export function parseDiceExpression(input: string): DiceExpression {
   const m = DICE_RE.exec(input);
-  if (!m) throw new Error(`Expression invalide : "${input}" (attendu : 1d20, 2d6+3, 1d8+2)`);
+  if (!m) throw new Error(`Expression invalide : "${input}" (attendu : 1d20, 2d6+3, 1d8+2, 1d4°)`);
   const count = m[1] === "" ? 1 : Number(m[1]);
   const sides = Number(m[2]);
-  const modifier = m[3] ? Number(m[3].replace(/\s+/g, "")) : 0;
+  const explosif = m[3] === "°";
+  const modifier = m[4] ? Number(m[4].replace(/\s+/g, "")) : 0;
 
   if (!Number.isInteger(count) || count < 1 || count > 100)
     throw new Error("Nombre de dés entre 1 et 100.");
@@ -37,7 +40,12 @@ export function parseDiceExpression(input: string): DiceExpression {
     throw new Error("Modificateur invalide.");
 
   const sign = modifier > 0 ? `+${modifier}` : modifier < 0 ? `${modifier}` : "";
-  return { count, sides, modifier, normalized: `${count}d${sides}${sign}` };
+  return { count, sides, modifier, explosif, normalized: `${count}d${sides}${explosif ? "°" : ""}${sign}` };
+}
+
+/** Remplace les caracs (INT, CHA, FOR...) par leurs valeurs : "1d4°+INT" + {INT:2} -> "1d4°+2". */
+export function substituerStats(expr: string, caracs: Record<string, number> = {}): string {
+  return expr.replace(/\b(AGI|CON|FOR|PER|CHA|INT|VOL)\b/g, (nom) => String(caracs[nom] ?? 0));
 }
 
 export function rollDie(sides: number, rng: Rng = Math.random): number {
@@ -48,7 +56,12 @@ export function rollDie(sides: number, rng: Rng = Math.random): number {
 export function rollDiceExpression(input: string | DiceExpression, rng: Rng = Math.random): DiceRollResult {
   const expression = typeof input === "string" ? parseDiceExpression(input) : input;
   const rolls: number[] = [];
-  for (let i = 0; i < expression.count; i++) rolls.push(rollDie(expression.sides, rng));
+  for (let i = 0; i < expression.count; i++) {
+    const jet = rollDie(expression.sides, rng);
+    rolls.push(jet);
+    // Dé explosif : un seul relancer par dé au max (ex. 1d4° max = 4+4 = 8).
+    if (expression.explosif && jet === expression.sides) rolls.push(rollDie(expression.sides, rng));
+  }
   const subtotal = rolls.reduce((a, b) => a + b, 0);
   return { expression, rolls, modifier: expression.modifier, subtotal, total: subtotal + expression.modifier };
 }

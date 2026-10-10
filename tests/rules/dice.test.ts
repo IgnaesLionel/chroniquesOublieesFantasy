@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixedRng, parseDiceExpression, rollDiceExpression, rollDie } from "@/src/lib/rules/dice/roller";
+import { fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerStats } from "@/src/lib/rules/dice/roller";
 
 describe("moteur de dés", () => {
   it("parse les expressions de base", () => {
@@ -20,6 +20,34 @@ describe("moteur de dés", () => {
     expect(parseDiceExpression("1d1")).toMatchObject({ count: 1, sides: 1, modifier: 0 });
     expect(rollDiceExpression("1d1", fixedRng([0.99])).total).toBe(1);
     expect(rollDiceExpression("1d1-1", fixedRng([0])).total).toBe(0);
+  });
+
+  it("dés explosifs (°) : relance unique au max", () => {
+    expect(parseDiceExpression("1d4°")).toMatchObject({ count: 1, sides: 4, modifier: 0, explosif: true, normalized: "1d4°" });
+    expect(parseDiceExpression("2d6").explosif).toBe(false);
+    expect(parseDiceExpression("1d4°+2").normalized).toBe("1d4°+2");
+    // Exemple livre : 4 puis 3 = 7.
+    const r = rollDiceExpression("1d4°", fixedRng([0.99, 0.5]));
+    expect(r.rolls).toEqual([4, 3]);
+    expect(r.total).toBe(7);
+    // Relance unique : 4 puis 4 = 8, pas de 3e jet.
+    const r2 = rollDiceExpression("1d4°", fixedRng([0.99, 0.99, 0.5]));
+    expect(r2.rolls).toEqual([4, 4]);
+    expect(r2.total).toBe(8);
+    // Pas de max : pas de relance.
+    expect(rollDiceExpression("1d4°", fixedRng([0.5])).total).toBe(3);
+    // 2d4° : chaque dé au max explose une fois.
+    const r3 = rollDiceExpression("2d4°", fixedRng([0.99, 0.1, 0.99, 0.1]));
+    expect(r3.rolls).toEqual([4, 1, 4, 1]);
+    expect(r3.total).toBe(10);
+  });
+
+  it("substituerStats remplace les caracs (INT ajouté à la fin)", () => {
+    expect(substituerStats("1d4°+INT", { INT: 2 })).toBe("1d4°+2");
+    expect(substituerStats("2d6+3", { INT: 2 })).toBe("2d6+3");
+    expect(substituerStats("1d4°+INT", {})).toBe("1d4°+0");
+    expect(substituerStats("1d6+int", { int: 2 })).toBe("1d6+int"); // minuscules ignorées
+    expect(parseDiceExpression(substituerStats("1d4°+INT", { INT: 2 })).normalized).toBe("1d4°+2");
   });
 
   it("roll déterministe avec RNG injecté", () => {
