@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, checkEnd, resolveAttack } from "@/src/lib/rules/combat/attack";
-import { monsterInstances } from "@/src/lib/rules/combat/factory";
+import { applyDamage, checkEnd, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
-import { SEED_MONSTERS } from "@/src/lib/data/seeds";
+import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import { CAPACITES_USABLES } from "@/src/lib/data/capacites-usables";
+import { createEffect } from "@/src/lib/rules/effects/effects";
 
 function pj(nom = "Guerrier", defense = 18): CombatParticipant {
   return {
@@ -13,6 +15,7 @@ function pj(nom = "Guerrier", defense = 18): CombatParticipant {
     attaques: [{ id: "epee", nom: "Épée", bonus: 6, degats: "1d8+3" }],
     effets: [],
     sorts: [],
+    capacites: [],
     ressources: {},
     statut: "actif",
   };
@@ -25,6 +28,7 @@ function gobelin(nom = "Gobelin", pv = 8): CombatParticipant {
     attaques: [{ id: "dague", nom: "Dague", bonus: 4, degats: "1d6+2" }],
     effets: [],
     sorts: [],
+    capacites: [],
     ressources: {},
     statut: "actif",
   };
@@ -130,5 +134,53 @@ describe("moteur de combat", () => {
     const s = checkEnd(createCombat([ko, gobelin("G")]));
     expect(s.termine).toBe(true);
     expect(s.gagnant).toBe("monstre");
+  });
+
+  it("usages par défaut : Protéger un allié -> Protection sur allié", () => {
+    const entree = CAPACITES_USABLES.find((u) => u.talent === "Protéger un allié");
+    expect(entree).toMatchObject({ effetCle: "protection", dureeTours: 1, cibles: "allies" });
+  });
+
+  it("utiliserCapacite : buff appliqué + visible + journalisé (Dorain protège un allié)", () => {
+    const dorainSeed = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const dorain = participantFromCharacter(dorainSeed, []);
+    expect(dorain.capacites).toContain("Protéger un allié");
+    const s = createCombat([dorain, pj("Allié"), gobelin("G")]);
+    const [lanceur, allie] = s.participants.map((p) => p.instanceId);
+    const { state, resolution } = utiliserCapacite(s, lanceur, allie, "Protéger un allié", { effetCle: "protection", dureeTours: 1 });
+    const cible = state.participants[1];
+    expect(cible.effets).toHaveLength(1);
+    expect(cible.effets[0].nom).toBe("Protection");
+    expect(cible.effets[0].toursRestants).toBe(1);
+    expect(cible.effets[0].source).toBe(dorain.nom);
+    expect(cible.effets[0].modificateurs).toMatchObject({ defense: 2 });
+    expect(resolution.effetNom).toBe("Protection");
+    expect(state.log.some((l) => l.message.includes("Protéger un allié"))).toBe(true);
+    expect(state.log.some((l) => l.message.includes("Protection"))).toBe(true);
+  });
+
+  it("utiliserCapacite : talent inconnu / étourdi -> erreur ; sans effet -> narratif seul", () => {
+    const s = createCombat([pj("A"), pj("B")]);
+    const [a, b] = s.participants.map((p) => p.instanceId);
+    expect(() => utiliserCapacite(s, a, b, "Inexistant", {})).toThrow(/ne connaît pas/);
+    const sonne = {
+      ...s,
+      participants: s.participants.map((p) =>
+        p.instanceId === a
+          ? { ...p, capacites: ["Cri de guerre"], effets: [createEffect("etourdi")] }
+          : p
+      ),
+    };
+    expect(() => utiliserCapacite(sonne, a, b, "Cri de guerre", {})).toThrow(/ne peut pas agir/);
+    const avecTalent = {
+      ...s,
+      participants: s.participants.map((p) =>
+        p.instanceId === a ? { ...p, capacites: ["Cri de guerre"] } : p
+      ),
+    };
+    const { state, resolution } = utiliserCapacite(avecTalent, a, b, "Cri de guerre", {});
+    expect(resolution.effetNom).toBeNull();
+    expect(state.participants[1].effets).toHaveLength(0);
+    expect(state.log.some((l) => l.message.includes("Cri de guerre"))).toBe(true);
   });
 });

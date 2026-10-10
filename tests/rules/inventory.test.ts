@@ -15,7 +15,7 @@ function guerrier(): CombatParticipant {
     instanceId: "pj", templateId: "pj", nom: "Brom", camp: "pj",
     pvMax: 40, pv: 40, defense: 18, initMod: 1, initiative: 10,
     attaques: [{ id: "epee", nom: "Épée", bonus: 6, degats: "1d8+3" }],
-    effets: [], sorts: [], ressources: {}, statut: "actif",
+    effets: [], sorts: [], capacites: [], ressources: {}, statut: "actif",
   };
 }
 
@@ -24,7 +24,7 @@ function gobelin(pv = 8): CombatParticipant {
     instanceId: "m", templateId: "m", nom: "Gobelin", camp: "monstre",
     pvMax: pv, pv, defense: 15, initMod: 2, initiative: 5,
     attaques: [{ id: "dague", nom: "Dague", bonus: 4, degats: "1d6+2" }],
-    effets: [], sorts: [], ressources: {}, statut: "actif",
+    effets: [], sorts: [], capacites: [], ressources: {}, statut: "actif",
   };
 }
 

@@ -69,6 +69,7 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     attaques,
     effets: [],
     sorts: c.sorts ?? [],
+    capacites: [...(c.capacites ?? [])],
     ressources: { ...c.ressources },
     statut: c.pv <= 0 ? "ko" : "actif",
   };
@@ -90,6 +91,7 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     attaques: template.attaques,
     effets: [],
     sorts: [],
+    capacites: [...(template.capacites ?? [])],
     ressources: {},
     statut: "actif" as const,
   }));

@@ -7,13 +7,14 @@ import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, applySpellCost, castSoutien, resolveAttack } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, applySpellCost, castSoutien, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
 import { CombatTable } from "@/src/components/combat/CombatTable";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
 import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
+import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 
@@ -217,6 +218,22 @@ export default function CombatPage() {
                 setLast(null);
               } catch (e) {
                 const message = e instanceof Error ? e.message : "Sort impossible.";
+                setCombat((c) =>
+                  c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+                );
+              }
+            }}
+          />
+          <CapacitesPanel
+            participants={combat.participants}
+            lanceurId={attackerId}
+            onUtiliser={(lanceurId, cibleId, talentNom, effetCle, dureeTours) => {
+              try {
+                const { state } = utiliserCapacite(combat, lanceurId, cibleId, talentNom, { effetCle, dureeTours });
+                setCombat(state);
+                setLast(null);
+              } catch (e) {
+                const message = e instanceof Error ? e.message : "Capacité impossible.";
                 setCombat((c) =>
                   c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
                 );

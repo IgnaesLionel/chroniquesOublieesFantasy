@@ -180,6 +180,53 @@ export function applySpellCost(state: CombatState, lanceurId: string, sort: Sort
   };
 }
 
+export interface CapaciteResolution {
+  lanceurNom: string;
+  cibleNom: string;
+  talentNom: string;
+  effetNom: string | null;
+}
+
+/**
+ * Utilise un talent connu sur une cible : applique l'effet éventuel
+ * (buff/debuff/DoT du catalogue) et journalise dans tous les cas.
+ * Pas de jet, pas de coût : le MJ arbitre le timing (ex. réaction).
+ */
+export function utiliserCapacite(
+  state: CombatState,
+  lanceurId: string,
+  cibleId: string,
+  talentNom: string,
+  opts: { effetCle?: string | null; dureeTours?: number | null } = {}
+): { state: CombatState; resolution: CapaciteResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  const cible = state.participants.find((p) => p.instanceId === cibleId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (!cible) throw new Error("Cible introuvable.");
+  if (!lanceur.capacites.includes(talentNom)) throw new Error(`${lanceur.nom} ne connaît pas « ${talentNom} ».`);
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+
+  const effet = opts.effetCle
+    ? createEffect(opts.effetCle, { dureeTours: opts.dureeTours ?? null, source: lanceur.nom })
+    : null;
+
+  const participants = state.participants.map((p) =>
+    p.instanceId === cibleId ? { ...p, effets: effet ? [...p.effets, effet] : p.effets } : p
+  );
+
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const log = [...state.log];
+  log.push({ id: id("cap"), at: stamp(), manche: state.manche, message: `${lanceur.nom} utilise ${talentNom} sur ${cible.nom}` });
+  if (effet) log.push({ id: id("ceff"), at: stamp(), manche: state.manche, message: `Effet "${effet.nom}" (${effet.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
+
+  return {
+    state: { ...state, participants, log },
+    resolution: {
+      lanceurNom: lanceur.nom, cibleNom: cible.nom, talentNom, effetNom: effet?.nom ?? null,
+    },
+  };
+}
+
 export interface SoutienResolution {
   lanceurNom: string;
   cibleNom: string;

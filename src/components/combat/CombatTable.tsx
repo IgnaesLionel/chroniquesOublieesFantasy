@@ -8,6 +8,13 @@ function pvColor(pv: number, max: number) {
   return "bg-red-500";
 }
 
+function tonEffet(e: { modificateurs: Record<string, number> }): string {
+  const m = e.modificateurs ?? {};
+  if ((m["pvParTour"] ?? 0) < 0 || (m["empecheAgir"] ?? 0) > 0) return "bg-red-900 text-red-200";
+  if ((m["defense"] ?? 0) > 0 || (m["attaque"] ?? 0) > 0 || (m["pvParTour"] ?? 0) > 0) return "bg-green-900 text-green-200";
+  return "bg-violet-900 text-violet-200";
+}
+
 interface Props {
   combat: { participants: CombatParticipant[]; tourIndex: number };
   onHit: (id: string, n: number) => void;
@@ -49,8 +56,16 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   </span>
                   <span className="font-semibold">{p.nom}</span>
                   {p.effets.length > 0 && (
-                    <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-violet-900 text-violet-200" title={p.effets.map((e) => `${e.nom} (${e.toursRestants ?? "∞"})`).join(", ")}>
-                      ✦{p.effets.length}
+                    <span className="block mt-1 space-x-1">
+                      {p.effets.map((e) => (
+                        <span
+                          key={e.id}
+                          title={`${e.description ?? ""}${e.source ? ` (par ${e.source})` : ""}`}
+                          className={`inline-block text-[10px] px-1.5 py-0.5 rounded ${tonEffet(e)}`}
+                        >
+                          {e.nom}{e.toursRestants != null ? ` (${e.toursRestants})` : " (∞)"}
+                        </span>
+                      ))}
                     </span>
                   )}
                   {active && <span className="ml-2 text-[10px] font-bold text-amber-300">▶ TOUR</span>}
