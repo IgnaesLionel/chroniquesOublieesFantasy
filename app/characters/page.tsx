@@ -10,6 +10,7 @@ import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
 import {
   FAMILLES,
   PROFILS_PAR_FAMILLE,
+  changerFamille,
   deriverPersonnage,
   drInitial,
   normaliserPersonnage,
@@ -106,13 +107,16 @@ export default function CharactersPage() {
     setEditing((e) => (e ? { ...e, peuple, traitsPeuple: e.voieMage ? adopterVoieMage(peuple) : traitsInitiaux(peuple) } : e));
   };
 
-  /** Changement de famille : quitter Mage retire la Voie du mage (retour à l'état canonique du peuple). */
+  /** Changement de famille : les sorts/talents des voies ne suivent pas (vidés),
+   * le profil est ramené sur la nouvelle famille (choix impossibles interdits).
+   * Quitter Mage retire aussi la Voie du mage. */
   const changeFamille = (famille: Character["famille"]) => {
-    setEditing((e) => {
-      if (!e) return e;
-      if (famille === "Mage") return { ...e, famille };
-      return { ...e, famille, voieMage: undefined, traitsPeuple: traitsInitiaux(e.peuple) };
-    });
+    if (!editing || editing.famille === famille) return;
+    const nbVoies = (editing.capacites ?? []).length + (editing.sorts ?? []).length;
+    if (nbVoies > 0 && !window.confirm(
+      `Changer de famille (${editing.famille} → ${famille}) effacera ${nbVoies} sort(s)/talent(s) des voies. Continuer ?`
+    )) return;
+    setEditing(changerFamille(editing, famille));
   };
 
   /** Adoption de la Voie du mage (famille Mage, avant le rang 2 de peuple) : garde le rang 1 du peuple. */
@@ -308,13 +312,9 @@ export default function CharactersPage() {
                   {FAMILLES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
               </label>
-              <label className="block text-sm">Profil
+              <label className="block text-sm">Profil (classe de la famille)
                 <select value={editing.profil || editing.classe} onChange={(e) => setEditing({ ...editing, profil: e.target.value, classe: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5">
-                  {Object.entries(PROFILS_PAR_FAMILLE).map(([fam, profils]) => (
-                    <optgroup key={fam} label={fam}>
-                      {profils.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </optgroup>
-                  ))}
+                  {(PROFILS_PAR_FAMILLE[editing.famille] ?? []).map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
               </label>
               <label className="block text-sm">Armure (nom)<input value={editing.armure?.nom ?? ""} onChange={(e) => setEditing({ ...editing, armure: { ...(editing.armure ?? {}), nom: e.target.value } })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>

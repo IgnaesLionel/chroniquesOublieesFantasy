@@ -2,6 +2,7 @@
 // Pur TypeScript, sans React. Source de vérité pour les dérivations.
 
 import type { Character, Sort } from "@/src/lib/rules/types";
+import { traitsInitiaux } from "@/src/lib/data/peuples";
 
 export interface Caracteristiques {
   AGI: number;
@@ -278,6 +279,10 @@ export function remettreAZeroPersonnage<T extends Character>(c: T): T {
 export function verifierPersonnage(c: Character): string[] {
   const d = deriverPersonnage(c);
   const ecarts: string[] = [];
+  const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+  if (!(PROFILS_PAR_FAMILLE[c.famille] ?? []).includes(profil)) {
+    ecarts.push(`Profil ${profil || "?"} impossible en famille ${c.famille} (corriger dans Éditer)`);
+  }
   if (c.pvMax !== d.pvMax) ecarts.push(`PV ${c.pvMax} ≠ ${d.pvMax} (${PV_BASE_PAR_FAMILLE[d.famille]}+CON)`);
   if (c.defense !== d.defense) ecarts.push(`DEF ${c.defense} ≠ ${d.defense} (10+AGI+Équip+Mod)`);
   if (c.initMod !== d.initiative - 10) ecarts.push(`Init ${c.initMod} ≠ +${d.initiative - 10} (10+PER=${d.initiative})`);
@@ -393,4 +398,27 @@ export function ajouterCapacite<T extends Character>(c: T, nom: string): T {
   const n = nom.trim();
   if (!n || (c.capacites ?? []).includes(n)) return c;
   return { ...c, capacites: [...(c.capacites ?? []), n] };
+}
+
+/**
+ * Changement de famille : vide les sorts/talents des voies (liés à l'ancienne
+ * famille), ramène le profil sur la nouvelle famille (choix impossibles interdits)
+ * et suit la Voie du mage (retirée en quittant Mage). Pur et testable ;
+ * la confirmation destructive reste côté UI.
+ */
+export function changerFamille(c: Character, famille: FamilleCOF): Character {
+  if (c.famille === famille) return c;
+  const profils = PROFILS_PAR_FAMILLE[famille] ?? [];
+  const profilActuel = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+  const profil = profils.includes(profilActuel) ? c.profil : (profils[0] ?? c.profil);
+  const base: Character = {
+    ...c,
+    famille,
+    profil,
+    classe: profil,
+    capacites: [],
+    sorts: [],
+  };
+  if (famille === "Mage") return base;
+  return { ...base, voieMage: undefined, traitsPeuple: traitsInitiaux(c.peuple) };
 }

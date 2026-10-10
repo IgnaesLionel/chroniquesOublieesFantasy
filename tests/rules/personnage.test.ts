@@ -5,6 +5,7 @@ import {
   ajouterCapacite,
   attaquesBase,
   chanceMax,
+  changerFamille,
   deriverPersonnage,
   drInitial,
   drNombre,
@@ -201,5 +202,39 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const r2 = ajouterCapacite(r, "Vivacité");
     expect(r2.capacites.filter((x) => x === "Vivacité")).toHaveLength(1);
     expect(ajouterCapacite(r, "  ").capacites).toEqual(r.capacites);
+  });
+
+  it("changerFamille : vide les voies, recadre le profil, suit la voie du mage", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // Même famille : identique.
+    expect(changerFamille(dorain, "Combattant")).toBe(dorain);
+    // Guerrier -> Mage : sorts/talents vidés, premier profil Mage, traits du peuple intacts.
+    const mage = changerFamille(dorain, "Mage");
+    expect(mage.famille).toBe("Mage");
+    expect(mage.profil).toBe("Ensorceleur");
+    expect(mage.classe).toBe("Ensorceleur");
+    expect(mage.capacites).toEqual([]);
+    expect(mage.sorts).toEqual([]);
+    expect(mage.traitsPeuple).toEqual(dorain.traitsPeuple);
+    expect(dorain.capacites.length).toBeGreaterThan(0); // non muté
+    // Guerrier -> Aventurier : profil recadré, traits réinitialisés au rang 1.
+    const avent = changerFamille(dorain, "Aventurier");
+    expect(avent.profil).toBe("Arquebusier");
+    expect(avent.traitsPeuple).toEqual(["Habitant des tunnels"]);
+    expect(avent.voieMage).toBeUndefined();
+    // Quitter Mage retire la voie du mage.
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const guerriere = changerFamille({ ...mirabel, voieMage: true }, "Combattant");
+    expect(guerriere.profil).toBe("Barbare");
+    expect(guerriere.voieMage).toBeUndefined();
+    expect(guerriere.traitsPeuple).toEqual(["Diversité"]);
+  });
+
+  it("verifierPersonnage : signale un profil impossible (ex. Aventurier Sorcier)", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    expect(verifierPersonnage(dorain)).toEqual([]);
+    const impossible = { ...dorain, famille: "Aventurier" as const, profil: "Sorcier", classe: "Sorcier" };
+    const ecarts = verifierPersonnage(impossible);
+    expect(ecarts.some((e) => e.includes("Sorcier") && e.includes("Aventurier"))).toBe(true);
   });
 });
