@@ -103,6 +103,20 @@ describe("inventaire, armes et sorts", () => {
     expect(grimoire.degats).toBe("1d4°+INT");
   });
 
+  it("sort à dé évolutif : dE substitué selon le niveau", () => {
+    const sort = { id: "e", nom: "Attaque évolutive", type: "offensif" as const, degats: "1dE+1" };
+    expect(attaqueFromSort(sort, 0, {}, 1)?.degats).toBe("1d4+1");
+    expect(attaqueFromSort(sort, 0, {}, 9)?.degats).toBe("1d8+1");
+  });
+
+  it("attaque magique capée au niveau 10", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const haut = { ...mirabel, niveau: 12 };
+    const p = participantFromCharacter(haut, SEED_ITEMS);
+    // 10 (cap) + VOL 4 = 14, pas 12 + 4 = 16.
+    expect(p.attaques.find((a) => a.id === "sort:mirabel-saignements")?.bonus).toBe(14);
+  });
+
   it("attaque de sort TOUCHÉE : dégâts appliqués, PV déduits", () => {
     const lanceur: CombatParticipant = {
       ...guerrier(), nom: "Mirabel",

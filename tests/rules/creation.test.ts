@@ -71,9 +71,17 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
 
   it("coûts, niveaux min, points totaux", () => {
     expect([1, 2, 3, 4, 5].map(coutRang)).toEqual([1, 1, 2, 2, 2]);
-    expect([1, 2, 3, 4, 5].map(niveauMinRang)).toEqual([1, 2, 3, 4, 5]);
+    // Table DRS : 1, 2*, 3, 5, 7, 9, 11, 13.
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(niveauMinRang)).toEqual([1, 2, 3, 5, 7, 9, 11, 13]);
     expect(pointsCapaciteTotal(1)).toBe(2);
     expect(pointsCapaciteTotal(3)).toBe(6);
+  });
+
+  it("points non dépensés : alerte (pas de mise de côté)", () => {
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const e = etatCreation({ ...base, capacites: ["Protéger un allié"] })!;
+    expect(e.restants).toBe(1);
+    expect(e.alertes.some((a) => a.includes("1 pt à dépenser"))).toBe(true);
   });
 
   it("écarts : dépassement, rang > 1, peuple manquant, hors voies, hors Mage", () => {
@@ -135,6 +143,13 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(peutApprendre(dorain, { nom: "Truc du MJ" }).ok).toBe(true);
     // Déjà connue.
     expect(peutApprendre(dorain, { nom: "Robustesse", voie: "Voie de la résistance", rang: 1 }).raisons).toContain("déjà connue");
+    // R4 exige le niveau 5 (table DRS), même avec points et prérequis.
+    const r4 = peutApprendre(
+      { ...dorain, niveau: 4, capacites: ["Robustesse", "Résilient", "Armure lourde", "Constitution héroïque"] },
+      { nom: "Dur à cuire", voie: "Voie de la résistance", rang: 5 }
+    );
+    expect(r4.ok).toBe(false);
+    expect(r4.raisons.some((r) => r.includes("niveau 7 requis"))).toBe(true);
   });
 
   it("compterCapacites : sorts comptés, customs ignorés, peuple R1 gratuit", () => {

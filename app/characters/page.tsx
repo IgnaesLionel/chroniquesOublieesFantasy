@@ -12,7 +12,9 @@ import {
   PROFILS_PAR_FAMILLE,
   changerFamille,
   deriverPersonnage,
+  descendreNiveau,
   drInitial,
+  monterNiveau,
   normaliserPersonnage,
   recalculerPersonnage,
   remettreAZeroPersonnage,
@@ -52,6 +54,8 @@ export default function CharactersPage() {
     patch(id, (c) => ({ ...c, pv: Math.max(0, c.pv - n) }));
   const heal = (id: string, n: number) =>
     patch(id, (c) => ({ ...c, pv: Math.min(c.pvMax, c.pv + n) }));
+  const niveauPlus = (id: string) => patch(id, (c) => monterNiveau(c));
+  const niveauMoins = (id: string) => patch(id, (c) => descendreNiveau(c));
 
   const depenserChance = (id: string) =>
     patch(id, (c) => {
@@ -162,6 +166,7 @@ export default function CharactersPage() {
         Contact niv+FOR / Distance niv+AGI / Magique niv+VOL · Mana VOL+sorts · Idéal/travers narratifs.
         Création niv. 1 : 2 pts → 2 capacités de rang 1 du profil + rang 1 de peuple gratuit (+ rang 2 gratuit : les 4 Mages).
         Progression : 2 pts/niveau, R1-2 = 1 pt, R3-5 = 2 pts, rangs précédents requis, niveau ≥ rang, désapprentissage du haut vers le bas.
+        Niveau : PV +gain+CON (rétroactif), attaques +1 (max niv. 10), +2 pts à dépenser, mana via nouveaux sorts, dé évolutif d4→d6 (6)→d8 (9)→…
       </p>
 
       <div className="grid md:grid-cols-2 gap-3">
@@ -239,6 +244,7 @@ export default function CharactersPage() {
                 <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center">CONTACT <b>{d.attaques.contact >= 0 ? `+${d.attaques.contact}` : d.attaques.contact}</b> <span className="text-zinc-500">niv+FOR</span></span>
                 <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center">DISTANCE <b>{d.attaques.distance >= 0 ? `+${d.attaques.distance}` : d.attaques.distance}</b> <span className="text-zinc-500">niv+AGI</span></span>
                 <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center">MAGIQUE <b>{d.attaques.magique >= 0 ? `+${d.attaques.magique}` : d.attaques.magique}</b> <span className="text-zinc-500">niv+VOL</span></span>
+                <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center" title="Dé évolutif : d4, d6 au niv. 6, d8 au 9, etc.">DÉ ÉVOL. <b>d{d.de}</b></span>
               </div>
 
               {ecarts.length > 0 && (
@@ -289,6 +295,22 @@ export default function CharactersPage() {
                 <button onClick={() => damage(c.id, 5)} className="flex-1 py-2 rounded bg-red-900 hover:bg-red-800 font-bold">−5 PV</button>
                 <button onClick={() => heal(c.id, 1)} className="flex-1 py-2 rounded bg-green-900 hover:bg-green-800 font-bold">+1 PV</button>
                 <button onClick={() => heal(c.id, 5)} className="flex-1 py-2 rounded bg-green-900 hover:bg-green-800 font-bold">+5 PV</button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => niveauMoins(c.id)} disabled={c.niveau <= 1}
+                  title="Perdre un niveau (erreur) : PV recalculés, alertes éventuelles à corriger"
+                  className="flex-1 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold disabled:opacity-40"
+                >
+                  −1 Niveau
+                </button>
+                <button
+                  onClick={() => niveauPlus(c.id)}
+                  title="Gagner un niveau : PV +gain+CON, attaques +1 (max niv. 10), +2 pts de capacité à dépenser, dé évolutif"
+                  className="flex-1 py-1.5 rounded bg-amber-400 hover:bg-amber-300 text-black text-sm font-bold"
+                >
+                  +1 Niveau (niv. {c.niveau})
+                </button>
               </div>
             </div>
           );

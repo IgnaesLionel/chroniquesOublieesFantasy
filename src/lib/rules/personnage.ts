@@ -39,6 +39,27 @@ export const PV_BASE_PAR_FAMILLE: Record<FamilleCOF, number> = {
   Mage: 6,
 };
 
+/** PV gagnés par niveau (table DRS) : on y ajoute CON. Ex. Lhagva (Combattant CON+2) : 12 PV niv. 1, +7 au niv. 2 = 19. */
+export const PV_GAIN_PAR_FAMILLE: Record<FamilleCOF, number> = {
+  Combattant: 5,
+  Aventurier: 4,
+  Mystique: 4,
+  Mage: 3,
+};
+
+/** Dé évolutif (d4°) selon le niveau : d4 puis d6 au niv. 6, d8 au 9, etc. */
+export const DE_EVOLUTIF: number[] = [4, 6, 8, 10, 12, 20];
+
+export function deEvolutif(niveau: number): number {
+  if (niveau < 6) return 4;
+  return DE_EVOLUTIF[Math.min(5, Math.floor((niveau - 6) / 3) + 1)];
+}
+
+/** Niveau effectif des attaques : +1/niveau jusqu'au niveau 10. */
+export function niveauAttaque(niveau: number): number {
+  return Math.min(Math.max(1, Math.floor(niveau)), 10);
+}
+
 /** Dé de récupération par famille (le +1 DR des Mystiques est géré via BONUS_DR). */
 export const DE_RECUP_PAR_FAMILLE: Record<FamilleCOF, DeRecupType> = {
   Combattant: "d10",
@@ -117,9 +138,10 @@ export function defenseBase(car: Caracteristiques, equipement = 0, mod = 0): num
   return 10 + car.AGI + equipement + mod;
 }
 
-/** Points de vigueur max : base famille + CON (niveau 1 ; min 1). */
-export function pvMaxBase(famille: FamilleCOF, con: number): number {
-  return Math.max(1, PV_BASE_PAR_FAMILLE[famille] + con);
+/** Points de vigueur max : base + CON × niveau + gains par niveau (CON rétroactive, min 1). */
+export function pvMaxBase(famille: FamilleCOF, con: number, niveau = 1): number {
+  const niv = Math.max(1, Math.floor(niveau));
+  return Math.max(1, PV_BASE_PAR_FAMILLE[famille] + con * niv + PV_GAIN_PAR_FAMILLE[famille] * (niv - 1));
 }
 
 /** Points de chance max : 2 + CHA (+1 si Aventurier => 3 + CHA). Min 0. */
@@ -159,12 +181,13 @@ export interface AttaquesBase {
   magique: number;
 }
 
-/** 3 attaques : Contact = niv + FOR, Distance = niv + AGI, Magique = niv + VOL. */
+/** 3 attaques : Contact = niv + FOR, Distance = niv + AGI, Magique = niv + VOL (niv. capé à 10). */
 export function attaquesBase(niveau: number, car: Caracteristiques): AttaquesBase {
+  const niv = niveauAttaque(niveau);
   return {
-    contact: niveau + car.FOR,
-    distance: niveau + car.AGI,
-    magique: niveau + car.VOL,
+    contact: niv + car.FOR,
+    distance: niv + car.AGI,
+    magique: niv + car.VOL,
   };
 }
 
@@ -178,6 +201,8 @@ export interface DerivePersonnage {
   manaMax: number;
   attaques: AttaquesBase;
   famille: FamilleCOF;
+  /** Dé évolutif (d4° de base, +1 cran tous les 3 niveaux dès le niv. 6). */
+  de: number;
 }
 
 function profilEffectif(c: Pick<Character, "profil" | "classe" | "famille">): string {
@@ -210,12 +235,13 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
     famille,
     initiative: initiativeBase(car),
     defense: defenseBase(car, equipementEffectif(c), modEffectif(c)),
-    pvMax: pvMaxBase(famille, car.CON),
+    pvMax: pvMaxBase(famille, car.CON, c.niveau),
     chanceMax: chanceMax(car.CHA, profil, famille),
     drType: drType(profil, famille),
     drNombre: drNombre(car.CON, profil, famille),
     manaMax: manaMax(car.VOL, nbSorts),
     attaques: attaquesBase(c.niveau, car),
+    de: deEvolutif(c.niveau),
   };
 }
 
@@ -475,4 +501,26 @@ export function changerFamille(c: Character, famille: FamilleCOF): Character {
   };
   if (famille === "Mage") return base;
   return { ...base, voieMage: undefined, traitsPeuple: traitsInitiaux(c.peuple) };
+}
+
+/**
+ * Passage de niveau : +1 niveau, PV max et courants +gain famille + CON.
+ * Attaques, points (2/niveau), dé évolutif et mana (nouveaux sorts) suivent
+ * automatiquement via les dérivations. Pur et testable.
+ */
+export function monterNiveau(c: Character): Character {
+  const gain = (PV_GAIN_PAR_FAMILLE[c.famille] ?? 4) + c.caracteristiques.CON;
+  const pvMax = Math.max(1, c.pvMax + gain);
+  return { ...c, niveau: c.niveau + 1, pvMax, pv: Math.min(c.pv + gain, pvMax) };
+}
+
+/**
+ * Perte de niveau (erreur de saisie) : -1 niveau (min 1), PV max et courants
+ * réduits du gain (plancher 1 / plafonnés). Alertes éventuelles via les vérifications.
+ */
+export function descendreNiveau(c: Character): Character {
+  if (c.niveau <= 1) return c;
+  const perte = (PV_GAIN_PAR_FAMILLE[c.famille] ?? 4) + c.caracteristiques.CON;
+  const pvMax = Math.max(1, c.pvMax - perte);
+  return { ...c, niveau: c.niveau - 1, pvMax, pv: Math.min(c.pv, pvMax) };
 }

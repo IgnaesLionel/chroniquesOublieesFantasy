@@ -48,6 +48,11 @@ export function substituerStats(expr: string, caracs: Record<string, number> = {
   return expr.replace(/\b(AGI|CON|FOR|PER|CHA|INT|VOL)\b/g, (nom) => String(caracs[nom] ?? 0));
 }
 
+/** Remplace le dé évolutif (dE) par sa valeur au niveau donné : "1dE+1" niv. 9 -> "1d8+1". */
+export function substituerDeEvolutif(expr: string, de: number): string {
+  return expr.replace(/(\d*)[dD][eE]\b/g, (_, n: string) => `${n === "" ? 1 : n}d${de}`);
+}
+
 export function rollDie(sides: number, rng: Rng = Math.random): number {
   if (sides < 1) throw new Error("Dé invalide.");
   return Math.floor(rng() * sides) + 1;

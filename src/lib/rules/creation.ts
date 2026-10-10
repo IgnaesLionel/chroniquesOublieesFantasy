@@ -98,9 +98,12 @@ export function coutRang(rang: number): number {
   return rang >= 3 ? 2 : 1;
 }
 
-/** Niveau minimum pour apprendre le rang N : N (la gratuité Mage contourne ce verrou, pas les prérequis). */
+/** Niveau minimum pour apprendre le rang N (table DRS : 1, 2*, 3, 5, 7, 9, 11, 13).
+ * La gratuité Mage contourne ce verrou, pas les prérequis. */
 export function niveauMinRang(rang: number): number {
-  return Math.max(1, Math.floor(rang));
+  const r = Math.max(1, Math.floor(rang));
+  if (r <= 3) return r;
+  return 2 * r - 3;
 }
 
 /** Points de capacité totaux : 2 par niveau, création incluse. */
@@ -224,6 +227,7 @@ export function compterCapacites(c: Character): CompteCapacites {
   const restants = points - depense;
   const alertes: string[] = [];
   if (restants < 0) alertes.push(`${depense} pts dépensés pour ${points} disponibles`);
+  if (restants > 0) alertes.push(`${restants} pt${restants > 1 ? "s" : ""} à dépenser immédiatement`);
   const connus = rangsConnusParVoie(c);
   for (const l of lignes) {
     if (l.source === "inconnu") {
@@ -240,7 +244,8 @@ export function compterCapacites(c: Character): CompteCapacites {
       const manquants = Array.from({ length: l.rang - 1 }, (_, i) => i + 1).filter((r) => !set.has(r));
       if (manquants.length > 0) alertes.push(`"${l.nom}" : requiert ${l.voie} rang ${manquants.join(", ")}`);
     }
-    if (!l.gratuit && niveau < l.rang) alertes.push(`"${l.nom}" : niveau ${l.rang} requis (niveau ${niveau})`);
+    const min = niveauMinRang(l.rang);
+    if (!l.gratuit && niveau < min) alertes.push(`"${l.nom}" : niveau ${min} requis (niveau ${niveau})`);
   }
   return { lignes, depense, points, restants, rang2Nom, alertes };
 }
@@ -323,7 +328,7 @@ export function peutApprendre(
   const gratuit =
     (!!cfg.rang2Gratuit && rang === 2 && !compte.rang2Nom && (src === "profil" || src === "mage")) ||
     (src === "peuple" && rang === 1);
-  if (!gratuit && niveau < rang) raisons.push(`niveau ${rang} requis (niveau ${niveau})`);
+  if (!gratuit && niveau < niveauMinRang(rang)) raisons.push(`niveau ${niveauMinRang(rang)} requis (niveau ${niveau})`);
   const cout = gratuit ? 0 : coutRang(rang);
   if (!gratuit && compte.restants - cout < 0) {
     raisons.push(`pas assez de points (coût ${cout}, reste ${compte.restants})`);

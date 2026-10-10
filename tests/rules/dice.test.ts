@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerStats } from "@/src/lib/rules/dice/roller";
+import { fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerDeEvolutif, substituerStats } from "@/src/lib/rules/dice/roller";
 
 describe("moteur de dés", () => {
   it("parse les expressions de base", () => {
@@ -48,6 +48,14 @@ describe("moteur de dés", () => {
     expect(substituerStats("1d4°+INT", {})).toBe("1d4°+0");
     expect(substituerStats("1d6+int", { int: 2 })).toBe("1d6+int"); // minuscules ignorées
     expect(parseDiceExpression(substituerStats("1d4°+INT", { INT: 2 })).normalized).toBe("1d4°+2");
+  });
+
+  it("substituerDeEvolutif remplace dE par le dé du niveau", () => {
+    expect(substituerDeEvolutif("1dE+1", 6)).toBe("1d6+1");
+    expect(substituerDeEvolutif("2dE", 8)).toBe("2d8");
+    expect(substituerDeEvolutif("1dE", 4)).toBe("1d4");
+    expect(substituerDeEvolutif("1d6+2", 12)).toBe("1d6+2");
+    expect(parseDiceExpression(substituerDeEvolutif("1dE+1", 6)).normalized).toBe("1d6+1");
   });
 
   it("roll déterministe avec RNG injecté", () => {

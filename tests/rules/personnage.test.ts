@@ -6,12 +6,16 @@ import {
   attaquesBase,
   chanceMax,
   changerFamille,
+  deEvolutif,
   deriverPersonnage,
+  descendreNiveau,
   drInitial,
   drNombre,
   drType,
   manaMax,
+  monterNiveau,
   normaliserPersonnage,
+  pvMaxBase,
   recalculerPersonnage,
   remettreAZeroPersonnage,
   verifierPersonnage,
@@ -28,6 +32,16 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
   it("formules de base", () => {
     expect(attaquesBase(1, { AGI: 1, CON: 1, FOR: -1, PER: 0, CHA: -1, INT: 2, VOL: 4 }))
       .toEqual({ contact: 0, distance: 2, magique: 5 });
+    // Attaques capées au niveau 10.
+    expect(attaquesBase(12, { AGI: 1, CON: 3, FOR: 2, PER: 1, CHA: 0, INT: 0, VOL: -1 }))
+      .toEqual({ contact: 12, distance: 11, magique: 9 });
+    // PV Lhagva (Combattant CON+2) : 12 au niv. 1, +7 au niv. 2 = 19.
+    expect(pvMaxBase("Combattant", 2, 1)).toBe(12);
+    expect(pvMaxBase("Combattant", 2, 2)).toBe(19);
+    expect(pvMaxBase("Mage", 1, 3)).toBe(6 + 3 + 3 * 2);
+    // Dé évolutif : d4, d6 au 6, d8 au 9, d10 au 12, d12 au 15, d20 au 18+.
+    expect([1, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 25].map(deEvolutif))
+      .toEqual([4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 20, 20]);
     expect(manaMax(4, 0)).toBe(4);
     expect(manaMax(-1, 0)).toBe(0);
     // Chance : 2+CHA sauf Aventurier 3+CHA
@@ -262,5 +276,24 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const pur = normaliserPersonnage({ ...legacy, capacites: ["Robustesse"] } as unknown as Record<string, unknown>);
     expect(pur.sorts).toHaveLength(0);
     expect(pur.migreSorts).toBe(true);
+  });
+
+  it("monter/descendreNiveau : PV +gain+CON, planchers respectés", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    expect(dorain.pvMax).toBe(13);
+    const n2 = monterNiveau(dorain); // Guerrier CON+3 : +8 PV.
+    expect(n2.niveau).toBe(2);
+    expect(n2.pvMax).toBe(21);
+    expect(n2.pv).toBe(21);
+    expect(dorain.niveau).toBe(1); // non muté
+    const n1 = descendreNiveau(n2);
+    expect(n1.niveau).toBe(1);
+    expect(n1.pvMax).toBe(13);
+    expect(n1.pv).toBe(13);
+    // Niveau 1 : descente sans effet ; PV plancher à 1.
+    expect(descendreNiveau(dorain)).toBe(dorain);
+    const ko = descendreNiveau({ ...n2, pvMax: 3, pv: 0 });
+    expect(ko.pvMax).toBe(1);
+    expect(ko.pv).toBe(0);
   });
 });
