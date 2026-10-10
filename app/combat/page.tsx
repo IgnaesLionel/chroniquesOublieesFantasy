@@ -59,6 +59,13 @@ export default function CombatPage() {
     const atk = combat.participants.find((p) => p.instanceId === attackerId);
     const aid = attackId ?? atk?.attaques[0]?.id;
     if (!atk || !aid) return;
+    const cbl = combat.participants.find((p) => p.instanceId === targetId);
+    if (!cbl || cbl.statut !== "actif") {
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: "Cible invalide ou hors combat — re-sélectionnez la cible." }] } : c
+      );
+      return;
+    }
     try {
       // Coûts (mana + PV) et limites vérifiés dans le moteur.
       const { state, resolution } = resolveAttack(combat, attackerId, targetId, aid);
@@ -88,6 +95,15 @@ export default function CombatPage() {
   };
 
   const selectedParticipant = combat?.participants.find((p) => p.instanceId === attackerId) ?? null;
+
+  /** Re-cible si l'ancienne cible est devenue invalide (ex. l'attaquant lui-même) : priorité aux ennemis. */
+  const recibrerCible = (c: CombatState, attacker: string | null, prev: string | null): string | null => {
+    const opts = c.participants.filter((p) => p.statut === "actif" && p.instanceId !== attacker);
+    if (prev && opts.some((p) => p.instanceId === prev)) return prev;
+    const atk = c.participants.find((p) => p.instanceId === attacker);
+    const foes = opts.filter((p) => p.camp !== atk?.camp);
+    return (foes[0] ?? opts[0])?.instanceId ?? null;
+  };
 
   const opponentsOf = useMemo(() => {
     if (!combat || !attackerId) return [];
@@ -173,7 +189,9 @@ export default function CombatPage() {
           onClick={() => setCombat((c) => {
             if (!c) return c;
             const n = nextTurn(c);
-            setAttackerId(n.participants[n.tourIndex]?.instanceId ?? null);
+            const suivant = n.participants[n.tourIndex]?.instanceId ?? null;
+            setAttackerId(suivant);
+            setTargetId(recibrerCible(n, suivant, targetId));
             return n;
           })}
           className="flex-[2] min-w-40 py-2.5 rounded bg-amber-400 text-black font-bold hover:bg-amber-300"
@@ -216,7 +234,11 @@ export default function CombatPage() {
             attackId={attackId ?? combat.participants.find((p) => p.instanceId === attackerId)?.attaques[0]?.id ?? null}
             targetId={targetId}
             last={last}
-            onAttacker={(id) => { setAttackerId(id); setAttackId(null); }}
+            onAttacker={(id) => {
+              setAttackerId(id);
+              setAttackId(null);
+              if (combat) setTargetId(recibrerCible(combat, id, targetId));
+            }}
             onAttack={(id) => setAttackId(id)}
             onTarget={(id) => setTargetId(id)}
             onRoll={rollAttack}
