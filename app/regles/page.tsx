@@ -89,12 +89,13 @@ export default function ReglesPage() {
           <li>Dé évolutif au-delà de d8 (d10 au 12, d12 au 15, d20 au 18+) : extrapolé du « etc. » <Src de="Supposition" /></li>
           <li>Note « 2* » du tableau des rangs : lue comme l&apos;exception R2 gratuit des Mages <Src de="Supposition" /></li>
           <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Supposition" /></li>
+          <li>Robustesse (Guerrier) : « PV max +rang+2 » contredit la fiche de Dorain (13 = 10+CON sans bonus) — non appliqué, manuel via Éditer <Src de="Supposition" /></li>
         </ul>
       </Section>
 
       <Section id="personnage" titre="Personnage">
         <p>Caractéristiques : AGI, CON, FOR, PER, CHA, INT, VOL (modificateurs, ex. +4/-1). Idéal héroïque et travers : narratifs, aucun bonus.<Src de="Fiches" /></p>
-        <Formule>INIT = 10 + PER · DEF = 10 + AGI + Équipement + Mod + talents (Armure d&apos;os +3)<Src de="Fiches" /><Src de="Règle" /></Formule>
+        <Formule>INIT = 10 + PER (+3 Vivacité) · DEF = 10 + AGI + Équipement + Mod + talents (Armure d&apos;os +3, bouclier/dur/rempart +1)<Src de="Fiches" /><Src de="Règle" /></Formule>
         <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
@@ -186,6 +187,9 @@ export default function ReglesPage() {
           <li>Limites : 1/combat (Ensevelissement), 1/combat par cible (Malédiction, Briser), 1/jour ≈ 1 combat (Armée). Par cible = au touché, sinon au lancer.<Src de="Règle" /></li>
           <li>Rituel de sang : sans test (touche auto). Briser les cœurs : moitié des dégâts si raté.<Src de="Règle" /></li>
           <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle" /></li>
+          <li>Parade (Guerrier, M, bouclier) : la prochaine attaque réussie est bloquée sur test opposé auto (niv+FOR/AGI) ; absorption des sorts pareil, stockée pour Renvoi (G, pas les zones). Énorme/colossale : moitié DM (MJ).<Src de="Règle" /></li>
+          <li>Riposte (G) : un raté au contact est signalé (1/round, MJ : attaque manuelle). Coups spéciaux (panneau Attaque) : Puissante (dé malus +2d4°, L +3d4°), Parfaite (dé bonus +1d4°, prédilection MJ), mod. ±N, +DM (Double/Circulaire −2, prédilection +1, spécialisation +1).<Src de="Règle" /></li>
+          <li>Science du critique : 19-20 avec prédilection (effet à appliquer via Capacités, MJ).<Src de="Règle" /></li>
           <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
           <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Supposition" /></li>
           <li>Armure d&apos;os : +3 DEF automatiques à l&apos;apprentissage (retirés au désapprentissage). Passifs restants (Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>

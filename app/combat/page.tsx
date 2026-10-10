@@ -6,8 +6,9 @@ import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
 import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
+import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, castSoutien, depenserChanceApresCoup, frapperZone, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, castSoutien, depenserChanceApresCoup, frapperZone, renvoyerSort, resolveAttack, utiliserCapacite, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
@@ -54,7 +55,7 @@ export default function CombatPage() {
     setLast(null);
   };
 
-  const rollAttack = () => {
+  const rollAttack = (opts?: AttaqueOpts) => {
     if (!combat || !attackerId || !targetId) return;
     const atk = combat.participants.find((p) => p.instanceId === attackerId);
     const aid = attackId ?? atk?.attaques[0]?.id;
@@ -68,7 +69,7 @@ export default function CombatPage() {
     }
     try {
       // Coûts (mana + PV) et limites vérifiés dans le moteur.
-      const { state, resolution } = resolveAttack(combat, attackerId, targetId, aid);
+      const { state, resolution } = resolveAttack(combat, attackerId, targetId, aid, Math.random, DEFAULT_COMBAT_OPTIONS, opts);
       setCombat(state);
       setLast(resolution);
       setLastAttaque({ attackerId, targetId, attackId: aid });
@@ -266,9 +267,11 @@ export default function CombatPage() {
           <CapacitesPanel
             participants={combat.participants}
             lanceurId={attackerId}
-            onUtiliser={(lanceurId, cibleId, talentNom, effetCle, dureeTours, mods, coutPV) => {
+            onUtiliser={(lanceurId, cibleId, talentNom, effetCle, dureeTours, mods, coutPV, actionSpeciale) => {
               try {
-                const { state } = utiliserCapacite(combat, lanceurId, cibleId, talentNom, { effetCle, dureeTours, mods, coutPV });
+                const { state } = actionSpeciale === "renvoi"
+                  ? renvoyerSort(combat, lanceurId, cibleId)
+                  : utiliserCapacite(combat, lanceurId, cibleId, talentNom, { effetCle, dureeTours, mods, coutPV });
                 setCombat(state);
                 setLast(null);
               } catch (e) {

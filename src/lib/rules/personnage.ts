@@ -225,10 +225,24 @@ function modEffectif(c: Character): number {
   return c.defenseMod ?? 0;
 }
 
-/** Bonus DEF permanent des talents connus (Armure d'os du sorcier : +3, sans malus AGI). */
+/** Bonus DEF permanent des talents connus (Armure d'os +3 ; Défense au bouclier +1, +1 avec Renvoi ; Dur à cuire +1 ; Rempart +1). */
 export function bonusDefenseTalents(c: Pick<Character, "capacites">): number {
   const noms = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
-  return noms.has(normaliserNomCapacite("Armure d'os")) ? 3 : 0;
+  let bonus = 0;
+  if (noms.has(normaliserNomCapacite("Armure d'os"))) bonus += 3;
+  if (noms.has(normaliserNomCapacite("Défense au bouclier"))) {
+    bonus += 1;
+    if (noms.has(normaliserNomCapacite("Renvoi de sort"))) bonus += 1;
+  }
+  if (noms.has(normaliserNomCapacite("Dur à cuire"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Rempart"))) bonus += 1;
+  return bonus;
+}
+
+/** Bonus INIT permanent des talents connus (Vivacité du guerrier : +3). */
+export function bonusInitiativeTalents(c: Pick<Character, "capacites">): number {
+  const noms = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
+  return noms.has(normaliserNomCapacite("Vivacité")) ? 3 : 0;
 }
 
 /** Calcule toutes les valeurs dérivées d'un personnage COF. */
@@ -239,7 +253,7 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
   const nbSorts = c.sorts?.length ?? 0;
   return {
     famille,
-    initiative: initiativeBase(car),
+    initiative: initiativeBase(car) + bonusInitiativeTalents(c),
     defense: defenseBase(car, equipementEffectif(c) + bonusDefenseTalents(c), modEffectif(c)),
     pvMax: pvMaxBase(famille, car.CON, c.niveau),
     chanceMax: chanceMax(car.CHA, profil, famille),

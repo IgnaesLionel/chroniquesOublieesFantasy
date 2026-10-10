@@ -16,7 +16,8 @@ interface Props {
     effetCle: string | null,
     dureeTours: number | null,
     mods: Record<string, number> | undefined,
-    coutPV: string | undefined
+    coutPV: string | undefined,
+    actionSpeciale: "renvoi" | undefined
   ) => void;
 }
 
@@ -89,11 +90,11 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
         /></label>
       </div>
       <button
-        onClick={() => { if (cible) onUtiliser(lanceur.instanceId, cible.instanceId, talent, effetActif || null, dureeActive, defaut?.mods, defaut?.coutPV); }}
+        onClick={() => { if (cible) onUtiliser(lanceur.instanceId, cible.instanceId, talent, effetActif || null, dureeActive, defaut?.mods, defaut?.coutPV, defaut?.actionSpeciale); }}
         disabled={bloque || !cible}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
-        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}
+        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}
       </button>
     </div>
   );

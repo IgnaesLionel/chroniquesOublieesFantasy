@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, renvoyerSort, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -534,6 +535,143 @@ describe("sorcier (voies du livre)", () => {
     const r = applyCoutPV(s, a, "1d4", fixedRng([0.5]));
     expect(r.pvPerdus).toBe(3);
     expect(r.state.participants[0].pv).toBe(37);
+  });
+});
+
+function guerrier(nom = "Guerrier"): CombatParticipant {
+  return {
+    instanceId: `pj-${nom}-${Math.random()}`, templateId: "pj", nom, camp: "pj",
+    pvMax: 40, pv: 40, defense: 14, initMod: 1, initiative: null,
+    attaques: [{ id: "epee", nom: "Épée", bonus: 6, degats: "1d8+3" }],
+    effets: [],
+    sorts: [],
+    capacites: [],
+    niveau: 3,
+    ressources: {},
+    statut: "actif",
+    caracs: { AGI: 1, CON: 2, FOR: 3, PER: 1, CHA: 0, INT: 0, VOL: 0 },
+    usagesSorts: {},
+  };
+}
+
+describe("guerrier (voies du livre)", () => {
+  it("parer un coup : test opposé bloque, stance consommée ; raté = dégâts", () => {
+    const def = {
+      ...guerrier(),
+      effets: [createEffect("Parade", { modificateurs: { parade: 1 }, dureeTours: 1 })],
+    };
+    const s = createCombat([pj("A"), def]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 19+6 = 25 ≥ 14 touché ; parade 20+(3+3) = 26 ≥ 25 bloqué.
+    const r1 = resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.95]));
+    expect(r1.state.participants[1].pv).toBe(40);
+    expect(r1.state.participants[1].effets).toHaveLength(0);
+    expect(r1.state.log.some((l) => l.message.includes("pare l'attaque"))).toBe(true);
+
+    const s2 = createCombat([pj("A"), {
+      ...guerrier(),
+      effets: [createEffect("Parade", { modificateurs: { parade: 1 }, dureeTours: 1 })],
+    }]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    // Touché ; parade 3+6 = 9 < 25 ratée ; 1d8+3 : 8 DM.
+    const r2 = resolveAttack(s2, a2, t2, "epee", fixedRng([0.9, 0.1, 0.5]));
+    expect(r2.state.participants[1].pv).toBe(32);
+    expect(r2.state.participants[1].effets).toHaveLength(1);
+    expect(r2.state.log.some((l) => l.message.includes("rate sa parade"))).toBe(true);
+  });
+
+  it("absorber + renvoyer : sort stocké puis retourné, zones refusées", () => {
+    const baiser = { id: "x", nom: "Baiser du vampire", type: "offensif" as const, cout: { ressource: "mana", montant: 3 } };
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "sort:x", nom: "✦ Baiser", bonus: 4, degats: "1d6" }],
+      sorts: [baiser],
+    };
+    const def = {
+      ...guerrier(),
+      effets: [createEffect("Absorption", { modificateurs: { absorption: 1 }, dureeTours: 1 })],
+    };
+    const s = createCombat([atk, def]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 19+4 = 23 ≥ 14 touché ; absorption 20+6 = 26 ≥ 23.
+    const r1 = resolveAttack(s, a, t, "sort:x", fixedRng([0.9, 0.95]));
+    expect(r1.state.participants[1].pv).toBe(40);
+    expect(r1.state.participants[1].effets).toHaveLength(0);
+    expect(r1.state.participants[1].sortAbsorbe?.nom).toBe("Baiser du vampire");
+    expect(r1.state.log.some((l) => l.message.includes("absorbe"))).toBe(true);
+    // Renvoi : 19+4 = 23 ≥ 12, 1d6 : 4 DM au lanceur d'origine.
+    const r2 = renvoyerSort(r1.state, t, a, fixedRng([0.9, 0.5]));
+    expect(r2.resolution.touche).toBe(true);
+    expect(r2.resolution.degatsTotal).toBe(4);
+    expect(r2.state.participants[0].pv).toBe(36);
+    expect(r2.state.participants[1].sortAbsorbe).toBeUndefined();
+    expect(r2.state.participants[1].attaques).toHaveLength(1);
+    // Sans sort absorbé, ni zone : erreurs.
+    expect(() => renvoyerSort(r2.state, t, a)).toThrow(/aucun sort absorbé/);
+    const zone = { ...r2.state.participants[1], sortAbsorbe: { nom: "Z", bonus: 1, degats: "1d6", zone: true } };
+    const sz = { ...r2.state, participants: r2.state.participants.map((p) => (p.instanceId === t ? zone : p)) };
+    expect(() => renvoyerSort(sz, t, a)).toThrow(/zone/);
+  });
+
+  it("science du critique : seuil 19 avec prédilection (MJ)", () => {
+    const atk = {
+      ...pj("A"),
+      effets: [createEffect("Critique 19-20", { modificateurs: { seuilCrit: 19 } })],
+    };
+    const s = createCombat([atk, pj("Mur", 30)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 19 >= 19 : critique (8×2 = 16).
+    const r1 = resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.5]));
+    expect(r1.resolution.critique).toBe(true);
+    expect(r1.resolution.degatsTotal).toBe(16);
+    // 18 < 19 et 24 < 30 : manqué (pas de critique élargi abusif).
+    const r2 = resolveAttack(s, a, t, "epee", fixedRng([0.85, 0.5]));
+    expect(r2.resolution.touche).toBe(false);
+    expect(r2.resolution.critique).toBe(false);
+  });
+
+  it("riposte : un raté au contact est signalé (MJ : attaque manuelle)", () => {
+    const cible = { ...pj("Tank", 30), capacites: ["Riposte"] };
+    const s = createCombat([pj("A"), cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 3+6 = 9 < 30 raté.
+    const { state } = resolveAttack(s, a, t, "epee", fixedRng([0.1, 0.5]));
+    expect(state.log.some((l) => l.message.includes("Riposte (G)"))).toBe(true);
+    const s2 = createCombat([pj("A"), pj("Tank", 30)]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    const r2 = resolveAttack(s2, a2, t2, "epee", fixedRng([0.1, 0.5]));
+    expect(r2.state.log.some((l) => l.message.includes("Riposte"))).toBe(false);
+  });
+
+  it("coups spéciaux : modificateur, +DM, dés bonus, avantage/désavantage", () => {
+    const s = createCombat([pj("A"), pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 3 +6 +2 = 11 ≥ 10 touché ; 1d8+3 : 8, +1d6 : 4, +3 => 15.
+    const r = resolveAttack(s, a, t, "epee", fixedRng([0.1, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS, { modAttaque: 2, bonusDM: 3, degatsBonus: ["1d6"] });
+    expect(r.resolution.touche).toBe(true);
+    expect(r.resolution.degatsTotal).toBe(15);
+    expect(r.state.log.some((l) => l.message.includes("coup spécial"))).toBe(true);
+    // Sans le +2, le même jet rate (3+6 = 9 < 10).
+    const r2 = resolveAttack(s, a, t, "epee", fixedRng([0.1, 0.5]));
+    expect(r2.resolution.touche).toBe(false);
+    // Avantage / désavantage ponctuels (Parfaite / Puissante).
+    const r3 = resolveAttack(s, a, t, "epee", fixedRng([0.1, 0.9, 0.5]), DEFAULT_COMBAT_OPTIONS, { deBonus: true });
+    expect(r3.resolution.desAvantage).toBe("bonus");
+    expect(r3.resolution.jetNaturel).toBe(19);
+    const r4 = resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.1, 0.5]), DEFAULT_COMBAT_OPTIONS, { deMalus: true });
+    expect(r4.resolution.desAvantage).toBe("malus");
+    expect(r4.resolution.jetNaturel).toBe(3);
+  });
+
+  it("usages : Parer/Absorber/Renvoi/Science existent avec modificateurs", () => {
+    const parer = CAPACITES_USABLES.find((u) => u.talent === "Parer un coup");
+    expect(parer).toMatchObject({ effetCle: "Parade", dureeTours: 1, mods: { parade: 1 } });
+    const absorber = CAPACITES_USABLES.find((u) => u.talent === "Absorber un sort");
+    expect(absorber).toMatchObject({ effetCle: "Absorption", mods: { absorption: 1 } });
+    const renvoi = CAPACITES_USABLES.find((u) => u.talent === "Renvoi de sort");
+    expect(renvoi?.actionSpeciale).toBe("renvoi");
+    const science = CAPACITES_USABLES.find((u) => u.talent === "Science du critique");
+    expect(science).toMatchObject({ effetCle: "Critique 19-20", mods: { seuilCrit: 19 } });
   });
 
   it("sauvegarde CON 10 (Pied) : ratée = Ralenti 1 round, réussie = dégâts seuls", () => {

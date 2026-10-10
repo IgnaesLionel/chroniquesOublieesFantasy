@@ -46,6 +46,10 @@ export const ACTION_LABEL: Record<ActionDRS, string> = {
  */
 export function infererAction(resume: string): ActionDRS | undefined {
   const t = resume.toLowerCase();
+  if (t.includes("(g)")) return "gratuite";
+  if (t.includes("(m)")) return "mouvement";
+  if (t.includes("(a)")) return "attaque";
+  if (t.includes("(l)")) return "limitee";
   if (t.includes("action d'attaque") || t.includes("sort d'attaque") || t.includes("(attaque")) return "attaque";
   if (t.includes("action gratuite") || t.includes("(gratuite")) return "gratuite";
   if (t.includes("action de mouvement") || t.includes("(mouvement") || t.includes("mouvement")) return "mouvement";

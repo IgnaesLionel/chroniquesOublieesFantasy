@@ -279,4 +279,23 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(deriverPersonnage(sans).defense).toBe(11);
     expect(sans.defense).toBe(11);
   });
+
+  it("guerrier : Vivacité +3 INIT, bouclier/dur/rempart +1 DEF, Robustesse manuelle", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // Fiche : Robustesse connue mais PV/DEF sans bonus (13 = 10+CON, DEF 11) — non appliqué.
+    expect(deriverPersonnage(dorain).defense).toBe(11);
+    expect(deriverPersonnage(dorain).pvMax).toBe(13);
+    expect(deriverPersonnage(dorain).initiative).toBe(11); // 10 + PER 1
+    let c = apprendreTalentComplet(dorain, "Vivacité", SEED_SORTS);
+    expect(deriverPersonnage(c).initiative).toBe(14);
+    expect(c.initMod).toBe(4);
+    c = apprendreTalentComplet(c, "Défense au bouclier", SEED_SORTS);
+    expect(c.defense).toBe(12);
+    c = apprendreTalentComplet(c, "Renvoi de sort", SEED_SORTS);
+    expect(c.defense).toBe(13); // +2 au rang 5 de la voie
+    c = apprendreTalentComplet(c, "Dur à cuire", SEED_SORTS);
+    expect(c.defense).toBe(14);
+    c = apprendreTalentComplet(c, "Rempart", SEED_SORTS);
+    expect(c.defense).toBe(15);
+  });
 });

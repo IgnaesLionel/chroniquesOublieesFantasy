@@ -19,6 +19,8 @@ export interface CapaciteUsable {
   mods?: Record<string, number>;
   /** Sacrifice de PV du lanceur en dés (ex: "1d4°", Pacte démoniaque). */
   coutPV?: string;
+  /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort). */
+  actionSpeciale?: "renvoi";
   /** Écart éventuel avec le texte DRS (approximation moteur). */
   note?: string;
 }
@@ -66,5 +68,37 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     dureeTours: null,
     cibles: "allies",
     note: "Sorcier, passif : CON +1 (Éditer), vision nocturne, dé bonus CON (MJ) ; +2d4° aux DM d'un sort pour 1d4° PV.",
+  },
+  {
+    talent: "Parer un coup",
+    effetCle: "Parade",
+    dureeTours: 1,
+    cibles: "allies",
+    mods: { parade: 1 },
+    note: "Guerrier (M, bouclier requis) : la prochaine attaque réussie est bloquée sur test opposé (niv+FOR/AGI). Rang 5 : (G) 1/round avec dé malus (MJ). Énorme/colossale : moitié DM (MJ).",
+  },
+  {
+    talent: "Absorber un sort",
+    effetCle: "Absorption",
+    dureeTours: 1,
+    cibles: "allies",
+    mods: { absorption: 1 },
+    note: "Guerrier (après parade préparée) : le prochain sort réussi est annulé sur test opposé (zones : autres affectés, MJ). Stocké pour Renvoi.",
+  },
+  {
+    talent: "Renvoi de sort",
+    effetCle: null,
+    dureeTours: null,
+    cibles: "ennemis",
+    actionSpeciale: "renvoi",
+    note: "Guerrier (G) : renvoie le sort absorbé contre son lanceur (pas les zones).",
+  },
+  {
+    talent: "Science du critique",
+    effetCle: "Critique 19-20",
+    dureeTours: null,
+    cibles: "allies",
+    mods: { seuilCrit: 19 },
+    note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer quand l'arme convient.",
   },
 ];

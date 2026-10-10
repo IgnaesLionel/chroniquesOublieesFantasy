@@ -34,6 +34,20 @@ export interface CombatParticipant {
   caracs?: Record<string, number>;
   /** Usages de sorts limités : sortId -> { tentatives, cibles touchées }. */
   usagesSorts?: Record<string, { n: number; cibles: string[] }>;
+  /** Sort absorbé (Absorber) en attente de renvoi. */
+  sortAbsorbe?: SortAbsorbe;
+}
+
+/** Sort absorbé par un bouclier, renvoyable (Renvoi de sort, sauf zones). */
+export interface SortAbsorbe {
+  nom: string;
+  bonus: number;
+  degats: string;
+  effetCle?: string;
+  effetDuree?: number | null;
+  effetDegats?: string;
+  effetMods?: Record<string, number>;
+  zone?: boolean;
 }
 
 export interface CombatLogEntry {

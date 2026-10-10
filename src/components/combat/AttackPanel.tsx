@@ -1,7 +1,9 @@
 "use client";
+import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
+import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
@@ -15,7 +17,7 @@ interface Props {
   onAttacker: (id: string) => void;
   onAttack: (id: string) => void;
   onTarget: (id: string) => void;
-  onRoll: () => void;
+  onRoll: (opts?: AttaqueOpts) => void;
   onChance: () => void;
 }
 
@@ -24,6 +26,30 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const vivants = participants.filter((p) => p.statut === "actif");
   const bloque = attacker !== null && !canAct(attacker.effets);
   const modAttaque = attacker ? getModifier(attacker.effets, "attaque") : 0;
+  const [puissante, setPuissante] = useState(false);
+  const [variante, setVariante] = useState<"A" | "L">("A");
+  const [parfaite, setParfaite] = useState(false);
+  const [mod, setMod] = useState("");
+  const [dm, setDm] = useState("");
+  const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
+  const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
+  const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
+  const lancer = () => {
+    const opts: AttaqueOpts = {};
+    const modN = Number(mod);
+    if (mod.trim() !== "" && Number.isFinite(modN) && modN !== 0) opts.modAttaque = modN;
+    const dmN = Number(dm);
+    if (dm.trim() !== "" && Number.isFinite(dmN) && dmN !== 0) opts.bonusDM = dmN;
+    if (puissante && connaitPuissante) {
+      opts.deMalus = true;
+      opts.degatsBonus = [...(opts.degatsBonus ?? []), variante === "L" ? "3d4°" : "2d4°"];
+    }
+    if (parfaite && connaitParfaite) {
+      opts.deBonus = true;
+      opts.degatsBonus = [...(opts.degatsBonus ?? []), "1d4°"];
+    }
+    onRoll(opts);
+  };
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
@@ -91,7 +117,32 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           ))}
         </select>
       </label>
-      <button onClick={onRoll} disabled={!attackerId || !targetId || bloque} className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 font-bold disabled:opacity-40">
+      {(connaitPuissante || connaitParfaite) && (
+        <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
+          <div className="text-xs uppercase text-zinc-500 font-bold">Coup spécial</div>
+          {connaitPuissante && (
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={puissante} onChange={(e) => setPuissante(e.target.checked)} />
+              <span>Puissante (dé malus, +{variante === "L" ? "3d4°" : "2d4°"})</span>
+              <select value={variante} onChange={(e) => setVariante(e.target.value as "A" | "L")} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
+                <option value="A">A</option>
+                <option value="L">L</option>
+              </select>
+            </label>
+          )}
+          {connaitParfaite && (
+            <label className="flex items-center gap-2" title="Arme de prédilection requise (MJ)">
+              <input type="checkbox" checked={parfaite} onChange={(e) => setParfaite(e.target.checked)} />
+              <span>Parfaite (dé bonus, +1d4°)</span>
+            </label>
+          )}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Prédilection +1, Double/Circulaire −2…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
+        <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
+      </div>
+      <button onClick={lancer} disabled={!attackerId || !targetId || bloque} className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 font-bold disabled:opacity-40">
         Lancer l&apos;attaque
       </button>
       {last && (

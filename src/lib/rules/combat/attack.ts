@@ -1,13 +1,14 @@
 import { parseDiceExpression, rollDiceExpression, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
-import { niveauMinRang } from "@/src/lib/rules/creation";
-import type { ActiveEffect, Sort } from "@/src/lib/rules/types";
+import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
+import type { ActiveEffect, AttackDef, Sort } from "@/src/lib/rules/types";
 import type {
   AttackResolution,
   Camp,
   CombatOptions,
   CombatParticipant,
   CombatState,
+  SortAbsorbe,
 } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 
@@ -114,7 +115,8 @@ export function resolveAttack(
   targetId: string,
   attackId: string,
   rng: Rng = Math.random,
-  options: CombatOptions = DEFAULT_COMBAT_OPTIONS
+  options: CombatOptions = DEFAULT_COMBAT_OPTIONS,
+  attaqueOpts: AttaqueOpts = {}
 ): { state: CombatState; resolution: AttackResolution } {
   const attaquant = state.participants.find((p) => p.instanceId === attackerId);
   const cible = state.participants.find((p) => p.instanceId === targetId);
@@ -134,14 +136,14 @@ export function resolveAttack(
   if (sort) s = applySpellCost(s, attackerId, sort);
   if (sort?.coutPV) s = applyCoutPV(s, attackerId, sort.coutPV, rng).state;
 
-  const modAttaque = getModifier(attaquant.effets, "attaque");
+  const modAttaque = getModifier(attaquant.effets, "attaque") + (attaqueOpts.modAttaque ?? 0);
   const modDefense = getModifier(cible.effets, "defense");
   const bonusEffectif = attaque.bonus + modAttaque;
   const defenseEffective = cible.defense + modDefense;
 
-  // Dé bonus / malus (ex: Malédiction) : 2d20, garder meilleur / pire.
-  const aBonus = getModifier(attaquant.effets, "deBonus") > 0;
-  const aMalus = getModifier(attaquant.effets, "deMalus") > 0;
+  // Dé bonus / malus (effets + coups spéciaux : Puissante, Parfaite).
+  const aBonus = getModifier(attaquant.effets, "deBonus") > 0 || attaqueOpts.deBonus === true;
+  const aMalus = getModifier(attaquant.effets, "deMalus") > 0 || attaqueOpts.deMalus === true;
   const avantage = aBonus && !aMalus ? ("bonus" as const) : !aBonus && aMalus ? ("malus" as const) : null;
   const d1 = Math.floor(rng() * 20) + 1;
   let jetNaturel = d1;
@@ -162,26 +164,81 @@ export function resolveAttack(
 
   let touche: boolean;
   let critique = false;
+  // Seuil de critique (Science du critique : 19 avec prédilection, MJ).
+  const seuils = attaquant.effets
+    .map((e) => e.modificateurs["seuilCrit"])
+    .filter((v): v is number => typeof v === "number");
+  const seuilCrit = seuils.length > 0 ? Math.min(...seuils) : 20;
   if (attaque.toucheAuto) {
     touche = true;
   } else if (critOpts.nat1EchecAuto && jetNaturel === 1) {
     touche = false;
-  } else if (critOpts.nat20ToucheAuto && jetNaturel === 20) {
+  } else if (critOpts.nat20ToucheAuto && jetNaturel >= seuilCrit) {
     touche = true;
     critique = true;
   } else {
     touche = jetTotal >= defenseEffective;
   }
 
-  // Dégâts : normaux si touché, moitié si raté (Briser), 0 sinon.
+  // Parade / absorption (Guerrier) : test opposé sur attaque réussie (jets purs,
+  // pas les touches auto). Parade : tout sauf énorme/colossale (MJ : moitié).
+  // Absorption : sorts uniquement, stocké pour un éventuel Renvoi.
+  let pare = false;
+  let absorbe: SortAbsorbe | null = null;
+  let paradeLog: string | null = null;
+  const sortAttaque = sortDeAttaque(attaquant, attaque.id);
+  if (touche && !attaque.toucheAuto) {
+    const veutParer = getModifier(cible.effets, "parade") > 0;
+    const veutAbsorber = !!sortAttaque && getModifier(cible.effets, "absorption") > 0;
+    if (veutParer || veutAbsorber) {
+      const bonusParade = cible.niveau + Math.max(cible.caracs?.FOR ?? 0, cible.caracs?.AGI ?? 0);
+      const jetP = Math.floor(rng() * 20) + 1;
+      if (jetP + bonusParade >= jetTotal) {
+        pare = true;
+        if (veutAbsorber && sortAttaque) {
+          absorbe = {
+            nom: sortAttaque.nom,
+            bonus: attaque.bonus,
+            degats: attaque.degats,
+            effetCle: sortAttaque.effetCle,
+            effetDuree: sortAttaque.effetDuree,
+            effetDegats: sortAttaque.effetDegats,
+            effetMods: sortAttaque.effetMods,
+            zone: sortAttaque.zone,
+          };
+          paradeLog = `${cible.nom} absorbe ${sortAttaque.nom} (${jetP}+${bonusParade}=${jetP + bonusParade} vs ${jetTotal}) — Renvoi possible via Capacités`;
+        } else {
+          paradeLog = `${cible.nom} pare l'attaque de ${attaquant.nom} (${jetP}+${bonusParade}=${jetP + bonusParade} vs ${jetTotal}) !`;
+        }
+      } else {
+        paradeLog = `${cible.nom} rate sa parade (${jetP}+${bonusParade}=${jetP + bonusParade} vs ${jetTotal}).`;
+      }
+    }
+  }
+
+  // Dégâts : normaux si touché non paré, moitié si raté (Briser), 0 sinon.
+  // Bonus manuels et dés bonus (Puissante, Parfaite, spécialisation) doublés en critique.
   let degatsDetails: number[] = [];
   let degatsTotal = 0;
   let moitie = false;
-  if (touche || attaque.toucheAuto) {
+  let bonusLog: string | null = null;
+  if ((touche || attaque.toucheAuto) && !pare) {
     const expr = parseDiceExpression(attaque.degats);
     const roll = rollDiceExpression(expr, rng);
-    degatsDetails = roll.rolls;
-    degatsTotal = roll.total * (critique ? critOpts.multiplicateur : 1);
+    degatsDetails = [...roll.rolls];
+    degatsTotal = roll.total;
+    const bonusDetails: string[] = [];
+    for (const d of attaqueOpts.degatsBonus ?? []) {
+      const b = rollDiceExpression(parseDiceExpression(d), rng);
+      degatsDetails = [...degatsDetails, ...b.rolls];
+      degatsTotal += Math.max(0, b.total);
+      bonusDetails.push(d);
+    }
+    if (attaqueOpts.bonusDM) degatsTotal += attaqueOpts.bonusDM;
+    if (bonusDetails.length > 0 || attaqueOpts.bonusDM) {
+      bonusLog = `+${[...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : [])].join(" + ")} (coup spécial)`;
+    }
+    degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
   } else if (attaque.demiDegatsSiRate) {
     const roll = rollDiceExpression(parseDiceExpression(attaque.degats), rng);
     degatsDetails = roll.rolls;
@@ -190,8 +247,8 @@ export function resolveAttack(
   }
 
   const toucheVraie = touche || attaque.toucheAuto === true;
-  // Effet au toucher : sauvegarde éventuelle, dégâts par tour lancés, modificateurs.
-  const { effet: effetTouche, saveLog } = toucheVraie
+  // Effet au toucher (sauf parade/absorption) : sauvegarde, dots, modificateurs.
+  const { effet: effetTouche, saveLog } = toucheVraie && !pare
     ? creerEffetTouche(attaque, attaquant.nom, cible, rng)
     : { effet: null, saveLog: null };
 
@@ -210,16 +267,23 @@ export function resolveAttack(
       return p;
     }
     if (p.instanceId === targetId) {
+      // Parade/absorption réussie : stance consommée (un usage), éventuel sort stocké.
+      const pvFinal = pare ? pvAvant : pvApres;
+      let effets = pare
+        ? p.effets.filter((e) => !(e.modificateurs["parade"] > 0) && !(e.modificateurs["absorption"] > 0))
+        : p.effets;
+      if (effetTouche && !pare) effets = [...effets, effetTouche];
       return {
         ...p,
-        pv: pvApres,
-        statut: pvApres <= 0 ? ("ko" as const) : p.statut,
-        effets: effetTouche ? [...p.effets, effetTouche] : p.effets,
+        pv: pvFinal,
+        statut: pvFinal <= 0 ? ("ko" as const) : p.statut,
+        effets,
+        ...(absorbe ? { sortAbsorbe: absorbe } : {}),
       };
     }
     return p;
   });
-  if (toucheVraie && sort?.limiteParCible) {
+  if (toucheVraie && !pare && sort?.limiteParCible) {
     participants = participants.map((p) =>
       p.instanceId === attackerId ? enregistrerUsage(p, sort.id, targetId) : p
     );
@@ -246,8 +310,12 @@ export function resolveAttack(
   }
   log.push({ id: id("def"), at: stamp(), manche: s.manche, message: `Défense ${cible.nom} : ${cible.defense}${modDefense !== 0 ? ` (${modDefense > 0 ? "+" : ""}${modDefense} effets)` : ""}` });
   log.push({ id: id("hit"), at: stamp(), manche: s.manche, message: toucheVraie ? (critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ" });
-  if (toucheVraie || moitie) {
-    log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${attaque.degats} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${moitie ? " (moitié, raté)" : ""}` });
+  if (paradeLog) log.push({ id: id("par"), at: stamp(), manche: s.manche, message: paradeLog });
+  if (!toucheVraie && (cible.capacites ?? []).some((t) => normaliserNomCapacite(t) === "riposte")) {
+    log.push({ id: id("rip"), at: stamp(), manche: s.manche, message: `Riposte (G) : ${cible.nom} peut riposter contre ${attaquant.nom} (attaque au contact uniquement, 1/round — MJ : attaque manuelle)` });
+  }
+  if ((toucheVraie || moitie) && !pare) {
+    log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${attaque.degats}${bonusLog ? ` ${bonusLog}` : ""} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${moitie ? " (moitié, raté)" : ""}` });
     log.push({ id: id("pv"), at: stamp(), manche: s.manche, message: `${cible.nom} : ${pvAvant} -> ${pvApres} PV` });
     if (effetTouche) log.push({ id: id("eff"), at: stamp(), manche: s.manche, message: `Effet "${effetTouche.nom}" (${effetTouche.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
     if (saveLog) log.push({ id: id("save"), at: stamp(), manche: s.manche, message: saveLog });
@@ -365,6 +433,49 @@ export function depenserChanceApresCoup(
 }
 
 /**
+ * Renvoie un sort absorbé contre son expéditeur (Renvoi de sort, Guerrier) :
+ * rejoue l'attaque stockée sans coût, puis oublie le sort (qu'il touche ou non).
+ * Refusé contre les sorts de zone.
+ */
+export function renvoyerSort(
+  state: CombatState,
+  lanceurId: string,
+  cibleId: string,
+  rng: Rng = Math.random
+): { state: CombatState; resolution: AttackResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  const abs = lanceur.sortAbsorbe;
+  if (!abs) throw new Error(`${lanceur.nom} : aucun sort absorbé à renvoyer.`);
+  if (abs.zone) throw new Error("Renvoi impossible contre les sorts de zone.");
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+
+  const tmpId = `renvoi-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`;
+  const tmp: AttackDef = {
+    id: tmpId,
+    nom: `Renvoi (${abs.nom})`,
+    bonus: abs.bonus,
+    degats: abs.degats,
+    effetTouche: abs.effetCle
+      ? { cle: abs.effetCle, duree: abs.effetDuree ?? null, degatsParTour: abs.effetDegats, mods: abs.effetMods }
+      : undefined,
+  };
+  const avec = {
+    ...state,
+    participants: state.participants.map((p) =>
+      p.instanceId === lanceurId ? { ...p, attaques: [...p.attaques, tmp] } : p
+    ),
+  };
+  const { state: apres, resolution } = resolveAttack(avec, lanceurId, cibleId, tmpId, rng);
+  const nettoye = apres.participants.map((p) =>
+    p.instanceId === lanceurId
+      ? { ...p, attaques: p.attaques.filter((a) => a.id !== tmpId), sortAbsorbe: undefined }
+      : p
+  );
+  return { state: { ...apres, participants: nettoye }, resolution };
+}
+
+/**
  * Paie le coût d'un sort (ex: 2 mana). Lève si ressource insuffisante.
  * Sans coût ou ressource absente (monstres) : ne fait rien.
  */
@@ -393,6 +504,24 @@ export interface CapaciteResolution {
   cibleNom: string;
   talentNom: string;
   effetNom: string | null;
+}
+
+/**
+ * Ajustements au moment de l'attaque (coups spéciaux du Guerrier, bonus MJ).
+ * Puissante (A) = dé malus + 2d4°, (L) = +3d4° ; Parfaite = dé bonus + 1d4° ;
+ * modificateur manuel (prédilection +1, Double/Circulaire −2...), +DM manuel.
+ */
+export interface AttaqueOpts {
+  /** Modificateur manuel au jet (ex: +1 prédilection, −2 Double). */
+  modAttaque?: number;
+  /** Bonus DM manuel (ex: +1 spécialisation). */
+  bonusDM?: number;
+  /** Dés de DM supplémentaires (ex: ["2d4°"], Puissante). */
+  degatsBonus?: string[];
+  /** Désavantage sur ce jet (ex: Puissante). */
+  deMalus?: boolean;
+  /** Avantage sur ce jet (ex: Parfaite). */
+  deBonus?: boolean;
 }
 
 /** Sort à l'origine d'une attaque "sort:<id>" (armes : indéfini). */
