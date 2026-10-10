@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/characters", label: "Personnages" },
   { href: "/classes", label: "Classes" },
   { href: "/sorts", label: "Sorts & Capacités" },
+  { href: "/regles", label: "Règles" },
   { href: "/monsters", label: "Bestiaire" },
   { href: "/dice", label: "Dés" },
   { href: "/combat", label: "Combat" },

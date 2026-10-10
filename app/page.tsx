@@ -7,6 +7,7 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
   { href: "/characters", t: "Personnages", d: "PV, défense, attaques", key: "characters" },
   { href: "/classes", t: "Classes", d: "Profils, voies, équipement", key: null },
   { href: "/sorts", t: "Sorts & Capacités", d: "Grimoire, voies, talents", key: "sorts" },
+  { href: "/regles", t: "Règles", d: "Référence COF 2 à valider", key: null },
   { href: "/monsters", t: "Bestiaire", d: "Préparer rencontres", key: "monsters" },
   { href: "/dice", t: "Dés", d: "Lanceur + historique", key: null },
   { href: "/combat", t: "Combat", d: "Initiative, tours, effets", key: null },
