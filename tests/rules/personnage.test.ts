@@ -188,7 +188,8 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
       desRecuperation: { type: "d8" as const, max: 4, actuel: 4 },
       effets: [{ id: "e1", nom: "Empoisonné", dureeTours: 3, toursRestants: 3, modificateurs: {} }],
     };
-    const r = remettreAZeroPersonnage(c);
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!.inventaire;
+    const r = remettreAZeroPersonnage(c, base);
     expect(r.pv).toBe(r.pvMax);
     expect(r.ressources.chance).toEqual({ max: 6, actuel: 6 });
     expect(r.ressources.mana).toEqual({ max: 2, actuel: 2 });
@@ -204,6 +205,49 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     // Guerrier : reset -> 2/5, pas 5/5.
     expect(g.desRecuperation).toEqual({ type: "d10", max: 5, actuel: 2 });
     expect(g.pv).toBe(g.pvMax);
+  });
+
+  it("remise à zéro : niveau 1, talents/sorts vidés, traits et inventaire de base restaurés", () => {
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const modifie = {
+      ...dorain,
+      niveau: 5,
+      pv: 3,
+      pvMax: 99,
+      capacites: ["Protéger un allié", "Robustesse", "Vivacité", "Truc maison"],
+      sorts: [...dorain.sorts],
+      traitsPeuple: ["Truc"],
+      inventaire: [{ itemId: "item-potion", quantite: 9, equipe: false }],
+      effets: [{ id: "e1", nom: "X", dureeTours: 1, toursRestants: 1, modificateurs: {} }],
+    };
+    const r = remettreAZeroPersonnage(modifie, dorain.inventaire);
+    expect(r.niveau).toBe(1);
+    expect(r.pvMax).toBe(13); // 10 + CON 3, niveau 1
+    expect(r.pv).toBe(13);
+    expect(r.capacites).toEqual([]);
+    expect(r.sorts).toEqual([]);
+    expect(r.traitsPeuple).toEqual(["Habitant des tunnels"]);
+    expect(r.inventaire).toEqual(dorain.inventaire);
+    expect(r.inventaire).not.toBe(dorain.inventaire); // copie, pas de partage
+    expect(r.effets).toEqual([]);
+    // Caracs / peuple / profil inchangés.
+    expect(r.caracteristiques).toEqual(dorain.caracteristiques);
+    expect(r.peuple).toBe("Nain");
+
+    // Perso custom sans fiche d'origine : inventaire vidé.
+    const custom = { ...modifie, id: "pj-custom", inventaire: [{ itemId: "item-potion", quantite: 2, equipe: false }] };
+    expect(remettreAZeroPersonnage(custom).inventaire).toEqual([]);
+
+    // Voie du mage conservée, traits restaurés avec le rang 1 mage.
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const m = remettreAZeroPersonnage(
+      { ...mirabel, niveau: 3, capacites: ["X"], sorts: [...mirabel.sorts], traitsPeuple: [], inventaire: [] },
+      mirabel.inventaire
+    );
+    expect(m.voieMage).toBe(true);
+    expect(m.traitsPeuple).toEqual(["Diversité", "Capacité de peuple + occultisme"]);
+    expect(m.inventaire).toEqual(mirabel.inventaire);
+    expect(m.ressources.mana).toEqual({ max: 4, actuel: 4 }); // VOL 4 + 0 sort
   });
 
   it("ajouterCapacite : apprend un talent sans doublon, mana inchangé", () => {

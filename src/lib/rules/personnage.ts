@@ -3,7 +3,7 @@
 
 import type { Character, Sort } from "@/src/lib/rules/types";
 import { CAPACITES, slug } from "@/src/lib/data/capacites";
-import { VOIES_PEUPLE, VOIE_MAGE, traitsInitiaux } from "@/src/lib/data/peuples";
+import { VOIES_PEUPLE, VOIE_MAGE, adopterVoieMage, traitsInitiaux } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 
 export interface Caracteristiques {
@@ -282,14 +282,28 @@ export function recalculerPersonnage<T extends Character>(c: T): T {
 }
 
 /**
- * Remet un personnage à zéro (retour à l'état de création) : resynchronise
- * les max via les formules, remonte PV / chance / mana au max, replace les
- * dés de récupération à l'initiale (2 dés, 3 si Mystique — pas le max) et
- * vide les effets en cours.
- * Idéal / travers / inventaire / sorts / capacités : inchangés.
+ * Remet un personnage à zéro (retour sortie de création, niveau 1) :
+ * niveau 1, talents/sorts vidés, traits du peuple réinitialisés au rang 1
+ * de base (Voie du mage conservée si adoptée), inventaire remplacé par
+ * celui de base (2e param, fiche d'origine — sinon vide), PV / chance /
+ * mana au max, dés de récupération à l'initiale (2 dés, 3 si Mystique —
+ * pas le max), effets en cours vidés.
+ * Caracs / peuple / profil / famille / idéal / travers : inchangés.
  */
-export function remettreAZeroPersonnage<T extends Character>(c: T): T {
-  const r = recalculerPersonnage(c);
+export function remettreAZeroPersonnage<T extends Character>(
+  c: T,
+  inventaireBase?: Character["inventaire"]
+): T {
+  const vide: T = {
+    ...c,
+    niveau: 1,
+    capacites: [],
+    sorts: [],
+    traitsPeuple: c.voieMage ? adopterVoieMage(c.peuple) : traitsInitiaux(c.peuple),
+    inventaire: (inventaireBase ?? []).map((e) => ({ ...e })),
+    migreSorts: true,
+  };
+  const r = recalculerPersonnage(vide);
   return {
     ...r,
     pv: r.pvMax,

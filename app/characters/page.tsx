@@ -97,12 +97,17 @@ export default function CharactersPage() {
   const recalculer = (id: string) => patch(id, (c) => recalculerPersonnage(c));
   const toutRecalculer = () => setItems((prev) => prev.map((c) => recalculerPersonnage(normaliserPersonnage(c as unknown as Record<string, unknown>))));
   const remettreAZero = (id: string, nom: string) => {
-    if (!window.confirm(`Remettre ${nom} à zéro ? PV / chance / mana au max, DR à l'initiale (2, 3 si mystique), effets vidés.`)) return;
-    patch(id, (c) => remettreAZeroPersonnage(c));
+    if (!window.confirm(`Remettre ${nom} à zéro (retour création : niveau 1, talents/sorts vidés, traits du peuple réinitialisés, inventaire de base restauré, PV/chance/mana au max) ?`)) return;
+    const base = SEED_CHARACTERS.find((s) => s.id === id)?.inventaire ?? [];
+    patch(id, (c) => remettreAZeroPersonnage(c, base));
   };
   const toutRemettreAZero = () => {
-    if (!window.confirm("Remettre tous les personnages à zéro ? PV / chance / mana au max, DR à l'initiale (2, 3 si mystique), effets vidés.")) return;
-    setItems((prev) => prev.map((c) => remettreAZeroPersonnage(normaliserPersonnage(c as unknown as Record<string, unknown>))));
+    if (!window.confirm("Remettre tous les personnages à zéro (retour création : niveau 1, talents/sorts vidés, inventaires de base restaurés) ?")) return;
+    setItems((prev) => prev.map((c) => {
+      const n = normaliserPersonnage(c as unknown as Record<string, unknown>);
+      const base = SEED_CHARACTERS.find((s) => s.id === n.id)?.inventaire ?? [];
+      return remettreAZeroPersonnage(n, base);
+    }));
   };
   const reset = () => setItems(SEED_CHARACTERS);
 
@@ -155,7 +160,7 @@ export default function CharactersPage() {
         <h1 className="text-2xl font-bold">Personnages ({items.length})</h1>
         <div className="flex gap-2 flex-wrap">
           <button onClick={toutRecalculer} title="INIT=10+PER · DEF=10+AGI+Équip+Mod · PV=base+CON · Chance=2+CHA(+1 Aventurier) · DR=2+CON(+1 Mystique) · Mana=VOL+sorts" className="px-3 py-1.5 rounded bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300">↻ Recalculer</button>
-          <button onClick={toutRemettreAZero} title="PV / chance / mana au max, DR à l'initiale (2, 3 si mystique), effets vidés" className="px-3 py-1.5 rounded bg-green-800 text-sm font-semibold hover:bg-green-700">✦ Remise à zéro</button>
+          <button onClick={toutRemettreAZero} title="Retour création : niveau 1, talents/sorts vidés, traits et inventaires de base restaurés, PV/chance/mana au max" className="px-3 py-1.5 rounded bg-green-800 text-sm font-semibold hover:bg-green-700">✦ Remise à zéro</button>
           <button onClick={() => exportJson("personnages.json", items)} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Export JSON</button>
           <button onClick={reset} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Réinitialiser</button>
         </div>
@@ -187,7 +192,7 @@ export default function CharactersPage() {
                   )}
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => remettreAZero(c.id, c.nom)} title="Remise à zéro : PV / chance / mana au max, DR à l'initiale (2, 3 si mystique), effets vidés" className="text-sm px-2.5 py-1 rounded bg-green-900 hover:bg-green-800">✦</button>
+                  <button onClick={() => remettreAZero(c.id, c.nom)} title="Remise à zéro : niveau 1, talents/sorts vidés, traits et inventaire de base restaurés" className="text-sm px-2.5 py-1 rounded bg-green-900 hover:bg-green-800">✦</button>
                   <button onClick={() => recalculer(c.id)} title="Resynchroniser PV/DEF/Init/Chance/DR/Mana depuis les formules" className="text-sm px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700">↻</button>
                   <button onClick={() => setEditing({ ...c })} className="text-sm px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700">Éditer</button>
                 </div>
