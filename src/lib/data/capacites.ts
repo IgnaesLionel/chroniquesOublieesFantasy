@@ -61,8 +61,6 @@ export interface CapaciteCatalogue {
   profil: string;
   resume: string;
   action?: ActionDRS;
-  /** Vrai si c'est aussi un sort du grimoire (l'apprendre crée l'entrée lançable, + mana). */
-  estSort?: boolean;
 }
 
 export function slug(texte: string): string {
@@ -76,16 +74,14 @@ export function slug(texte: string): string {
 
 /**
  * Catalogue des talents utilisables : toutes les capacités des voies SAUF les
- * sorts (déjà au grimoire via sortId), sauf si `inclureSortsLies` (la page
- * Sorts les montre aussi, marqués ✦ : les apprendre crée le sort lançable).
- * Apprendre = copier le nom dans le PJ.
+ * sorts (déjà au grimoire via sortId). Apprendre = copier le nom dans le PJ.
  */
-export function catalogueCapacites(inclureSortsLies = false): CapaciteCatalogue[] {
+export function catalogueCapacites(): CapaciteCatalogue[] {
   const liste: CapaciteCatalogue[] = [];
   for (const [profil, voies] of Object.entries(CAPACITES)) {
     for (const v of voies) {
       for (const cap of v.capacites) {
-        if (cap.sortId && !inclureSortsLies) continue; // déjà au grimoire
+        if (cap.sortId) continue; // déjà au grimoire
         liste.push({
           id: `cap-${slug(profil)}-${slug(cap.nom)}`,
           nom: cap.nom,
@@ -94,7 +90,6 @@ export function catalogueCapacites(inclureSortsLies = false): CapaciteCatalogue[
           profil,
           resume: cap.resume,
           action: infererAction(cap.resume),
-          estSort: cap.sortId ? true : undefined,
         });
       }
     }

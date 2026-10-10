@@ -64,7 +64,7 @@ export default function SortsPage() {
   const [filtreVoie, setFiltreVoie] = useState<string>("toutes");
   const [cible, setCible] = useState<Record<string, string>>({});
 
-  const capacites = useMemo(() => catalogueCapacites(true), []);
+  const capacites = useMemo(() => catalogueCapacites(), []);
 
   // Les choix de voies suivent la classe filtrée (ex. Guerrier → ses 5 voies).
   const classeFiltree = filtreFamille !== "toutes" ? CLASSES.find((c) => c.profil === filtreFamille) : undefined;
@@ -236,9 +236,10 @@ export default function SortsPage() {
       </div>
       <p className="text-xs text-zinc-500">
         Grimoire ({items.filter(estSort).length} sorts) + talents utilisables des voies ({capacites.length} capacités).
-        Un sort coûte des PM et s&apos;apprend comme sort (mana = VOL + sorts, talent accordé aussi) ; une capacité (ex. Protéger un allié, action gratuite)
-        s&apos;apprend telle quelle dans les capacités du PJ. Les capacités ✦ (ex. Un pied dans la tombe) sont aussi des sorts :
-        les apprendre crée le talent ET le sort lançable (+1 mana max, full mana et full vie). Familles = profils (aucune case = toutes classes).
+        Un sort coûte des PM à lancer et s&apos;apprend comme sort (mana = VOL + sorts, rang de voie accordé aussi) ; une capacité
+        (ex. Protéger un allié, action gratuite) ne coûte rien à utiliser et s&apos;apprend telle quelle dans les capacités du PJ.
+        Les rangs de voie qui sont des sorts (ex. Un pied dans la tombe, ✦ au grimoire) sont dans l&apos;onglet Sorts, pas ici.
+        Familles = profils (aucune case = toutes classes).
         Apprentissage vérifié : points (R1-2 : 1 pt, R3-5 : 2 pts), rangs précédents requis, niveau ≥ rang. 🔒 = bloqué (raison au survol).
       </p>
 
@@ -355,7 +356,7 @@ export default function SortsPage() {
                 return (
                   <tr key={c.id} className="border-t border-zinc-800 bg-zinc-950">
                     <td className="px-3 py-2">
-                      <span className="font-semibold" title={"estSort" in c && c.estSort ? "Aussi un sort : l'apprendre crée l'entrée lançable (+1 mana max, full mana et full vie)" : undefined}>{"estSort" in c && c.estSort ? "✦ " : "◈ "}{c.nom}</span>
+                      <span className="font-semibold">◈ {c.nom}</span>
                       <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 font-mono">R{c.rang}</span>
                       <span className="block text-xs text-zinc-500">{c.voie}</span>
                       <span className="block text-xs text-zinc-500">{"resume" in c ? c.resume : c.description}</span>
