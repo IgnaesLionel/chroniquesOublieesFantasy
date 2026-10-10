@@ -77,6 +77,26 @@ describe("onglet classes (DRS)", () => {
     expect(proteger!.rang).toBe(1);
     expect(proteger!.action).toBe("gratuite");
   });
+
+  it("catalogueCapacites(true) : les talents-sorts (✦) sont aussi listés", () => {
+    const complet = catalogueCapacites(true);
+    const outreTombe = complet.filter((c) => c.profil === "Sorcier" && c.voie === "Voie de l'outre-tombe");
+    // Les 5 rangs, pas seulement le talent pur (Armure d'os).
+    expect(outreTombe.map((c) => c.nom)).toEqual([
+      "Un pied dans la tombe",
+      "Armure d'os",
+      "Animation des morts",
+      "Ensevelissement",
+      "Armée des morts",
+    ]);
+    expect(outreTombe.find((c) => c.nom === "Un pied dans la tombe")!.estSort).toBe(true);
+    expect(outreTombe.find((c) => c.nom === "Armure d'os")!.estSort).toBeUndefined();
+    const ids = complet.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Par défaut : inchangé (talents purs uniquement).
+    expect(catalogueCapacites().some((c) => c.nom === "Un pied dans la tombe")).toBe(false);
+    expect(catalogueCapacites().some((c) => c.nom === "Armure d'os")).toBe(true);
+  });
   it("capacités : 5 voies × 5 rangs par profil, rangs 1-5", () => {
     expect(Object.keys(CAPACITES).sort()).toEqual(CLASSES.map((c) => c.profil).sort());
     for (const c of CLASSES) {
