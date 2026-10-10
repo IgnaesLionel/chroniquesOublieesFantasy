@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import type { Character } from "@/src/lib/rules/types";
+import { deriverPersonnage, recalculerPersonnage } from "@/src/lib/rules/personnage";
 import {
   CREATION_DEFAUT,
   apprendreTalentComplet,
@@ -263,5 +264,19 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     const r3 = apprendreTalentComplet(vierge, "Robustesse", SEED_SORTS);
     expect(r3.capacites).toContain("Robustesse");
     expect(r3.sorts).toHaveLength(0);
+  });
+
+  it("Armure d'os : +3 DEF permanent à l'apprentissage, retiré au désapprentissage", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    expect(deriverPersonnage(mirabel).defense).toBe(11); // 10 + AGI 1
+    const r = apprendreTalentComplet(mirabel, "Armure d'os", SEED_SORTS);
+    expect(r.capacites).toContain("Armure d'os");
+    expect(r.sorts).toHaveLength(mirabel.sorts.length); // talent pur, aucun sort
+    expect(deriverPersonnage(r).defense).toBe(14);
+    expect(r.defense).toBe(14); // resynchronisé aussitôt (fiche + combat)
+    // Désapprendre (retirer le talent + recalculer) retire le bonus.
+    const sans = recalculerPersonnage({ ...r, capacites: r.capacites.filter((t) => t !== "Armure d'os") });
+    expect(deriverPersonnage(sans).defense).toBe(11);
+    expect(sans.defense).toBe(11);
   });
 });

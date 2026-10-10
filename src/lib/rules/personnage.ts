@@ -225,6 +225,12 @@ function modEffectif(c: Character): number {
   return c.defenseMod ?? 0;
 }
 
+/** Bonus DEF permanent des talents connus (Armure d'os du sorcier : +3, sans malus AGI). */
+export function bonusDefenseTalents(c: Pick<Character, "capacites">): number {
+  const noms = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
+  return noms.has(normaliserNomCapacite("Armure d'os")) ? 3 : 0;
+}
+
 /** Calcule toutes les valeurs dérivées d'un personnage COF. */
 export function deriverPersonnage(c: Character): DerivePersonnage {
   const profil = profilEffectif(c);
@@ -234,7 +240,7 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
   return {
     famille,
     initiative: initiativeBase(car),
-    defense: defenseBase(car, equipementEffectif(c), modEffectif(c)),
+    defense: defenseBase(car, equipementEffectif(c) + bonusDefenseTalents(c), modEffectif(c)),
     pvMax: pvMaxBase(famille, car.CON, c.niveau),
     chanceMax: chanceMax(car.CHA, profil, famille),
     drType: drType(profil, famille),

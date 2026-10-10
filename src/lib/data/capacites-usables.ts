@@ -51,7 +51,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     effetCle: null,
     dureeTours: null,
     cibles: "allies",
-    note: "Sorcier, passif : +3 DEF (+1 par rang 4 en voie sorcier) — à saisir dans Éditer (Équip. DEF), 10 min d'entretien/jour.",
+    note: "Sorcier, passif : +3 DEF automatiques à l'apprentissage (retirés au désapprentissage), +1 par rang 4 en voie sorcier (MJ). 10 min d'entretien/jour, sans malus AGI.",
   },
   {
     talent: "Exsangue",

@@ -1,7 +1,7 @@
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
 import type { Character, Sort } from "@/src/lib/rules/types";
-import { ajouterCapacite, apprendreSort, normaliserNomCapacite, sortDuTalent } from "@/src/lib/rules/personnage";
+import { ajouterCapacite, apprendreSort, normaliserNomCapacite, recalculerPersonnage, sortDuTalent } from "@/src/lib/rules/personnage";
 
 export { normaliserNomCapacite, sortDuTalent };
 
@@ -366,6 +366,7 @@ export function talentsRang2Gratuits(c: Character): { nom: string; voie: string 
 /**
  * Apprend un talent ; si c'est aussi un sort, crée l'entrée lançable (+ mana).
  * Connaître le talent sans le sort ne permet pas de le lancer en combat.
+ * Les champs dérivés sont resynchronisés (ex: Armure d'os -> +3 DEF aussitôt).
  */
 export function apprendreTalentComplet<T extends Character>(c: T, nom: string, grimoire: Sort[] = []): T {
   let r = ajouterCapacite(c, nom);
@@ -374,7 +375,7 @@ export function apprendreTalentComplet<T extends Character>(c: T, nom: string, g
   if (sort && !r.sorts.some((s) => normaliserNomCapacite(s.nom) === q)) {
     r = apprendreSort(r, sort);
   }
-  return r;
+  return recalculerPersonnage(r);
 }
 
 export interface PorteDesapprentissage {

@@ -94,7 +94,7 @@ export default function ReglesPage() {
 
       <Section id="personnage" titre="Personnage">
         <p>Caractéristiques : AGI, CON, FOR, PER, CHA, INT, VOL (modificateurs, ex. +4/-1). Idéal héroïque et travers : narratifs, aucun bonus.<Src de="Fiches" /></p>
-        <Formule>INIT = 10 + PER · DEF = 10 + AGI + Équipement + Mod<Src de="Fiches" /></Formule>
+        <Formule>INIT = 10 + PER · DEF = 10 + AGI + Équipement + Mod + talents (Armure d&apos;os +3)<Src de="Fiches" /><Src de="Règle" /></Formule>
         <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
@@ -188,7 +188,7 @@ export default function ReglesPage() {
           <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle" /></li>
           <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
           <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Supposition" /></li>
-          <li>Passifs (Armure d&apos;os, Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>
+          <li>Armure d&apos;os : +3 DEF automatiques à l&apos;apprentissage (retirés au désapprentissage). Passifs restants (Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>
         </ul>
       </Section>
 
