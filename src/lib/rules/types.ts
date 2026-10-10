@@ -49,8 +49,23 @@ export interface AttackDef {
   degats: string;
   /** Affichage d'origine si normalisée (ex: "1d8+8+1d8", "DM 1"). */
   degatsAffiche?: string;
+  /** Type d'action COF (A/M/L/G). Défaut : "attaque". Sert au budget du tour. */
+  action?: ActionDRS;
+  /** Touche automatique (pas de jet, ex. Rituel de sang) : dégâts + effet si applicable. */
+  toucheAuto?: boolean;
+  /** Moitié des dégâts en cas de jet raté (ex. Briser les cœurs). */
+  demiDegatsSiRate?: boolean;
+  /** Le lanceur récupère autant de PV que de DM infligés (ex. Baiser du vampire). */
+  volDeVie?: boolean;
   /** Effet appliqué à la cible si TOUCHÉ (ex: poison d'une arme). */
-  effetTouche?: { cle: string; duree: number | null };
+  effetTouche?: {
+    cle: string;
+    duree: number | null;
+    /** Dégâts par tour lancés au toucher (ex: "1d4", Saignements) -> pvParTour. */
+    degatsParTour?: string;
+    /** Modificateurs supplémentaires fusionnés (ex: { deMalus: 1 }). */
+    mods?: Record<string, number>;
+  };
 }
 
 /** Une entrée d'inventaire : référence un objet global + quantité + arme équipée ou non. */
@@ -97,8 +112,39 @@ export interface Sort {
   /** Effet appliqué (cible si offensif et TOUCHÉ, allié si défensif). Clé du catalogue. */
   effetCle?: string;
   effetDuree?: number | null;
+  /** Dégâts par tour de l'effet, lancés au toucher (ex: "1d4", Saignements) -> pvParTour. */
+  effetDegats?: string;
+  /** Modificateurs supplémentaires de l'effet (ex: { deMalus: 1 }, Strangulation). */
+  effetMods?: Record<string, number>;
   /** Coût en ressource (ex: { ressource: "mana", montant: 2 }). */
   cout?: { ressource: string; montant: number };
+  /** Sacrifice de PV du lanceur au lancer, en dés (ex: "1d4", Pacte démoniaque). Min 0 (KO possible). */
+  coutPV?: string;
+  /** Le lanceur récupère autant de PV que de DM infligés (ex. Baiser du vampire). */
+  volDeVie?: boolean;
+  /** Touche automatique, sans jet (ex. Rituel de sang : la cible saigne sans test). */
+  toucheAuto?: boolean;
+  /** Moitié des dégâts en cas de jet raté (ex. Briser les cœurs). */
+  demiDegatsSiRate?: boolean;
+  /** Limite d'utilisations par combat (ex: 1, Ensevelissement ; 1/jour ≈ 1 combat, Armée). */
+  limiteCombat?: number;
+  /** Limite par cible sur un combat, décomptée au TOUCHÉ (ex: Malédiction, Briser). */
+  limiteParCible?: boolean;
+  /** Attaque temporaire accordée au lanceur (ex: griffes de l'Aspect, contact de la Succube). */
+  attaqueAccordee?: { nom: string; degats: string; bonus?: number; volDeVie?: boolean };
+  /** Serviteur invoqué ajouté au combat (ex: démon, zombie). PV = base + parNiveau × niveau. */
+  invocation?: {
+    nom: string;
+    pvBase: number;
+    pvParNiveau: number;
+    defense: number;
+    /** "magique" = bonus magique du lanceur, sinon bonus fixe. */
+    bonusAttaque: number | "magique";
+    degats: string;
+    initiative?: number;
+  };
+  /** Frappe de zone : dégâts + effet à tous les ennemis actifs (ex: Armée des morts). */
+  zone?: boolean;
 }
 
 export interface ActiveEffect {

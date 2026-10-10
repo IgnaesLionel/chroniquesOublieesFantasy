@@ -28,6 +28,14 @@ export interface CombatParticipant {
   /** Copie des ressources du personnage (ex: mana) pour les coûts de sorts. */
   ressources: Record<string, { max: number; actuel: number }>;
   statut: Statut;
+  /** Budget d'actions du tour (A+M ou L, G gratuit). Absent = illimité (compat). */
+  budget?: { action: boolean; mouvement: boolean };
+  /** Bonus d'attaque magique (niv+VOL) : invocations, jets MJ. */
+  bonusMagique?: number;
+  /** Caractéristiques (substitution "1d4°+INT" des attaques accordées). */
+  caracs?: Record<string, number>;
+  /** Usages de sorts limités : sortId -> { tentatives, cibles touchées }. */
+  usagesSorts?: Record<string, { n: number; cibles: string[] }>;
 }
 
 export interface CombatLogEntry {
@@ -78,6 +86,12 @@ export interface AttackResolution {
   cibleNom: string;
   attaqueNom: string;
   jetNaturel: number;
+  /** Second d20 (dé bonus/malus) : null si jet simple. */
+  jetSecondaire?: number | null;
+  /** "bonus" = garder le meilleur, "malus" = garder le pire, null = jet simple. */
+  desAvantage?: "bonus" | "malus" | null;
+  /** Vrai si touche automatique sans jet (Rituel de sang). */
+  toucheAuto?: boolean;
   jetTotal: number;
   defenseCible: number;
   touche: boolean;

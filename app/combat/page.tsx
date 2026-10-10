@@ -7,7 +7,7 @@ import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, applySpellCost, castSoutien, depenserChanceApresCoup, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, castSoutien, depenserChanceApresCoup, frapperZone, resolveAttack, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
@@ -60,11 +60,8 @@ export default function CombatPage() {
     const aid = attackId ?? atk?.attaques[0]?.id;
     if (!atk || !aid) return;
     try {
-      // Sort offensif : paie le coût (mana) avant le jet.
-      let s = combat;
-      const sort = aid.startsWith("sort:") ? atk.sorts.find((x) => `sort:${x.id}` === aid) : undefined;
-      if (sort?.cout) s = applySpellCost(s, attackerId, sort);
-      const { state, resolution } = resolveAttack(s, attackerId, targetId, aid);
+      // Coûts (mana + PV), budget et limites vérifiés dans le moteur.
+      const { state, resolution } = resolveAttack(combat, attackerId, targetId, aid);
       setCombat(state);
       setLast(resolution);
       setLastAttaque({ attackerId, targetId, attackId: aid });
@@ -230,7 +227,10 @@ export default function CombatPage() {
             lanceurId={attackerId}
             onCast={(lanceurId, cibleId, sort) => {
               try {
-                const { state } = castSoutien(combat, lanceurId, cibleId, sort);
+                // Frappe de zone (Armée des morts) : tous les ennemis.
+                const { state } = sort.zone
+                  ? frapperZone(combat, lanceurId, sort)
+                  : castSoutien(combat, lanceurId, cibleId, sort);
                 setCombat(state);
                 setLast(null);
               } catch (e) {
@@ -244,9 +244,9 @@ export default function CombatPage() {
           <CapacitesPanel
             participants={combat.participants}
             lanceurId={attackerId}
-            onUtiliser={(lanceurId, cibleId, talentNom, effetCle, dureeTours) => {
+            onUtiliser={(lanceurId, cibleId, talentNom, effetCle, dureeTours, mods, coutPV) => {
               try {
-                const { state } = utiliserCapacite(combat, lanceurId, cibleId, talentNom, { effetCle, dureeTours });
+                const { state } = utiliserCapacite(combat, lanceurId, cibleId, talentNom, { effetCle, dureeTours, mods, coutPV });
                 setCombat(state);
                 setLast(null);
               } catch (e) {

@@ -58,6 +58,7 @@ const SOMMAIRE: { id: string; t: string }[] = [
   { id: "peuples-classes", t: "Peuples, classes et voies" },
   { id: "sorts", t: "Sorts et grimoire" },
   { id: "des", t: "Dés (explosifs, dE, caracs)" },
+  { id: "actions", t: "Actions (A+M ou L) et coûts des sorts" },
   { id: "combat", t: "Combat" },
   { id: "effets", t: "Effets (buffs, debuffs, dots)" },
 ];
@@ -177,12 +178,27 @@ export default function ReglesPage() {
         </ul>
       </Section>
 
+      <Section id="actions" titre="Actions (A+M ou L) et coûts des sorts">
+        <Formule>Par tour : 1 action (A) + 1 mouvement (M), OU 1 action limitée (L) = tour complet. (G) = gratuit.<Src de="Règle" /></Formule>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Sorts : coût PM = rang, payé avant le jet. Certains sacrifient aussi des PV en dés (Pacte démoniaque, Invocation, Rituel : 1d4°), payés au lancer.<Src de="Règle" /></li>
+          <li>Vol de vie (Baiser du vampire, Succube) : le lanceur récupère autant de PV que de DM infligés.<Src de="Règle" /></li>
+          <li>Limites : 1/combat (Ensevelissement), 1/combat par cible (Malédiction, Briser), 1/jour ≈ 1 combat (Armée). Par cible = au touché, sinon au lancer.<Src de="Règle" /></li>
+          <li>Rituel de sang : sans test (touche auto). Briser les cœurs : moitié des dégâts si raté.<Src de="Règle" /></li>
+          <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle" /></li>
+          <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
+          <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; jets de sauvegarde (CON 10…) et durées en INT appliqués par défaut, MJ arbitre.<Src de="Supposition" /></li>
+          <li>Passifs (Armure d&apos;os, Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>
+        </ul>
+      </Section>
+
       <Section id="combat" titre="Combat">
         <ul className="list-disc pl-5 space-y-1">
           <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle" /></li>
           <li>0 PV = KO. Initiative 1d20+mod, tri décroissant, tours + manches, KO sautés.<Src de="Supposition" /></li>
           <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle" /></li>
-          <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM déduits avant le jet.</li>
+          <li>Budget appliqué : A+M ou L par tour (pastilles dans les panneaux), sorts à effet sans dégâts (Malédiction, Peur…), dégâts par tour lancés au toucher (Saignements, Ensevelissement…).</li>
+          <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM (+ PV) déduits avant le jet. Soutien : invocations, attaques accordées (griffes, contact). Zone (Armée) : tous les ennemis.</li>
         </ul>
       </Section>
 

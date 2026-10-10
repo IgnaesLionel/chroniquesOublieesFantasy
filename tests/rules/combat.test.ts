@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, checkEnd, depenserChanceApresCoup, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, budgetOk, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -269,5 +269,300 @@ describe("moteur de combat", () => {
     expect(resolution.effetNom).toBeNull();
     expect(state.participants[1].effets).toHaveLength(0);
     expect(state.log.some((l) => l.message.includes("Cri de guerre"))).toBe(true);
+  });
+});
+
+function sorcier(nom = "Sorcier"): CombatParticipant {
+  return {
+    instanceId: `pj-${nom}-${Math.random()}`, templateId: "pj", nom, camp: "pj",
+    pvMax: 40, pv: 40, defense: 12, initMod: 1, initiative: null,
+    attaques: [],
+    effets: [],
+    sorts: [],
+    capacites: [],
+    niveau: 5,
+    ressources: { mana: { max: 10, actuel: 10 } },
+    statut: "actif",
+    budget: { action: true, mouvement: true },
+    bonusMagique: 8,
+    caracs: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 2, VOL: 3 },
+    usagesSorts: {},
+  };
+}
+
+describe("sorcier (voies du livre)", () => {
+  it("dé bonus : 2d20 garder le meilleur ; dé malus : le pire ; annulation mutuelle", () => {
+    const bonus = { ...pj("A"), effets: [createEffect("Dé bonus", { modificateurs: { deBonus: 1 } })] };
+    const s = createCombat([bonus, pj("Tank", 18)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // d20 : 3 puis 19 -> gardé 19, +6 = 25 ≥ 18 touché. Dégâts 1d8+3 : 5+3 = 8.
+    const r = resolveAttack(s, a, t, "epee", fixedRng([0.1, 0.9, 0.5])).resolution;
+    expect(r.jetNaturel).toBe(19);
+    expect(r.jetSecondaire).toBe(3);
+    expect(r.desAvantage).toBe("bonus");
+    expect(r.touche).toBe(true);
+    expect(r.degatsTotal).toBe(8);
+
+    const malus = { ...pj("B"), effets: [createEffect("Dé malus", { modificateurs: { deMalus: 1 } })] };
+    const s2 = createCombat([malus, pj("Tank", 18)]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    // 19 puis 3 -> gardé 3, +6 = 9 < 18 manqué.
+    const r2 = resolveAttack(s2, a2, t2, "epee", fixedRng([0.9, 0.1, 0.5])).resolution;
+    expect(r2.jetNaturel).toBe(3);
+    expect(r2.desAvantage).toBe("malus");
+    expect(r2.touche).toBe(false);
+
+    const neutre = { ...pj("C"), effets: [createEffect("X", { modificateurs: { deBonus: 1, deMalus: 1 } })] };
+    const s3 = createCombat([neutre, pj("Tank", 18)]);
+    const [a3, t3] = s3.participants.map((p) => p.instanceId);
+    const r3 = resolveAttack(s3, a3, t3, "epee", fixedRng([0.9, 0.5])).resolution;
+    expect(r3.jetNaturel).toBe(19);
+    expect(r3.jetSecondaire).toBeNull();
+    expect(r3.desAvantage).toBeNull();
+  });
+
+  it("vol de vie (Baiser) : le lanceur récupère les DM, mana payé", () => {
+    const baiser = { id: "x", nom: "Baiser du vampire", type: "offensif" as const, cout: { ressource: "mana", montant: 3 } };
+    const atk = {
+      ...sorcier(), pv: 30,
+      attaques: [{ id: "sort:x", nom: "✦ Baiser du vampire", bonus: 10, degats: "1d6", volDeVie: true }],
+      sorts: [baiser],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 19+10 touché, 1d6 : 4 DM.
+    const { state, resolution } = resolveAttack(s, a, t, "sort:x", fixedRng([0.9, 0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.degatsTotal).toBe(4);
+    expect(state.participants[0].pv).toBe(34);
+    expect(state.participants[0].ressources.mana.actuel).toBe(7);
+    expect(state.participants[1].pv).toBe(36);
+    expect(state.log.some((l) => l.message.includes("vol de vie"))).toBe(true);
+  });
+
+  it("sacrifice PV (Rituel/Invocation) payé avant le jet", () => {
+    const sort = { id: "sv", nom: "S", type: "offensif" as const, cout: { ressource: "mana", montant: 2 }, coutPV: "1d6" };
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "sort:sv", nom: "✦ S", bonus: 10, degats: "1d6" }],
+      sorts: [sort],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Sacrifice 1d6 : 4 PV puis jet 19+10 touché puis 4 DM.
+    const { state } = resolveAttack(s, a, t, "sort:sv", fixedRng([0.5, 0.9, 0.5]));
+    expect(state.participants[0].pv).toBe(36);
+    expect(state.participants[1].pv).toBe(36);
+    expect(state.log.some((l) => l.message.includes("sacrifie 4 PV"))).toBe(true);
+  });
+
+  it("touche auto (Rituel de sang) : sans jet, sacrifice + effet", () => {
+    const sort = { id: "r", nom: "Rituel de sang", type: "offensif" as const, cout: { ressource: "mana", montant: 4 }, coutPV: "1d4" };
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "sort:r", nom: "✦ Rituel de sang", bonus: 0, degats: "1d1-1", toucheAuto: true, effetTouche: { cle: "Saignement rituel", duree: null } }],
+      sorts: [sort],
+    };
+    const s = createCombat([atk, pj("Tank", 30)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Sacrifice 1d4 : 3 PV. Dégâts 1d1-1 = 0.
+    const { state, resolution } = resolveAttack(s, a, t, "sort:r", fixedRng([0.5, 0.1, 0.9]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.toucheAuto).toBe(true);
+    expect(state.participants[0].pv).toBe(37);
+    expect(state.participants[0].ressources.mana.actuel).toBe(6);
+    expect(state.participants[1].effets.map((e) => e.nom)).toContain("Saignement rituel");
+  });
+
+  it("moitié si raté (Briser les cœurs)", () => {
+    const sort = { id: "br", nom: "Briser les cœurs", type: "offensif" as const, cout: { ressource: "mana", montant: 5 } };
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "sort:br", nom: "✦ Briser", bonus: 6, degats: "2d4", demiDegatsSiRate: true }],
+      sorts: [sort],
+    };
+    const s = createCombat([atk, pj("Mur", 30)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 3+6 = 9 < 30 raté, 2d4 : 3+3 = 6 -> moitié 3.
+    const { state, resolution } = resolveAttack(s, a, t, "sort:br", fixedRng([0.1, 0.5, 0.5]));
+    expect(resolution.touche).toBe(false);
+    expect(resolution.degatsTotal).toBe(3);
+    expect(state.participants[1].pv).toBe(37);
+    expect(state.log.some((l) => l.message.includes("moitié"))).toBe(true);
+  });
+
+  it("dégâts par tour lancés au toucher (Saignements)", () => {
+    const atk = {
+      ...sorcier(),
+      attaques: [{ id: "sa", nom: "Saignements", bonus: 10, degats: "1d1-1", effetTouche: { cle: "Saignement", duree: null, degatsParTour: "1d4" } }],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Touché, 0 DM direct, DoT 1d4 : 3.
+    const { state } = resolveAttack(s, a, t, "sa", fixedRng([0.9, 0.1, 0.5]));
+    const effet = state.participants[1].effets.find((e) => e.nom === "Saignement");
+    expect(effet).toBeTruthy();
+    expect(effet!.modificateurs).toMatchObject({ pvParTour: -3 });
+  });
+
+  it("limite 1/combat (Ensevelissement) : 2e lancer refusé", () => {
+    const sort = { id: "e", nom: "Ensevelissement", type: "offensif" as const, limiteCombat: 1, cout: { ressource: "mana", montant: 4 } };
+    const atk = {
+      ...sorcier(), budget: undefined,
+      attaques: [{ id: "sort:e", nom: "✦ Ensevelissement", bonus: 10, degats: "1d1-1" }],
+      sorts: [sort],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const r1 = resolveAttack(s, a, t, "sort:e", fixedRng([0.9, 0.1]));
+    expect(r1.state.participants[0].usagesSorts?.["e"]?.n).toBe(1);
+    expect(() => resolveAttack(r1.state, a, t, "sort:e", fixedRng([0.9, 0.1]))).toThrow(/limite 1\/combat/);
+  });
+
+  it("limite par cible (Malédiction) : même cible refusée, autre acceptée", () => {
+    const sort = { id: "m", nom: "Malédiction", type: "offensif" as const, limiteParCible: true, cout: { ressource: "mana", montant: 1 } };
+    const atk = {
+      ...sorcier(), budget: undefined,
+      attaques: [{ id: "sort:m", nom: "✦ Malédiction", bonus: 10, degats: "1d1-1", effetTouche: { cle: "Dé malus", duree: 1, mods: { deMalus: 1 } } }],
+      sorts: [sort],
+    };
+    const s = createCombat([atk, gobelin("A"), gobelin("B")]);
+    const [a, ga, gb] = s.participants.map((p) => p.instanceId);
+    const r1 = resolveAttack(s, a, ga, "sort:m", fixedRng([0.9, 0.1]));
+    expect(r1.resolution.touche).toBe(true);
+    expect(r1.state.participants[1].effets[0].modificateurs).toMatchObject({ deMalus: 1 });
+    expect(() => resolveAttack(r1.state, a, ga, "sort:m", fixedRng([0.9, 0.1]))).toThrow(/déjà affectée/);
+    const r2 = resolveAttack(r1.state, a, gb, "sort:m", fixedRng([0.9, 0.1]));
+    expect(r2.resolution.touche).toBe(true);
+  });
+
+  it("budget A+M ou L : seconde action refusée, mouvement libre, limitée consomme tout", () => {
+    const base = { ...pj("A"), budget: { action: false, mouvement: true } };
+    const s = createCombat([base, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    expect(() => resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.5]))).toThrow(/action déjà utilisée/);
+    expect(budgetOk(s.participants[0], "mouvement").ok).toBe(true);
+    const sobre = {
+      ...pj("B"),
+      budget: { action: true, mouvement: true },
+      attaques: [{ id: "m", nom: "M", bonus: 10, degats: "1d6", action: "mouvement" as const }],
+    };
+    const s2 = createCombat([sobre, pj("Tank", 10)]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    const r = resolveAttack(s2, a2, t2, "m", fixedRng([0.9, 0.5]));
+    expect(r.state.participants[0].budget).toEqual({ action: true, mouvement: false });
+    const limitee = {
+      ...pj("C"),
+      budget: { action: true, mouvement: true },
+      attaques: [{ id: "l", nom: "L", bonus: 10, degats: "1d6", action: "limitee" as const }],
+    };
+    const s3 = createCombat([limitee, pj("Tank", 10)]);
+    const [a3, t3] = s3.participants.map((p) => p.instanceId);
+    const r3 = resolveAttack(s3, a3, t3, "l", fixedRng([0.9, 0.5]));
+    expect(r3.state.participants[0].budget).toEqual({ action: false, mouvement: false });
+  });
+
+  it("soutien : attaque accordée (Beauté) + effet, INT substitué", () => {
+    const beaute = {
+      id: "b", nom: "Beauté de la succube", type: "utilitaire" as const, rang: 2,
+      action: "limitee" as const, cout: { ressource: "mana", montant: 2 },
+      effetCle: "Beauté de la succube", effetDuree: null,
+      attaqueAccordee: { nom: "Contact de la succube", degats: "1d4°+INT", volDeVie: true },
+    };
+    const caster = { ...sorcier(), sorts: [beaute] };
+    const s = createCombat([caster, gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    const { state } = castSoutien(s, a, a, beaute, fixedRng([0.9]));
+    const moi = state.participants[0];
+    const accordee = moi.attaques.find((x) => x.nom === "✦ Contact de la succube");
+    expect(accordee).toBeTruthy();
+    expect(accordee!.degats).toBe("1d4°+2");
+    expect(accordee!.volDeVie).toBe(true);
+    expect(moi.effets.map((e) => e.nom)).toContain("Beauté de la succube");
+    expect(moi.ressources.mana.actuel).toBe(8);
+    expect(moi.budget).toEqual({ action: false, mouvement: false });
+  });
+
+  it("soutien : invocation (démon) au camp du lanceur, PV niveau×5", () => {
+    const invoc = {
+      id: "i", nom: "Invocation d'un démon", type: "utilitaire" as const, rang: 5,
+      action: "limitee" as const, cout: { ressource: "mana", montant: 5 }, coutPV: "1d4",
+      invocation: { nom: "Démon", pvBase: 0, pvParNiveau: 5, defense: 18, bonusAttaque: "magique" as const, degats: "2d4°+5" },
+    };
+    const caster = { ...sorcier(), sorts: [invoc] };
+    const s = createCombat([caster, gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    // Sacrifice 1d4 : 3 PV.
+    const { state, resolution } = castSoutien(s, a, a, invoc, fixedRng([0.5]));
+    expect(state.participants).toHaveLength(3);
+    const demon = state.participants[2];
+    expect(demon.nom).toBe("Démon (Sorcier)");
+    expect(demon.camp).toBe("pj");
+    expect(demon.pv).toBe(25);
+    expect(demon.defense).toBe(18);
+    expect(demon.attaques[0].bonus).toBe(8);
+    expect(resolution.invoque).toBe("Démon (Sorcier)");
+    expect(state.participants[0].pv).toBe(37);
+    expect(state.participants[0].ressources.mana.actuel).toBe(5);
+  });
+
+  it("zone (Armée des morts) : tous les ennemis, alliés épargnés, 1/combat", () => {
+    const armee = {
+      id: "am", nom: "Armée des morts", type: "utilitaire" as const, rang: 5,
+      action: "limitee" as const, degats: "2d4",
+      effetCle: "Armée des morts", effetDuree: null, effetDegats: "2d4",
+      limiteCombat: 1, zone: true, cout: { ressource: "mana", montant: 5 },
+    };
+    const caster = { ...sorcier(), budget: undefined, sorts: [armee] };
+    const s = createCombat([caster, pj("Allié"), gobelin("A", 8), gobelin("B", 8)]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    // 2d4 : 3+3 = 6 immédiats, DoT 2d4 : -6/round.
+    const { state } = frapperZone(s, a, armee, fixedRng([0.5, 0.5, 0.5, 0.5]));
+    expect(state.participants[1].pv).toBe(40);
+    expect(state.participants[2].pv).toBe(2);
+    expect(state.participants[3].pv).toBe(2);
+    expect(state.participants[2].effets[0].modificateurs).toMatchObject({ pvParTour: -6 });
+    expect(state.participants[0].usagesSorts?.["am"]?.n).toBe(1);
+    expect(() => frapperZone(state, a, armee, fixedRng([0.5]))).toThrow(/limite 1\/combat/);
+  });
+
+  it("capacités : Pacte démoniaque sacrifie des PV, sans effet", () => {
+    const caster = { ...sorcier(), capacites: ["Pacte démoniaque"] };
+    const s = createCombat([caster, gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    // Sacrifice 1d4 : 3 PV.
+    const { state, resolution } = utiliserCapacite(s, a, a, "Pacte démoniaque", { effetCle: null, coutPV: "1d4" }, fixedRng([0.5]));
+    expect(state.participants[0].pv).toBe(37);
+    expect(resolution.effetNom).toBeNull();
+    expect(state.log.some((l) => l.message.includes("sacrifie 3 PV"))).toBe(true);
+  });
+
+  it("soutien : effetMods fusionnés (Aspect +5 DEF)", () => {
+    const aspect = {
+      id: "as", nom: "Aspect du démon", type: "utilitaire" as const, rang: 4,
+      action: "attaque" as const, cout: { ressource: "mana", montant: 4 },
+      effetCle: "Aspect du démon", effetDuree: null, effetMods: { defense: 5 },
+      attaqueAccordee: { nom: "Griffes du démon", degats: "1d4°+INT" },
+    };
+    const caster = { ...sorcier(), sorts: [aspect] };
+    const s = createCombat([caster, gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    const { state } = castSoutien(s, a, a, aspect, fixedRng([0.9]));
+    expect(state.participants[0].effets[0].modificateurs).toMatchObject({ defense: 5 });
+    expect(state.participants[0].attaques.some((x) => x.nom === "✦ Griffes du démon")).toBe(true);
+    // Action (A) consommée, mouvement libre.
+    expect(state.participants[0].budget).toEqual({ action: false, mouvement: true });
+  });
+
+  it("etatLimite + applyCoutPV unitaires", () => {
+    const sort = { id: "e", nom: "Ensevelissement", type: "offensif" as const, limiteCombat: 1 };
+    expect(etatLimite(sorcier(), sort).ok).toBe(true);
+    const usage = { ...sorcier(), usagesSorts: { e: { n: 1, cibles: [] } } };
+    expect(etatLimite(usage, sort).ok).toBe(false);
+    const s = createCombat([sorcier(), gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    const r = applyCoutPV(s, a, "1d4", fixedRng([0.5]));
+    expect(r.pvPerdus).toBe(3);
+    expect(r.state.participants[0].pv).toBe(37);
   });
 });

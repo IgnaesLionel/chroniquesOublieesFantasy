@@ -16,6 +16,43 @@ describe("grimoire des sorts (DRS)", () => {
     }
   });
 
+  it("sorcier (livre) : 20 sorts, actions et coûts fonctionnels", () => {
+    const VOIES_SORCIER = ["Voie du démon", "Voie de la mort", "Voie de l'outre-tombe", "Voie du sang", "Voie de la sombre magie"];
+    const sorts = SEED_SORTS.filter((s) => (s.familles ?? []).includes("Sorcier") && VOIES_SORCIER.includes(s.voie ?? ""));
+    const parNom = Object.fromEntries(sorts.map((s) => [s.nom, s]));
+    // 4 sorts × 5 voies (les 5 talents sans PM restent hors grimoire).
+    expect(sorts).toHaveLength(20);
+    for (const s of sorts) {
+      expect(s.action, `${s.nom} : action manquante`).toBeTruthy();
+      expect(s.cout?.montant, `${s.nom} : coût = rang`).toBe(s.rang);
+    }
+    // Cas du livre.
+    expect(parNom["Malédiction"].action).toBe("mouvement");
+    expect(parNom["Malédiction"].limiteParCible).toBe(true);
+    expect(parNom["Malédiction"].effetMods).toMatchObject({ deMalus: 1 });
+    expect(parNom["Beauté de la succube"].type).toBe("utilitaire");
+    expect(parNom["Beauté de la succube"].attaqueAccordee?.volDeVie).toBe(true);
+    expect(parNom["Aspect du démon"].type).toBe("utilitaire");
+    expect(parNom["Aspect du démon"].effetMods).toMatchObject({ defense: 5 });
+    expect(parNom["Invocation d'un démon"].invocation?.nom).toBe("Démon");
+    expect(parNom["Invocation d'un démon"].coutPV).toBe("1d4°");
+    expect(parNom["Baiser du vampire"].volDeVie).toBe(true);
+    expect(parNom["Briser les cœurs"].demiDegatsSiRate).toBe(true);
+    expect(parNom["Briser les cœurs"].limiteParCible).toBe(true);
+    expect(parNom["Ensevelissement"].limiteCombat).toBe(1);
+    expect(parNom["Ensevelissement"].effetDegats).toBe("2d4°");
+    expect(parNom["Ensevelissement"].degats).toBeUndefined();
+    expect(parNom["Saignements"].effetDegats).toBe("1d4°");
+    expect(parNom["Saignements"].degats).toBeUndefined();
+    expect(parNom["Strangulation"].effetDegats).toBe("1d4°+INT");
+    expect(parNom["Rituel de sang"]).toBeTruthy();
+    expect(parNom["Rituel de sang"].toucheAuto).toBe(true);
+    expect(parNom["Rituel de sang"].coutPV).toBe("1d4°");
+    expect(parNom["Armée des morts"].zone).toBe(true);
+    expect(parNom["Armée des morts"].limiteCombat).toBe(1);
+    expect(parNom["Animation des morts"].invocation?.nom).toBe("Zombie");
+  });
+
   it("familles = profils lanceurs du DRS", () => {
     for (const s of SEED_SORTS) {
       for (const f of s.familles ?? []) {

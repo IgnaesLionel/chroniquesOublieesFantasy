@@ -2,7 +2,7 @@ import { rollDie, type Rng } from "@/src/lib/rules/dice/roller";
 import type { ActiveEffect } from "@/src/lib/rules/types";
 import type { CombatLogEntry, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { tickEffects } from "@/src/lib/rules/effects/effects";
-import { checkEnd } from "@/src/lib/rules/combat/attack";
+import { budgetPlein, checkEnd } from "@/src/lib/rules/combat/attack";
 
 function entry(manche: number, message: string): CombatLogEntry {
   return { id: `${Date.now()}-${Math.floor(Math.random() * 1e6)}`, at: new Date().toISOString(), manche, message };
@@ -20,11 +20,13 @@ export function createCombat(participants: CombatParticipant[]): CombatState {
   };
 }
 
-/** Lance 1d20+initMod pour chacun, trie décroissant. Départage : initMod puis ordre stable. */
+/** Lance 1d20+initMod pour chacun, trie décroissant. Budget plein, usages à zéro. */
 export function rollInitiatives(state: CombatState, rng: Rng = Math.random): CombatState {
   const rolled: CombatParticipant[] = state.participants.map((p) => ({
     ...p,
     initiative: rollDie(20, rng) + p.initMod,
+    budget: budgetPlein(),
+    usagesSorts: {},
   }));
   rolled.sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0) || b.initMod - a.initMod);
   return {
@@ -58,7 +60,8 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
     if (!sauterKO || state.participants[idx]?.statut === "actif") break;
   }
   const log = [...state.log];
-  let participants = state.participants;
+  // Nouveau tour : budget d'actions plein (A+M ou L).
+  let participants = state.participants.map((p, i) => (i === idx ? { ...p, budget: budgetPlein() } : p));
   const actif = participants[idx];
   if (actif && actif.effets.length > 0) {
     const { restants, pvDelta, expires } = tickEffects(actif.effets);

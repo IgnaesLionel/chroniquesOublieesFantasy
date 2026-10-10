@@ -9,7 +9,15 @@ import { canAct } from "@/src/lib/rules/effects/effects";
 interface Props {
   participants: CombatParticipant[];
   lanceurId: string | null;
-  onUtiliser: (lanceurId: string, cibleId: string, talentNom: string, effetCle: string | null, dureeTours: number | null) => void;
+  onUtiliser: (
+    lanceurId: string,
+    cibleId: string,
+    talentNom: string,
+    effetCle: string | null,
+    dureeTours: number | null,
+    mods: Record<string, number> | undefined,
+    coutPV: string | undefined
+  ) => void;
 }
 
 function defautPour(nom: string) {
@@ -53,8 +61,8 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       </label>
       {defaut && (
         <p className="text-xs text-zinc-500">
-          Effet suggéré : {EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle}
-          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : "tous"}.
+          Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
+          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
         </p>
       )}
@@ -81,11 +89,11 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
         /></label>
       </div>
       <button
-        onClick={() => { if (cible) onUtiliser(lanceur.instanceId, cible.instanceId, talent, effetActif || null, dureeActive); }}
+        onClick={() => { if (cible) onUtiliser(lanceur.instanceId, cible.instanceId, talent, effetActif || null, dureeActive, defaut?.mods, defaut?.coutPV); }}
         disabled={bloque || !cible}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
-        Utiliser {talent}
+        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}
       </button>
     </div>
   );

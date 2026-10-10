@@ -40,15 +40,16 @@ export const ACTION_LABEL: Record<ActionDRS, string> = {
 };
 
 /**
- * Déduit le type d'action DRS d'un résumé ("Action limitée", "Action gratuite"...).
- * Indéfini pour les talents passifs (bonus permanents, sans activation).
+ * Déduit le type d'action DRS d'un résumé ("Action limitée", "Sort (limitée)",
+ * "(mouvement/limitée)", "Sort d'attaque"...). Attaque prioritaire (ex.
+ * "(attaque/limitée)" = A d'abord). Indéfini pour les talents passifs.
  */
 export function infererAction(resume: string): ActionDRS | undefined {
   const t = resume.toLowerCase();
-  if (t.includes("action limitée")) return "limitee";
-  if (t.includes("action gratuite")) return "gratuite";
-  if (t.includes("action de mouvement")) return "mouvement";
-  if (t.includes("action d'attaque")) return "attaque";
+  if (t.includes("action d'attaque") || t.includes("sort d'attaque") || t.includes("(attaque")) return "attaque";
+  if (t.includes("action gratuite") || t.includes("(gratuite")) return "gratuite";
+  if (t.includes("action de mouvement") || t.includes("(mouvement") || t.includes("mouvement")) return "mouvement";
+  if (t.includes("action limitée") || t.includes("limitée")) return "limitee";
   return undefined;
 }
 

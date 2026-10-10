@@ -26,7 +26,16 @@ const attackSchema = z.object({
   bonus: z.number(),
   degats: z.string(),
   degatsAffiche: z.string().optional(),
-  effetTouche: z.object({ cle: z.string(), duree: z.number().int().min(1).nullable() }).optional(),
+  action: z.enum(["attaque", "mouvement", "limitee", "gratuite"]).optional(),
+  volDeVie: z.boolean().optional(),
+  toucheAuto: z.boolean().optional(),
+  demiDegatsSiRate: z.boolean().optional(),
+  effetTouche: z.object({
+    cle: z.string(),
+    duree: z.number().int().min(1).nullable(),
+    degatsParTour: z.string().optional(),
+    mods: z.record(z.string(), z.number()).optional(),
+  }).optional(),
 });
 
 const inventaireSchema = z.object({
@@ -52,7 +61,31 @@ export const sortSchema = z.object({
   soin: z.string().optional(),
   effetCle: z.string().optional(),
   effetDuree: z.number().int().min(1).nullable().optional(),
+  effetDegats: z.string().optional(),
+  effetMods: z.record(z.string(), z.number()).optional(),
   cout: z.object({ ressource: z.string(), montant: z.number().min(0) }).optional(),
+  coutPV: z.string().optional(),
+  volDeVie: z.boolean().optional(),
+  toucheAuto: z.boolean().optional(),
+  demiDegatsSiRate: z.boolean().optional(),
+  limiteCombat: z.number().int().min(1).optional(),
+  limiteParCible: z.boolean().optional(),
+  attaqueAccordee: z.object({
+    nom: z.string(),
+    degats: z.string(),
+    bonus: z.number().optional(),
+    volDeVie: z.boolean().optional(),
+  }).optional(),
+  invocation: z.object({
+    nom: z.string(),
+    pvBase: z.number().int().min(0),
+    pvParNiveau: z.number().min(0),
+    defense: z.number().int(),
+    bonusAttaque: z.union([z.number(), z.literal("magique")]),
+    degats: z.string(),
+    initiative: z.number().optional(),
+  }).optional(),
+  zone: z.boolean().optional(),
 });
 
 export const characterSchema = z.object({

@@ -27,7 +27,9 @@ export function attaqueFromItem(item: Item): AttackDef | null {
  * Sans dégâts (Malédiction, Peur...) : jet d'attaque + effet éventuel, 0 DM
  * (convention du moteur : 0 = "1d1-1"). Sans bonus explicite : attaque
  * magique du lanceur (passée par participantFromCharacter : niv+VOL).
- * Les caracs ("1d4°+INT") et le dé évolutif ("1dE") sont substitués. */
+ * Les caracs ("1d4°+INT") et le dé évolutif ("1dE") sont substitués.
+ * Action, vol de vie, touche auto, moitié si raté et effet au toucher
+ * (dégâts par tour + modificateurs) suivent la fiche du sort. */
 export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<string, number> = {}, niveauDe = 1): AttackDef | null {
   if (sort.type !== "offensif") return null;
   return {
@@ -35,7 +37,11 @@ export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<str
     nom: `✦ ${sort.nom}`,
     bonus: sort.bonus ?? bonusMagique,
     degats: sort.degats ? substituerDeEvolutif(substituerStats(sort.degats, caracs), deEvolutif(niveauDe)) : "1d1-1",
-    effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null } : undefined,
+    action: sort.action ?? "attaque",
+    volDeVie: sort.volDeVie,
+    toucheAuto: sort.toucheAuto,
+    demiDegatsSiRate: sort.demiDegatsSiRate,
+    effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null, degatsParTour: sort.effetDegats, mods: sort.effetMods } : undefined,
   };
 }
 
@@ -83,6 +89,10 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     ressources: { ...c.ressources },
     niveau: c.niveau,
     statut: c.pv <= 0 ? "ko" : "actif",
+    budget: { action: true, mouvement: true },
+    bonusMagique: magique,
+    caracs: { ...c.caracteristiques },
+    usagesSorts: {},
   };
 }
 
@@ -106,6 +116,8 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     ressources: {},
     niveau: template.niveau,
     statut: "actif" as const,
+    budget: { action: true, mouvement: true },
+    usagesSorts: {},
   }));
 }
 
