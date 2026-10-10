@@ -244,14 +244,16 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(sortDuTalent("Boule de feu", SEED_SORTS)).toBeUndefined();
     // Grimoire sans l'entrée : rien.
     expect(sortDuTalent("Un pied dans la tombe", [])).toBeUndefined();
-    // Apprendre le talent crée aussi le sort (+ mana).
+    // Apprendre le talent crée aussi le sort (+ mana), full mana + full vie (niveau).
     const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const vierge: Character = { ...mirabel, capacites: ["Malédiction"], sorts: [] };
+    const vierge: Character = { ...mirabel, pv: 2, capacites: ["Malédiction"], sorts: [], ressources: { ...mirabel.ressources, mana: { max: 4, actuel: 1 } } };
     expect(mirabel.caracteristiques.VOL).toBe(4);
     const r = apprendreTalentComplet(vierge, "Un pied dans la tombe", SEED_SORTS);
     expect(r.capacites).toContain("Un pied dans la tombe");
     expect(r.sorts.map((s) => s.nom)).toContain("Un pied dans la tombe");
     expect(r.ressources.mana.max).toBe(5); // VOL 4 + 1 sort
+    expect(r.ressources.mana).toEqual({ max: 5, actuel: 5 }); // +1 sort => +1 mana, à fond
+    expect(r.pv).toBe(r.pvMax); // full vie
     expect(vierge.sorts).toHaveLength(0); // non muté
     // Pas de doublon si le sort existe déjà.
     const r2 = apprendreTalentComplet(r, "Un pied dans la tombe", SEED_SORTS);

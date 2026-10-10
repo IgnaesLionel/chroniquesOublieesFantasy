@@ -250,16 +250,25 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(m.ressources.mana).toEqual({ max: 4, actuel: 4 }); // VOL 4 + 0 sort
   });
 
-  it("ajouterCapacite : apprend un talent sans doublon, mana inchangé", () => {
+  it("ajouterCapacite : apprend un talent sans doublon, PV et mana à fond (niveau)", () => {
     const c = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     expect(c.capacites).not.toContain("Vivacité");
-    const r = ajouterCapacite(c, "Vivacité");
+    const blesse = { ...c, pv: 3, ressources: { ...c.ressources, mana: { max: 0, actuel: 0 } } };
+    const r = ajouterCapacite(blesse, "Vivacité");
     expect(r.capacites).toContain("Vivacité");
-    expect(r.ressources.mana).toEqual(c.ressources.mana);
+    expect(r.pv).toBe(r.pvMax); // full vie
+    expect(r.ressources.mana).toEqual({ max: 0, actuel: 0 });
     expect(c.capacites).not.toContain("Vivacité"); // non muté
     const r2 = ajouterCapacite(r, "Vivacité");
     expect(r2.capacites.filter((x) => x === "Vivacité")).toHaveLength(1);
+    expect(r2).toBe(r); // doublon : inchangé (pas de soin surprise)
     expect(ajouterCapacite(r, "  ").capacites).toEqual(r.capacites);
+    // Talent pur sur un mage blessé : mana existant remis à fond, max inchangé.
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const blessee = { ...mirabel, pv: 1, ressources: { ...mirabel.ressources, mana: { max: 6, actuel: 2 } } };
+    const r3 = ajouterCapacite(blessee, "Robustesse");
+    expect(r3.pv).toBe(r3.pvMax);
+    expect(r3.ressources.mana).toEqual({ max: 6, actuel: 6 });
   });
 
   it("changerFamille : vide les voies, recadre le profil, suit la voie du mage", () => {

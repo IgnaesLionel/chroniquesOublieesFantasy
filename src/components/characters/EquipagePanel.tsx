@@ -55,13 +55,14 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
       cout: sortDraft.cout && sortDraft.cout.montant > 0 ? sortDraft.cout : undefined,
     };
     const sorts = [...(character.sorts ?? []), sort];
-    // Mana COF = VOL + sorts connus : le max suit automatiquement.
+    // Mana COF = VOL + sorts connus : le max suit automatiquement, montée de
+    // niveau = mana à fond + PV au max.
     const max = manaMax(character.caracteristiques.VOL, sorts.length);
-    const prev = character.ressources?.mana ?? { max, actuel: max };
     onUpdate({
       ...character,
       sorts,
-      ressources: { ...(character.ressources ?? {}), mana: { max, actuel: Math.min(prev.actuel, max) } },
+      pv: character.pvMax,
+      ressources: { ...(character.ressources ?? {}), mana: { max, actuel: max } },
     });
     setSortDraft({ ...EMPTY_SORT });
   };

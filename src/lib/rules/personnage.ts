@@ -469,29 +469,38 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
 
 /**
  * Fait apprendre un sort du grimoire à un personnage (copie avec un nouvel id).
- * Le mana max suit la formule VOL + sorts connus (l'actuel est conservé,
- * plafonné au nouveau max).
+ * Le mana max suit la formule VOL + sorts connus (+1 par sort appris) et le
+ * personnage est remis à fond (montée de niveau) : mana actuel = max, PV au max.
  */
 export function apprendreSort<T extends Character>(c: T, modele: Sort): T {
   const sort: Sort = { ...modele, id: `sort-${Date.now().toString(36)}` };
   const sorts = [...(c.sorts ?? []), sort];
   const max = manaMax(c.caracteristiques.VOL, sorts.length);
-  const prev = c.ressources?.mana ?? { max, actuel: max };
   return {
     ...c,
     sorts,
-    ressources: { ...(c.ressources ?? {}), mana: { max, actuel: Math.min(prev.actuel, max) } },
+    pv: c.pvMax,
+    ressources: { ...(c.ressources ?? {}), mana: { max, actuel: max } },
   };
 }
 
 /**
  * Fait apprendre une capacité (talent de voie, sans PM) : ajoute son nom aux
- * capacités du personnage (sans doublon). Le mana est inchangé.
+ * capacités du personnage (sans doublon). Montée de niveau : PV au max et
+ * mana remis à fond (max inchangé). Doublon / nom vide : inchangé.
  */
 export function ajouterCapacite<T extends Character>(c: T, nom: string): T {
   const n = nom.trim();
   if (!n || (c.capacites ?? []).includes(n)) return c;
-  return { ...c, capacites: [...(c.capacites ?? []), n] };
+  const mana = c.ressources?.mana;
+  return {
+    ...c,
+    capacites: [...(c.capacites ?? []), n],
+    pv: c.pvMax,
+    ressources: mana
+      ? { ...(c.ressources ?? {}), mana: { ...mana, actuel: mana.max } }
+      : c.ressources,
+  };
 }
 
 /**
