@@ -3,9 +3,10 @@ import { useState } from "react";
 import type { Character, Sort, SortType } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
-import { manaMax, ajouterCapacite } from "@/src/lib/rules/personnage";
-import { compterCapacites, normaliserNomCapacite, peutApprendre, peutDesapprendre, talentsRang2Gratuits } from "@/src/lib/rules/creation";
+import { manaMax } from "@/src/lib/rules/personnage";
+import { apprendreTalentComplet, compterCapacites, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
 import { ACTION_LABEL, infererAction, voiesDe } from "@/src/lib/data/capacites";
+import { SEED_SORTS } from "@/src/lib/data/sorts";
 
 interface Props {
   character: Character;
@@ -81,7 +82,8 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
 
   const learnTalent = (nom: string) => {
     if (!nom) return;
-    onUpdate(ajouterCapacite(character, nom));
+    // Un talent qui est aussi un sort crée l'entrée lançable (+ mana).
+    onUpdate(apprendreTalentComplet(character, nom, SEED_SORTS));
   };
 
   return (
@@ -214,6 +216,21 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
           {talents.map((t) => (
             <div key={t} className="flex items-center gap-2 text-sm">
               <span className="flex-1">◈ {t}</span>
+              {(() => {
+                const sort = sortDuTalent(t, SEED_SORTS);
+                const q = normaliserNomCapacite(t);
+                const lanceable = character.sorts.some((s) => normaliserNomCapacite(s.nom) === q);
+                if (!sort || lanceable) return null;
+                return (
+                  <button
+                    onClick={() => learnTalent(t)}
+                    title={`Créer le sort lançable (${sort.cout ? `${sort.cout.montant} PM` : "sans coût"})`}
+                    className="text-xs px-2 py-0.5 rounded bg-violet-900 hover:bg-violet-800"
+                  >
+                    ✦
+                  </button>
+                );
+              })()}
               {(() => {
                 const porte = peutDesapprendre(character, t, "talents");
                 return porte.ok ? (

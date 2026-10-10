@@ -1,6 +1,7 @@
 import { CAPACITES } from "@/src/lib/data/capacites";
-import { VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
-import type { Character } from "@/src/lib/rules/types";
+import { VOIES_PEUPLE, VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
+import type { Character, Sort } from "@/src/lib/rules/types";
+import { ajouterCapacite, apprendreSort } from "@/src/lib/rules/personnage";
 
 // Règle de création COF Fantasy V2 (niveau 1) :
 //   - 2 points de capacité -> 2 capacités de rang 1 parmi les voies du profil (1 pt chacune).
@@ -358,6 +359,39 @@ export function talentsRang2Gratuits(c: Character): { nom: string; voie: string 
       .filter((x) => x.rang === 2 && !prises.has(normaliserNomCapacite(x.nom)))
       .map((x) => ({ nom: x.nom, voie: v.voie }))
   );
+}
+
+/**
+ * Retrouve l'entrée grimoire d'un talent qui est aussi un sort (via sortId),
+ * dans les voies de profils comme du peuple/mage. Indéfini sinon.
+ */
+export function sortDuTalent(nom: string, grimoire: Sort[]): Sort | undefined {
+  const q = normaliserNomCapacite(nom);
+  const cherche = (voies: { capacites: { nom: string; sortId?: string }[] }[]): string | undefined => {
+    for (const v of voies) {
+      const cap = v.capacites.find((x) => x.sortId && normaliserNomCapacite(x.nom) === q);
+      if (cap?.sortId) return cap.sortId;
+    }
+    return undefined;
+  };
+  const id =
+    cherche(Object.values(CAPACITES).flat()) ?? cherche(VOIES_PEUPLE) ?? cherche([VOIE_MAGE]);
+  if (!id) return undefined;
+  return grimoire.find((s) => s.id === id);
+}
+
+/**
+ * Apprend un talent ; si c'est aussi un sort, crée l'entrée lançable (+ mana).
+ * Connaître le talent sans le sort ne permet pas de le lancer en combat.
+ */
+export function apprendreTalentComplet<T extends Character>(c: T, nom: string, grimoire: Sort[] = []): T {
+  let r = ajouterCapacite(c, nom);
+  const sort = sortDuTalent(nom, grimoire);
+  const q = normaliserNomCapacite(nom);
+  if (sort && !r.sorts.some((s) => normaliserNomCapacite(s.nom) === q)) {
+    r = apprendreSort(r, sort);
+  }
+  return r;
 }
 
 export interface PorteDesapprentissage {

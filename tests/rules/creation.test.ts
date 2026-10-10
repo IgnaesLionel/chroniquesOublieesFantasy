@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import { SEED_SORTS } from "@/src/lib/data/sorts";
+import type { Character } from "@/src/lib/rules/types";
 import {
   CREATION_DEFAUT,
+  apprendreTalentComplet,
   compterCapacites,
   coutRang,
   creationProfil,
@@ -12,6 +15,7 @@ import {
   peutApprendre,
   peutDesapprendre,
   pointsCapaciteTotal,
+  sortDuTalent,
   talentsRang1Disponibles,
   talentsRang2Gratuits,
 } from "@/src/lib/rules/creation";
@@ -193,5 +197,33 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(bloqueSort.ok).toBe(false);
     expect(bloqueSort.raisons.some((r) => r.includes("Voie du mage rang 3"))).toBe(true);
     expect(peutDesapprendre(sortsMage, "Tour de magie", "sorts")).toEqual({ ok: true, raisons: [] });
+  });
+
+  it("sortDuTalent + apprendreTalentComplet : un talent-sort devient lançable", () => {
+    // Talent-sort connu : retrouve l'entrée grimoire.
+    expect(sortDuTalent("Un pied dans la tombe", SEED_SORTS)?.id).toBe("sort-pied-tombe");
+    expect(sortDuTalent("Maîtrise de la magie", SEED_SORTS)?.id).toBe("sort-maitrise-magie");
+    // Talent pur : rien.
+    expect(sortDuTalent("Robustesse", SEED_SORTS)).toBeUndefined();
+    expect(sortDuTalent("Boule de feu", SEED_SORTS)).toBeUndefined();
+    // Grimoire sans l'entrée : rien.
+    expect(sortDuTalent("Un pied dans la tombe", [])).toBeUndefined();
+    // Apprendre le talent crée aussi le sort (+ mana).
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const vierge: Character = { ...mirabel, capacites: ["Malédiction"], sorts: [] };
+    expect(mirabel.caracteristiques.VOL).toBe(4);
+    const r = apprendreTalentComplet(vierge, "Un pied dans la tombe", SEED_SORTS);
+    expect(r.capacites).toContain("Un pied dans la tombe");
+    expect(r.sorts.map((s) => s.nom)).toContain("Un pied dans la tombe");
+    expect(r.ressources.mana.max).toBe(5); // VOL 4 + 1 sort
+    expect(vierge.sorts).toHaveLength(0); // non muté
+    // Pas de doublon si le sort existe déjà.
+    const r2 = apprendreTalentComplet(r, "Un pied dans la tombe", SEED_SORTS);
+    expect(r2.sorts.filter((s) => s.nom === "Un pied dans la tombe")).toHaveLength(1);
+    expect(r2.capacites.filter((t) => t === "Un pied dans la tombe")).toHaveLength(1);
+    // Talent pur : aucun sort créé.
+    const r3 = apprendreTalentComplet(vierge, "Robustesse", SEED_SORTS);
+    expect(r3.capacites).toContain("Robustesse");
+    expect(r3.sorts).toHaveLength(0);
   });
 });

@@ -32,7 +32,9 @@ export default function CombatPage() {
   const active = combat ? getActive(combat) : null;
 
   const addPJ = (c: Character) => {
-    setStaging((s) => (s.some((p) => p.templateId === c.id) ? s : [...s, participantFromCharacter(c, catalogue)]));
+    // Remplace si déjà présent : les attaques/sorts suivent la fiche à jour.
+    const frais = participantFromCharacter(c, catalogue);
+    setStaging((s) => (s.some((p) => p.templateId === c.id) ? s.map((p) => (p.templateId === c.id ? frais : p)) : [...s, frais]));
   };
   const addMonsters = (m: MonsterTemplate) => {
     const n = Math.max(1, Math.min(12, quantities[m.id] ?? 1));
@@ -111,11 +113,14 @@ export default function CombatPage() {
           <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Rencontre ({staging.length})</h2>
           {staging.length === 0 && <p className="text-sm text-zinc-500">Ajoutez PJ + monstres. Ex : 4 PJ + Gobelin ×4.</p>}
           <div className="flex flex-wrap gap-2">
-            {staging.map((p) => (
-              <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800">
-                {p.nom} <button onClick={() => setStaging((s) => s.filter((x) => x.instanceId !== p.instanceId))} className="text-red-400 ml-1">✕</button>
-              </span>
-            ))}
+            {staging.map((p) => {
+              const nbSorts = p.attaques.filter((a) => a.id.startsWith("sort:")).length;
+              return (
+                <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) dont ${nbSorts} sort(s}`}>
+                  {p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span> <button onClick={() => setStaging((s) => s.filter((x) => x.instanceId !== p.instanceId))} className="text-red-400 ml-1">✕</button>
+                </span>
+              );
+            })}
           </div>
           <div className="flex gap-2 mt-3">
             <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>

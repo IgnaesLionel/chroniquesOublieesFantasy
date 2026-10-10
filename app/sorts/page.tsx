@@ -9,7 +9,7 @@ import { exportJson } from "@/src/lib/store/repository";
 import type { ActionDRS, Character, Sort, SortType } from "@/src/lib/rules/types";
 import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
 import { ajouterCapacite, apprendreSort, normaliserPersonnage } from "@/src/lib/rules/personnage";
-import { peutApprendre } from "@/src/lib/rules/creation";
+import { apprendreTalentComplet, peutApprendre } from "@/src/lib/rules/creation";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
 
@@ -164,7 +164,8 @@ export default function SortsPage() {
         if (c.id !== pid) return c;
         const norm = normaliserPersonnage(c as unknown as Record<string, unknown>);
         if (!peutApprendre(norm, entree).ok) return c;
-        return ajouterCapacite(norm, entree.nom);
+        // Un talent qui est aussi un sort crée l'entrée lançable (+ mana).
+        return apprendreTalentComplet(norm, entree.nom, items);
       })
     );
   };
