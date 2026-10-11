@@ -13,11 +13,15 @@ interface Props {
     lanceurId: string,
     cibleId: string,
     talentNom: string,
-    effetCle: string | null,
-    dureeTours: number | null,
-    mods: Record<string, number> | undefined,
-    coutPV: string | undefined,
-    actionSpeciale: "renvoi" | undefined
+    opts: {
+      effetCle: string | null;
+      dureeTours: number | null;
+      mods: Record<string, number> | undefined;
+      coutPV: string | undefined;
+      actionSpeciale: "renvoi" | "compagnon" | undefined;
+      soin: string | undefined;
+      nettoie: boolean | undefined;
+    }
   ) => void;
 }
 
@@ -63,7 +67,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       {defaut && (
         <p className="text-xs text-zinc-500">
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
-          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : "tous"}.
+          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
         </p>
       )}
@@ -90,11 +94,23 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
         /></label>
       </div>
       <button
-        onClick={() => { if (cible) onUtiliser(lanceur.instanceId, cible.instanceId, talent, effetActif || null, dureeActive, defaut?.mods, defaut?.coutPV, defaut?.actionSpeciale); }}
+        onClick={() => {
+          if (cible) {
+            onUtiliser(lanceur.instanceId, cible.instanceId, talent, {
+              effetCle: effetActif || null,
+              dureeTours: dureeActive,
+              mods: defaut?.mods,
+              coutPV: defaut?.coutPV,
+              actionSpeciale: defaut?.actionSpeciale,
+              soin: defaut?.soin,
+              nettoie: defaut?.nettoie,
+            });
+          }
+        }}
         disabled={bloque || !cible}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
-        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}
+        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}{defaut?.actionSpeciale === "compagnon" ? " 🐺" : ""}
       </button>
     </div>
   );

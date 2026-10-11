@@ -32,10 +32,14 @@ export interface CombatParticipant {
   bonusMagique?: number;
   /** Caractéristiques (substitution "1d4°+INT" des attaques accordées). */
   caracs?: Record<string, number>;
+  /** Profil (voies suivies : loup, tactiques...). */
+  profil?: string;
   /** Usages de sorts limités : sortId -> { tentatives, cibles touchées }. */
   usagesSorts?: Record<string, { n: number; cibles: string[] }>;
   /** Sort absorbé (Absorber) en attente de renvoi. */
   sortAbsorbe?: SortAbsorbe;
+  /** Dernier coup porté (Double peine : 2e touche même cible même round). */
+  dernierCoup?: { cibleId: string; manche: number; enchaine: boolean };
 }
 
 /** Sort absorbé par un bouclier, renvoyable (Renvoi de sort, sauf zones). */

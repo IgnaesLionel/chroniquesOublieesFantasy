@@ -95,7 +95,7 @@ export default function ReglesPage() {
 
       <Section id="personnage" titre="Personnage">
         <p>Caractéristiques : AGI, CON, FOR, PER, CHA, INT, VOL (modificateurs, ex. +4/-1). Idéal héroïque et travers : narratifs, aucun bonus.<Src de="Fiches" /></p>
-        <Formule>INIT = 10 + PER (+3 Vivacité) · DEF = 10 + AGI + Équipement + Mod + talents (Armure d&apos;os +3, bouclier/dur/rempart +1)<Src de="Fiches" /><Src de="Règle" /></Formule>
+        <Formule>INIT = 10 + PER (+3 Vivacité, +rang archer) · DEF = 10 + AGI + Équipement + Mod + talents (os +3, bouclier/dur/rempart/parade +1, tactiques +N)<Src de="Fiches" /><Src de="Règle" /></Formule>
         <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
@@ -190,6 +190,8 @@ export default function ReglesPage() {
           <li>Parade (Guerrier, M, bouclier) : la prochaine attaque réussie est bloquée sur test opposé auto (niv+FOR/AGI) ; absorption des sorts pareil, stockée pour Renvoi (G, pas les zones). Énorme/colossale : moitié DM (MJ).<Src de="Règle" /></li>
           <li>Riposte (G) : un raté au contact est signalé (1/round, MJ : attaque manuelle). Coups spéciaux (panneau Attaque) : Puissante (dé malus +2d4°, L +3d4°), Parfaite (dé bonus +1d4°, prédilection MJ), mod. ±N, +DM (Double/Circulaire −2, prédilection +1, spécialisation +1).<Src de="Règle" /></li>
           <li>Science du critique : 19-20 avec prédilection (effet à appliquer via Capacités, MJ).<Src de="Règle" /></li>
+          <li>Rôdeur archer : Dans le mille (dé malus +2d4°, L +3d4°), Flèche de mort (dé bonus +1d4° ou état 1 round : aveuglé/affaibli/ralenti/immobilisé, NC inférieur, 1/combat chacun, MJ), Éclair (bonus et DM à l&apos;AGI) — à cocher dans le panneau Attaque ; Double (L) et Tir rapide (L) : mod. −2, 2 lancers.<Src de="Règle" /></li>
+          <li>Compagnon : Le loup via Capacités 🐺 (DEF 12+rang, PV niv×4, alpha auto : DEF 18, PV niv×5) ; Double peine +1d4° auto à la 2e touche ; À-suivre et Riposte signalés au raté (MJ) ; Increvable via Capacités (+4d4°+CON, +5 DEF, purge, 1/combat MJ) ; Éclaireur : +1 DR au lieu du +1 PC.<Src de="Règle" /></li>
           <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
           <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Supposition" /></li>
           <li>Armure d&apos;os : +3 DEF automatiques à l&apos;apprentissage (retirés au désapprentissage). Passifs restants (Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>

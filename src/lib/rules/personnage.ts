@@ -144,16 +144,19 @@ export function pvMaxBase(famille: FamilleCOF, con: number, niveau = 1): number 
   return Math.max(1, PV_BASE_PAR_FAMILLE[famille] + con * niv + PV_GAIN_PAR_FAMILLE[famille] * (niv - 1));
 }
 
-/** Points de chance max : 2 + CHA (+1 si Aventurier => 3 + CHA). Min 0. */
-export function chanceMax(cha: number, profil: string, familleReplis?: FamilleCOF): number {
+/** Points de chance max : 2 + CHA (+1 si Aventurier => 3 + CHA). Min 0.
+ * Éclaireur (Rôdeur) : +1 DR au lieu du +1 PC aventurier. */
+export function chanceMax(cha: number, profil: string, familleReplis?: FamilleCOF, talents: string[] = []): number {
   const r = regleProfil(profil, familleReplis);
-  return Math.max(0, 2 + cha + r.bonusChance);
+  const eclaireur = r.bonusChance > 0 && talents.some((t) => normaliserNomCapacite(t) === "éclaireur");
+  return Math.max(0, 2 + cha + r.bonusChance - (eclaireur ? 1 : 0));
 }
 
-/** Nombre de dés de récupération : 2 + CON (+1 si Mystique). Min 0. */
-export function drNombre(con: number, profil: string, familleReplis?: FamilleCOF): number {
+/** Nombre de dés de récupération : 2 + CON (+1 si Mystique, +1 si Éclaireur). Min 0. */
+export function drNombre(con: number, profil: string, familleReplis?: FamilleCOF, talents: string[] = []): number {
   const r = regleProfil(profil, familleReplis);
-  return Math.max(0, 2 + con + r.bonusDR);
+  const eclaireur = talents.some((t) => normaliserNomCapacite(t) === "éclaireur");
+  return Math.max(0, 2 + con + r.bonusDR + (eclaireur ? 1 : 0));
 }
 
 /**
@@ -225,9 +228,16 @@ function modEffectif(c: Character): number {
   return c.defenseMod ?? 0;
 }
 
-/** Bonus DEF permanent des talents connus (Armure d'os +3 ; Défense au bouclier +1, +1 avec Renvoi ; Dur à cuire +1 ; Rempart +1). */
-export function bonusDefenseTalents(c: Pick<Character, "capacites">): number {
-  const noms = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
+/** Noms connus (talents + sorts), normalisés, pour les bonus dérivés. */
+function nomsConnus(c: Pick<Character, "capacites" | "sorts">): Set<string> {
+  const s = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
+  for (const x of c.sorts ?? []) s.add(normaliserNomCapacite(x.nom));
+  return s;
+}
+
+/** Bonus DEF permanent des talents connus (Armure d'os +3 ; Défense au bouclier +1, +1 avec Renvoi ; Dur à cuire +1 ; Rempart +1 ; Parade croisée +1, +1 avec Double peine ; Tactiques +1 par rang 5 en voie du profil). */
+export function bonusDefenseTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
+  const noms = nomsConnus(c);
   let bonus = 0;
   if (noms.has(normaliserNomCapacite("Armure d'os"))) bonus += 3;
   if (noms.has(normaliserNomCapacite("Défense au bouclier"))) {
@@ -236,13 +246,35 @@ export function bonusDefenseTalents(c: Pick<Character, "capacites">): number {
   }
   if (noms.has(normaliserNomCapacite("Dur à cuire"))) bonus += 1;
   if (noms.has(normaliserNomCapacite("Rempart"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Parade croisée"))) {
+    bonus += 1;
+    if (noms.has(normaliserNomCapacite("Double peine"))) bonus += 1;
+  }
+  if (noms.has(normaliserNomCapacite("Tactiques de meute"))) {
+    const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+    for (const v of CAPACITES[profil] ?? []) {
+      if (v.capacites.some((x) => x.rang === 5 && noms.has(normaliserNomCapacite(x.nom)))) bonus += 1;
+    }
+  }
   return bonus;
 }
 
-/** Bonus INIT permanent des talents connus (Vivacité du guerrier : +3). */
-export function bonusInitiativeTalents(c: Pick<Character, "capacites">): number {
-  const noms = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
-  return noms.has(normaliserNomCapacite("Vivacité")) ? 3 : 0;
+/** Bonus INIT permanent des talents connus (Vivacité +3 ; Archer émérite +1 par rang dans la voie, version arc). */
+export function bonusInitiativeTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
+  const noms = nomsConnus(c);
+  let bonus = 0;
+  if (noms.has(normaliserNomCapacite("Vivacité"))) bonus += 3;
+  if (noms.has(normaliserNomCapacite("Archer émérite"))) {
+    const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+    const voie = (CAPACITES[profil] ?? []).find((v) => v.voie === "Voie de l'archer");
+    if (voie) {
+      const rangs = voie.capacites
+        .filter((x) => noms.has(normaliserNomCapacite(x.nom)))
+        .map((x) => x.rang);
+      if (rangs.length > 0) bonus += Math.max(...rangs);
+    }
+  }
+  return bonus;
 }
 
 /** Calcule toutes les valeurs dérivées d'un personnage COF. */
@@ -256,9 +288,9 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
     initiative: initiativeBase(car) + bonusInitiativeTalents(c),
     defense: defenseBase(car, equipementEffectif(c) + bonusDefenseTalents(c), modEffectif(c)),
     pvMax: pvMaxBase(famille, car.CON, c.niveau),
-    chanceMax: chanceMax(car.CHA, profil, famille),
+    chanceMax: chanceMax(car.CHA, profil, famille, c.capacites ?? []),
     drType: drType(profil, famille),
-    drNombre: drNombre(car.CON, profil, famille),
+    drNombre: drNombre(car.CON, profil, famille, c.capacites ?? []),
     manaMax: manaMax(car.VOL, nbSorts),
     attaques: attaquesBase(c.niveau, car),
     de: deEvolutif(c.niveau),
@@ -416,14 +448,14 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     : familleDe(profil, undefined)) as FamilleCOF;
   const ressources = (o.ressources ?? {}) as Character["ressources"];
   const niveau = typeof o.niveau === "number" && o.niveau >= 1 ? Math.floor(o.niveau) : 1;
+  const capacites: string[] = Array.isArray(o.capacites) ? (o.capacites as string[]) : [];
   // Création : la réserve de DR démarre à l'initiale (2 dés, 3 si mystique), pas au max.
   const drSaisi = (o.desRecuperation ?? undefined) as Character["desRecuperation"];
   const desRecuperation = drSaisi ?? {
     type: drType(profil, famille),
-    max: drNombre(caracteristiques.CON, profil, famille),
+    max: drNombre(caracteristiques.CON, profil, famille, capacites),
     actuel: drInitial(caracteristiques.CON, profil, famille),
   };
-  const capacites: string[] = Array.isArray(o.capacites) ? (o.capacites as string[]) : [];
   // Migration sorts (one-shot) : un talent qui est aussi un sort obtient son
   // entrée lançable (id déterministe). Une suppression volontaire postérieure
   // n'est jamais réimportée (drapeau migreSorts).
@@ -476,7 +508,10 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     ressources: {
       ...ressources,
       mana,
-      chance: ressources.chance ?? { max: Math.max(0, 2 + caracteristiques.CHA), actuel: Math.max(0, 2 + caracteristiques.CHA) },
+      chance: ressources.chance ?? {
+        max: chanceMax(caracteristiques.CHA, profil, famille, capacites),
+        actuel: chanceMax(caracteristiques.CHA, profil, famille, capacites),
+      },
     },
     effets: Array.isArray(o.effets) ? (o.effets as Character["effets"]) : [],
     inventaire: Array.isArray(o.inventaire) ? (o.inventaire as Character["inventaire"]) : [],

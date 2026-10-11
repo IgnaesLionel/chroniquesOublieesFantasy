@@ -1,6 +1,7 @@
 import { parseDiceExpression, rollDiceExpression, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
 import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
+import { CAPACITES } from "@/src/lib/data/capacites";
 import type { ActiveEffect, AttackDef, Sort } from "@/src/lib/rules/types";
 import type {
   AttackResolution,
@@ -138,8 +139,10 @@ export function resolveAttack(
 
   const modAttaque = getModifier(attaquant.effets, "attaque") + (attaqueOpts.modAttaque ?? 0);
   const modDefense = getModifier(cible.effets, "defense");
-  const bonusEffectif = attaque.bonus + modAttaque;
+  const bonusBase = attaqueOpts.bonusOverride ?? attaque.bonus;
+  const bonusEffectif = bonusBase + modAttaque;
   const defenseEffective = cible.defense + modDefense;
+  const degatsExpr = attaqueOpts.degatsOverride ?? attaque.degats;
 
   // Dé bonus / malus (effets + coups spéciaux : Puissante, Parfaite).
   const aBonus = getModifier(attaquant.effets, "deBonus") > 0 || attaqueOpts.deBonus === true;
@@ -216,14 +219,26 @@ export function resolveAttack(
     }
   }
 
+  // Double peine (Rôdeur) : 2e touche même cible même round = +1d4° (une fois).
+  const precedent = attaquant.dernierCoup;
+  const doublePeineDeclenchee: boolean =
+    ((touche || attaque.toucheAuto) &&
+      !pare &&
+      talentConnu(attaquant, "Double peine") &&
+      !!precedent &&
+      precedent.cibleId === targetId &&
+      precedent.manche === s.manche &&
+      !precedent.enchaine) === true;
+
   // Dégâts : normaux si touché non paré, moitié si raté (Briser), 0 sinon.
-  // Bonus manuels et dés bonus (Puissante, Parfaite, spécialisation) doublés en critique.
+  // Bonus manuels et dés bonus (Puissante, Parfaite, spécialisation, Double peine) doublés en critique.
   let degatsDetails: number[] = [];
   let degatsTotal = 0;
   let moitie = false;
   let bonusLog: string | null = null;
+  let doublePeineLog: string | null = null;
   if ((touche || attaque.toucheAuto) && !pare) {
-    const expr = parseDiceExpression(attaque.degats);
+    const expr = parseDiceExpression(degatsExpr);
     const roll = rollDiceExpression(expr, rng);
     degatsDetails = [...roll.rolls];
     degatsTotal = roll.total;
@@ -234,13 +249,19 @@ export function resolveAttack(
       degatsTotal += Math.max(0, b.total);
       bonusDetails.push(d);
     }
+    if (doublePeineDeclenchee) {
+      const b = rollDiceExpression(parseDiceExpression("1d4°"), rng);
+      degatsDetails = [...degatsDetails, ...b.rolls];
+      degatsTotal += Math.max(0, b.total);
+      doublePeineLog = `Double peine : +${Math.max(0, b.total)} DM [${b.rolls.join(", ")}] (2e touche)`;
+    }
     if (attaqueOpts.bonusDM) degatsTotal += attaqueOpts.bonusDM;
     if (bonusDetails.length > 0 || attaqueOpts.bonusDM) {
       bonusLog = `+${[...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : [])].join(" + ")} (coup spécial)`;
     }
     degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
   } else if (attaque.demiDegatsSiRate) {
-    const roll = rollDiceExpression(parseDiceExpression(attaque.degats), rng);
+    const roll = rollDiceExpression(parseDiceExpression(degatsExpr), rng);
     degatsDetails = roll.rolls;
     degatsTotal = Math.floor(roll.total / 2);
     moitie = degatsTotal > 0;
@@ -251,6 +272,9 @@ export function resolveAttack(
   const { effet: effetTouche, saveLog } = toucheVraie && !pare
     ? creerEffetTouche(attaque, attaquant.nom, cible, rng)
     : { effet: null, saveLog: null };
+  const effetSupp = toucheVraie && !pare && attaqueOpts.effetSupp
+    ? createEffect(attaqueOpts.effetSupp.cle, { dureeTours: attaqueOpts.effetSupp.duree, source: attaquant.nom })
+    : null;
 
   const pvAvant = cible.pv;
   const pvApres = Math.max(0, pvAvant - degatsTotal);
@@ -262,9 +286,14 @@ export function resolveAttack(
 
   let participants = s.participants.map((p) => {
     if (p.instanceId === attackerId) {
+      let q = p;
       // Tentatives (limiteCombat) au lancer ; par-cible au touché (ci-dessous).
-      if (sort && !sort.limiteParCible) return enregistrerUsage(p, sort.id);
-      return p;
+      if (sort && !sort.limiteParCible) q = enregistrerUsage(q, sort.id);
+      // Mémoire Double peine : touche réussie non parée.
+      if (talentConnu(q, "Double peine") && (touche || attaque.toucheAuto) && !pare) {
+        q = { ...q, dernierCoup: { cibleId: targetId, manche: s.manche, enchaine: doublePeineDeclenchee } };
+      }
+      return q;
     }
     if (p.instanceId === targetId) {
       // Parade/absorption réussie : stance consommée (un usage), éventuel sort stocké.
@@ -273,6 +302,7 @@ export function resolveAttack(
         ? p.effets.filter((e) => !(e.modificateurs["parade"] > 0) && !(e.modificateurs["absorption"] > 0))
         : p.effets;
       if (effetTouche && !pare) effets = [...effets, effetTouche];
+      if (effetSupp && !pare) effets = [...effets, effetSupp];
       return {
         ...p,
         pv: pvFinal,
@@ -306,19 +336,24 @@ export function resolveAttack(
     log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Automatique (sans jet, ${attaque.nom})` });
   } else {
     const des = avantage && jetSecondaire != null ? `${d1}, ${jetSecondaire} (dé ${avantage} -> ${jetNaturel}) + ` : `${jetNaturel} + `;
-    log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${attaque.bonus}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""} = ${jetTotal}` });
+    log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${bonusBase}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque})` : ""} = ${jetTotal}` });
   }
   log.push({ id: id("def"), at: stamp(), manche: s.manche, message: `Défense ${cible.nom} : ${cible.defense}${modDefense !== 0 ? ` (${modDefense > 0 ? "+" : ""}${modDefense} effets)` : ""}` });
   log.push({ id: id("hit"), at: stamp(), manche: s.manche, message: toucheVraie ? (critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ" });
   if (paradeLog) log.push({ id: id("par"), at: stamp(), manche: s.manche, message: paradeLog });
-  if (!toucheVraie && (cible.capacites ?? []).some((t) => normaliserNomCapacite(t) === "riposte")) {
+  if (!toucheVraie && estAttaqueArme(attaque) && talentConnu(cible, "Riposte")) {
     log.push({ id: id("rip"), at: stamp(), manche: s.manche, message: `Riposte (G) : ${cible.nom} peut riposter contre ${attaquant.nom} (attaque au contact uniquement, 1/round — MJ : attaque manuelle)` });
   }
+  if (!toucheVraie && estAttaqueArme(attaque) && talentConnu(attaquant, "Attaque à suivre") && !talentConnu(attaquant, "Droite-gauche")) {
+    log.push({ id: id("suivre"), at: stamp(), manche: s.manche, message: `Attaque à suivre (G) : ${attaquant.nom} peut attaquer de la 2e main (dague, hachette, épée courte, 1/round — MJ)` });
+  }
   if ((toucheVraie || moitie) && !pare) {
-    log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${attaque.degats}${bonusLog ? ` ${bonusLog}` : ""} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${moitie ? " (moitié, raté)" : ""}` });
+    log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${degatsExpr}${bonusLog ? ` ${bonusLog}` : ""} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${moitie ? " (moitié, raté)" : ""}` });
+    if (doublePeineLog) log.push({ id: id("dbl"), at: stamp(), manche: s.manche, message: doublePeineLog });
     log.push({ id: id("pv"), at: stamp(), manche: s.manche, message: `${cible.nom} : ${pvAvant} -> ${pvApres} PV` });
     if (effetTouche) log.push({ id: id("eff"), at: stamp(), manche: s.manche, message: `Effet "${effetTouche.nom}" (${effetTouche.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
     if (saveLog) log.push({ id: id("save"), at: stamp(), manche: s.manche, message: saveLog });
+    if (effetSupp) log.push({ id: id("sueff"), at: stamp(), manche: s.manche, message: `Effet "${effetSupp.nom}" (${effetSupp.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
     if (volLog) log.push({ id: id("vol"), at: stamp(), manche: s.manche, message: volLog });
     if (cibleTombe) log.push({ id: id("ko"), at: stamp(), manche: s.manche, message: `${cible.nom} est hors combat` });
   }
@@ -504,11 +539,12 @@ export interface CapaciteResolution {
   cibleNom: string;
   talentNom: string;
   effetNom: string | null;
+  soinTotal?: number;
 }
 
 /**
- * Ajustements au moment de l'attaque (coups spéciaux du Guerrier, bonus MJ).
- * Puissante (A) = dé malus + 2d4°, (L) = +3d4° ; Parfaite = dé bonus + 1d4° ;
+ * Ajustements au moment de l'attaque (coups spéciaux du Guerrier/Rôdeur, bonus MJ).
+ * Puissante (A) = dé malus + 2d4°, (L) = +3d4° ; Parfaite / Flèche DM = dé bonus + 1d4° ;
  * modificateur manuel (prédilection +1, Double/Circulaire −2...), +DM manuel.
  */
 export interface AttaqueOpts {
@@ -522,6 +558,33 @@ export interface AttaqueOpts {
   deMalus?: boolean;
   /** Avantage sur ce jet (ex: Parfaite). */
   deBonus?: boolean;
+  /** Effet supplémentaire au toucher (ex: Flèche statut {cle: "aveugle", duree: 1}). */
+  effetSupp?: { cle: string; duree: number | null };
+  /** Remplace le bonus au jet (ex: Attaque éclair = niv+AGI). */
+  bonusOverride?: number;
+  /** Remplace les dégâts (ex: Attaque éclair = dés de l'arme + AGI). */
+  degatsOverride?: string;
+}
+
+/** Tirets unifiés (livre "Droite‑gauche" vs saisie) pour comparer les talents. */
+function cleTalent(nom: string): string {
+  return normaliserNomCapacite(nom).replace(/[‑–—]/g, "-");
+}
+
+/** Le participant connaît-il ce talent (insensible casse/tirets) ? */
+function talentConnu(p: Pick<CombatParticipant, "capacites">, nom: string): boolean {
+  const q = cleTalent(nom);
+  return (p.capacites ?? []).some((t) => cleTalent(t) === q);
+}
+
+/** Attaque d'arme (ni sort, ni accordée, ni renvoi, ni invocation) ? */
+function estAttaqueArme(attaque: { id: string }): boolean {
+  return (
+    !attaque.id.startsWith("sort:") &&
+    !attaque.id.startsWith("sort-tmp:") &&
+    !attaque.id.startsWith("renvoi") &&
+    attaque.id !== "inv-attaque"
+  );
 }
 
 /** Sort à l'origine d'une attaque "sort:<id>" (armes : indéfini). */
@@ -609,8 +672,9 @@ export function applyCoutPV(
 
 /**
  * Utilise un talent connu sur une cible : paie le sacrifice de PV éventuel
- * (Pacte démoniaque), applique l'effet éventuel (buff/debuff/DoT, avec
- * modificateurs) et journalise dans tous les cas.
+ * (Pacte démoniaque), applique le soin éventuel en dés (Increvable : 4d4°+CON
+ * du lanceur), purge les états non permanents (Increvable), applique l'effet
+ * éventuel (buff/debuff/DoT, avec modificateurs) et journalise dans tous les cas.
  * Pas de jet, pas de coût PM : le MJ arbitre le timing (ex. réaction)
  * et les actions (talents libres/passifs, (G) gratuit, géré en réel).
  */
@@ -619,7 +683,7 @@ export function utiliserCapacite(
   lanceurId: string,
   cibleId: string,
   talentNom: string,
-  opts: { effetCle?: string | null; dureeTours?: number | null; mods?: Record<string, number>; coutPV?: string } = {},
+  opts: { effetCle?: string | null; dureeTours?: number | null; mods?: Record<string, number>; coutPV?: string; soin?: string; nettoie?: boolean } = {},
   rng: Rng = Math.random
 ): { state: CombatState; resolution: CapaciteResolution } {
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
@@ -637,19 +701,39 @@ export function utiliserCapacite(
     : null;
   const effet = base ? { ...base, modificateurs: { ...base.modificateurs, ...(opts.mods ?? {}) } } : null;
 
-  const participants = s.participants.map((p) =>
-    p.instanceId === cibleId ? { ...p, effets: effet ? [...p.effets, effet] : p.effets } : p
-  );
+  let soinDetails: number[] = [];
+  let soinTotal = 0;
+  if (opts.soin) {
+    const lanceurApresCout = s.participants.find((p) => p.instanceId === lanceurId)!;
+    const roll = rollDiceExpression(parseDiceExpression(substituerStats(opts.soin, lanceurApresCout.caracs ?? {})), rng);
+    soinDetails = roll.rolls;
+    soinTotal = Math.max(0, roll.total);
+  }
+
+  const participants = s.participants.map((p) => {
+    if (p.instanceId !== cibleId) return p;
+    const gardes = opts.nettoie ? p.effets.filter((e) => e.toursRestants === null) : p.effets;
+    const pv = Math.min(p.pvMax, p.pv + soinTotal);
+    return {
+      ...p,
+      pv,
+      statut: pv > 0 ? ("actif" as const) : p.statut,
+      effets: effet ? [...gardes, effet] : gardes,
+    };
+  });
 
   const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const log = [...s.log];
   log.push({ id: id("cap"), at: stamp(), manche: s.manche, message: `${lanceur.nom} utilise ${talentNom} sur ${cible.nom}` });
+  if (soinTotal > 0) log.push({ id: id("csoin"), at: stamp(), manche: s.manche, message: `Soin : ${opts.soin} -> [${soinDetails.join(", ")}] = ${soinTotal}` });
+  if (opts.nettoie) log.push({ id: id("cnet"), at: stamp(), manche: s.manche, message: `${cible.nom} : états non permanents purgés` });
   if (effet) log.push({ id: id("ceff"), at: stamp(), manche: s.manche, message: `Effet "${effet.nom}" (${effet.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
 
   return {
     state: { ...s, participants, log },
     resolution: {
       lanceurNom: lanceur.nom, cibleNom: cible.nom, talentNom, effetNom: effet?.nom ?? null,
+      soinTotal,
     },
   };
 }
@@ -740,6 +824,75 @@ export function invoquer(
   return {
     state: checkEnd({ ...s, participants, log }),
     resolution: { lanceurNom: lanceur.nom, sortNom: sort.nom, invoqueNom: frais.nom, pv },
+  };
+}
+
+/**
+ * Appelle le compagnon animal (Rôdeur, talent Le loup) : loup ou alpha selon
+ * les talents connus. DEF 12+rang (18 alpha), PV niv×4 (×5 alpha), contact au
+ * bonus magique, 1d4+2 (1d4°+5 alpha), +1 DEF par rang 5 en voie (Tactiques).
+ * Au camp du lanceur, agit en fin d'ordre.
+ */
+export function invoquerCompagnon(
+  state: CombatState,
+  lanceurId: string,
+  rng: Rng = Math.random
+): { state: CombatState; resolution: InvocationResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (!talentConnu(lanceur, "Le loup")) throw new Error(`${lanceur.nom} : pas de compagnon (Le loup).`);
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+
+  const connus = new Set([
+    ...(lanceur.capacites ?? []).map((t) => cleTalent(t)),
+    ...(lanceur.sorts ?? []).map((x) => cleTalent(x.nom)),
+  ]);
+  const voies = (lanceur.profil && CAPACITES[lanceur.profil]) || [];
+  const voieLoup = voies.find((v) => v.voie === "Voie du compagnon animal");
+  const rangsLoup = (voieLoup?.capacites ?? [])
+    .filter((x) => connus.has(cleTalent(x.nom)))
+    .map((x) => x.rang);
+  const rangLoup = Math.max(1, ...rangsLoup);
+  const alpha = connus.has(cleTalent("Loup alpha"));
+  let rang5 = 0;
+  if (connus.has(cleTalent("Tactiques de meute"))) {
+    for (const v of voies) {
+      if (v.capacites.some((x) => x.rang === 5 && connus.has(cleTalent(x.nom)))) rang5 += 1;
+    }
+  }
+  const niv = Math.max(1, Math.floor(lanceur.niveau));
+  const pv = niv * (alpha ? 5 : 4);
+  const defense = (alpha ? 18 : 12 + rangLoup) + rang5;
+  const bonus = lanceur.bonusMagique ?? niv;
+  const nom = `${alpha ? "Loup alpha" : "Loup"} (${lanceur.nom})`;
+  const frais: CombatParticipant = {
+    instanceId: `loup-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`,
+    templateId: "compagnon:loup",
+    nom,
+    camp: lanceur.camp,
+    pvMax: pv,
+    pv,
+    defense,
+    initMod: 0,
+    initiative: lanceur.initiative,
+    attaques: [{ id: "loup-morsure", nom: "Morsure", bonus, degats: alpha ? "1d4°+5" : "1d4+2" }],
+    effets: [],
+    sorts: [],
+    capacites: [],
+    niveau: niv,
+    ressources: {},
+    statut: "actif",
+    usagesSorts: {},
+  };
+  const participants = [...state.participants, frais];
+  const log = [
+    ...state.log,
+    { id: `loup-${Date.now()}`, at: stamp(), manche: state.manche, message: `${lanceur.nom} appelle ${nom} (${pv} PV, Déf ${defense}) — agit en fin d'ordre` },
+  ];
+  void rng;
+  return {
+    state: checkEnd({ ...state, participants, log }),
+    resolution: { lanceurNom: lanceur.nom, sortNom: "Le loup", invoqueNom: nom, pv },
   };
 }
 

@@ -58,6 +58,11 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(drNombre(1, "Rôdeur", "Aventurier")).toBe(3);
     expect(drNombre(1, "Prêtre", "Mystique")).toBe(4);
     expect(drNombre(3, "Guerrier", "Combattant")).toBe(5);
+    // Éclaireur (Rôdeur) : +1 DR au lieu du +1 PC aventurier.
+    expect(chanceMax(0, "Rôdeur", "Aventurier", ["Éclaireur"])).toBe(2);
+    expect(drNombre(1, "Rôdeur", "Aventurier", ["Éclaireur"])).toBe(4);
+    expect(chanceMax(0, "Rôdeur", "Aventurier", ["Autre"])).toBe(3);
+    expect(drNombre(1, "Rôdeur", "Aventurier", [])).toBe(3);
   });
 
   it("fiche 1 : Humain / Mage Sorcier", () => {
@@ -78,7 +83,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
   it("fiche 2 : Demi-Elfe / Rôdeur", () => {
     const c = SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!;
     const d = deriverPersonnage(c);
-    expect(d.initiative).toBe(12);
+    expect(d.initiative).toBe(13); // 10+PER +1 archer (R1) : écart avec la fiche (+2), cf. note
     expect(d.defense).toBe(13);
     expect(d.pvMax).toBe(9);
     expect(d.chanceMax).toBe(3);

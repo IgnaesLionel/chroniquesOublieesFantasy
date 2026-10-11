@@ -77,7 +77,7 @@ export const SEED_CHARACTERS: Character[] = [
       chance: { max: 3, actuel: 3 },
     },
     desRecuperation: { type: "d8", max: 3, actuel: 2 },
-    effets: [], notes: "Magique fiche = 1 (formule niv+VOL = 0 ; écart conservé de la fiche).", exemple: false,
+    effets: [], notes: "Magique fiche = 1 (formule niv+VOL = 0 ; écart conservé de la fiche). Init fiche +2 (10+PER+1 archer = 13).", exemple: false,
     inventaire: [{ itemId: "item-arc-court", quantite: 1, equipe: true }],
     sorts: [],
   },

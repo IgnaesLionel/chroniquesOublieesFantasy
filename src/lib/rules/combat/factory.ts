@@ -91,6 +91,7 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     statut: c.pv <= 0 ? "ko" : "actif",
     bonusMagique: magique,
     caracs: { ...c.caracteristiques },
+    profil: c.profil || c.classe,
     usagesSorts: {},
   };
 }

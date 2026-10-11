@@ -8,7 +8,7 @@ import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, castSoutien, depenserChanceApresCoup, frapperZone, renvoyerSort, resolveAttack, utiliserCapacite, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, castSoutien, depenserChanceApresCoup, frapperZone, invoquerCompagnon, renvoyerSort, resolveAttack, utiliserCapacite, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
@@ -267,11 +267,20 @@ export default function CombatPage() {
           <CapacitesPanel
             participants={combat.participants}
             lanceurId={attackerId}
-            onUtiliser={(lanceurId, cibleId, talentNom, effetCle, dureeTours, mods, coutPV, actionSpeciale) => {
+            onUtiliser={(lanceurId, cibleId, talentNom, opts) => {
               try {
-                const { state } = actionSpeciale === "renvoi"
+                const { state } = opts.actionSpeciale === "renvoi"
                   ? renvoyerSort(combat, lanceurId, cibleId)
-                  : utiliserCapacite(combat, lanceurId, cibleId, talentNom, { effetCle, dureeTours, mods, coutPV });
+                  : opts.actionSpeciale === "compagnon"
+                    ? invoquerCompagnon(combat, lanceurId)
+                    : utiliserCapacite(combat, lanceurId, cibleId, talentNom, {
+                      effetCle: opts.effetCle,
+                      dureeTours: opts.dureeTours,
+                      mods: opts.mods,
+                      coutPV: opts.coutPV,
+                      soin: opts.soin,
+                      nettoie: opts.nettoie,
+                    });
                 setCombat(state);
                 setLast(null);
               } catch (e) {

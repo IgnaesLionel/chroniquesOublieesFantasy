@@ -29,11 +29,26 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [puissante, setPuissante] = useState(false);
   const [variante, setVariante] = useState<"A" | "L">("A");
   const [parfaite, setParfaite] = useState(false);
+  const [mille, setMille] = useState(false);
+  const [varianteMille, setVarianteMille] = useState<"A" | "L">("A");
+  const [fleche, setFleche] = useState(false);
+  const [modeFleche, setModeFleche] = useState<"dm" | "statut">("dm");
+  const [statutFleche, setStatutFleche] = useState("aveugle");
+  const [eclair, setEclair] = useState(false);
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
   const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
   const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
   const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
+  const connaitMille = talents.has(normaliserNomCapacite("Dans le mille"));
+  const connaitFleche = talents.has(normaliserNomCapacite("Flèche de mort"));
+  const connaitEclair = talents.has(normaliserNomCapacite("Attaque éclair"));
+  const STATUTS_FLECHE = [
+    { cle: "aveugle", nom: "Aveuglé" },
+    { cle: "Affaibli", nom: "Affaibli" },
+    { cle: "Ralenti", nom: "Ralenti" },
+    { cle: "immobilise", nom: "Immobilisé" },
+  ];
   const lancer = () => {
     const opts: AttaqueOpts = {};
     const modN = Number(mod);
@@ -47,6 +62,22 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     if (parfaite && connaitParfaite) {
       opts.deBonus = true;
       opts.degatsBonus = [...(opts.degatsBonus ?? []), "1d4°"];
+    }
+    if (mille && connaitMille) {
+      opts.deMalus = true;
+      opts.degatsBonus = [...(opts.degatsBonus ?? []), varianteMille === "L" ? "3d4°" : "2d4°"];
+    }
+    if (fleche && connaitFleche) {
+      opts.deBonus = true;
+      if (modeFleche === "dm") opts.degatsBonus = [...(opts.degatsBonus ?? []), "1d4°"];
+      else opts.effetSupp = { cle: statutFleche, duree: 1 };
+    }
+    if (eclair && connaitEclair && attacker) {
+      const agi = attacker.caracs?.AGI ?? 0;
+      opts.bonusOverride = attacker.niveau + agi;
+      const courante = attacker.attaques.find((x) => x.id === (attackId ?? attacker.attaques[0]?.id));
+      const des = courante?.degats.match(/^(\d*d\d+°?)(.*)$/);
+      if (courante && des) opts.degatsOverride = `${des[1]}+${agi}`;
     }
     onRoll(opts);
   };
@@ -117,7 +148,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           ))}
         </select>
       </label>
-      {(connaitPuissante || connaitParfaite) && (
+      {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair) && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
           <div className="text-xs uppercase text-zinc-500 font-bold">Coup spécial</div>
           {connaitPuissante && (
@@ -134,6 +165,39 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             <label className="flex items-center gap-2" title="Arme de prédilection requise (MJ)">
               <input type="checkbox" checked={parfaite} onChange={(e) => setParfaite(e.target.checked)} />
               <span>Parfaite (dé bonus, +1d4°)</span>
+            </label>
+          )}
+          {connaitMille && (
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={mille} onChange={(e) => setMille(e.target.checked)} />
+              <span>Dans le mille (dé malus, +{varianteMille === "L" ? "3d4°" : "2d4°"})</span>
+              <select value={varianteMille} onChange={(e) => setVarianteMille(e.target.value as "A" | "L")} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
+                <option value="A">A</option>
+                <option value="L">L</option>
+              </select>
+            </label>
+          )}
+          {connaitFleche && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="flex items-center gap-2" title="NC inférieur au vôtre, 1/combat par état (MJ)">
+                <input type="checkbox" checked={fleche} onChange={(e) => setFleche(e.target.checked)} />
+                <span>Flèche de mort (dé bonus)</span>
+              </label>
+              <select value={modeFleche} onChange={(e) => setModeFleche(e.target.value as "dm" | "statut")} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
+                <option value="dm">+1d4°</option>
+                <option value="statut">état 1 round</option>
+              </select>
+              {modeFleche === "statut" && (
+                <select value={statutFleche} onChange={(e) => setStatutFleche(e.target.value)} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
+                  {STATUTS_FLECHE.map((s) => <option key={s.cle} value={s.cle}>{s.nom}</option>)}
+                </select>
+              )}
+            </div>
+          )}
+          {connaitEclair && (
+            <label className="flex items-center gap-2" title="Bonus et DM à l'AGI au lieu de la FOR (+10 m au rang 5, MJ)">
+              <input type="checkbox" checked={eclair} onChange={(e) => setEclair(e.target.checked)} />
+              <span>Attaque éclair (AGI)</span>
             </label>
           )}
         </div>

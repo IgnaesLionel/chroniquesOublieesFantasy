@@ -298,4 +298,25 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     c = apprendreTalentComplet(c, "Rempart", SEED_SORTS);
     expect(c.defense).toBe(15);
   });
+
+  it("rodeur : Éclaireur +1 DR au lieu du +1 PC, Archer +1 Init/rang, Parade/Tactiques DEF", () => {
+    const faelyn = SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!;
+    expect(deriverPersonnage(faelyn).chanceMax).toBe(3); // 3+CHA, sans Éclaireur
+    expect(deriverPersonnage(faelyn).drNombre).toBe(3); // 2+CON
+    const c = apprendreTalentComplet(faelyn, "Éclaireur", SEED_SORTS);
+    expect(deriverPersonnage(c).chanceMax).toBe(2);
+    expect(deriverPersonnage(c).drNombre).toBe(4);
+    expect(c.ressources.chance.max).toBe(2);
+    expect(c.desRecuperation?.max).toBe(4);
+    // Archer émérite (R1) : +1 Init ; + Tir chirurgical + Dans le mille (R3) : +3.
+    const archer = recalculerPersonnage({ ...faelyn, capacites: ["Archer émérite", "Tir chirurgical", "Dans le mille"] });
+    expect(deriverPersonnage(archer).initiative).toBe(15); // 10+PER(2) + rang 3
+    // Parade croisée +1 (+2 avec Double peine), Tactiques +1 par rang 5.
+    const pareur = recalculerPersonnage({ ...faelyn, capacites: ["Parade croisée"] });
+    expect(pareur.defense).toBe(14); // 10+AGI(3) +1
+    const peine = recalculerPersonnage({ ...faelyn, capacites: ["Parade croisée", "Double peine"] });
+    expect(peine.defense).toBe(15);
+    const meute = recalculerPersonnage({ ...faelyn, capacites: ["Tactiques de meute", "Flèche de mort"] });
+    expect(meute.defense).toBe(15); // +1 archer (Flèche R5) +1 compagnon (Tactiques, incluse)
+  });
 });

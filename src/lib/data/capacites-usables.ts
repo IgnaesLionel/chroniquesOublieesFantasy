@@ -19,8 +19,12 @@ export interface CapaciteUsable {
   mods?: Record<string, number>;
   /** Sacrifice de PV du lanceur en dés (ex: "1d4°", Pacte démoniaque). */
   coutPV?: string;
+  /** Soin en dés du lanceur (ex: "4d4°+CON", Increvable). */
+  soin?: string;
+  /** Purge les états non permanents de la cible (ex: Increvable). */
+  nettoie?: boolean;
   /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort). */
-  actionSpeciale?: "renvoi";
+  actionSpeciale?: "renvoi" | "compagnon";
   /** Écart éventuel avec le texte DRS (approximation moteur). */
   note?: string;
 }
@@ -100,5 +104,23 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     cibles: "allies",
     mods: { seuilCrit: 19 },
     note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer quand l'arme convient.",
+  },
+  {
+    talent: "Le loup",
+    effetCle: null,
+    dureeTours: null,
+    cibles: "allies",
+    actionSpeciale: "compagnon",
+    note: "Rôdeur : appelle le loup (ou alpha si connu) au camp du lanceur. Travail d'équipe, Lien (1 PV pour 1), Tactiques : MJ.",
+  },
+  {
+    talent: "Increvable",
+    effetCle: "Increvable",
+    dureeTours: 1,
+    cibles: "allies",
+    mods: { defense: 5 },
+    soin: "4d4°+CON",
+    nettoie: true,
+    note: "Rôdeur (L), 1/combat (MJ) : à 0 PV, +4d4°+CON au prochain tour, +5 DEF 1 round, purge des états non permanents.",
   },
 ];

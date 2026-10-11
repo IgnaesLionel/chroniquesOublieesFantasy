@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, renvoyerSort, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, invoquerCompagnon, renvoyerSort, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -707,5 +707,177 @@ describe("guerrier (voies du livre)", () => {
     const r = resolveAttack(s, a, t, "pb", fixedRng([0.9, 0.1, 0.2]));
     expect(r.state.participants[1].effets.map((e) => e.nom)).toContain("Ralenti");
     expect(r.state.log.some((l) => l.message.includes("(+3)"))).toBe(true);
+  });
+});
+
+function rodeur(nom = "Rodeur"): CombatParticipant {
+  return {
+    instanceId: `pj-${nom}-${Math.random()}`, templateId: "pj", nom, camp: "pj",
+    pvMax: 40, pv: 40, defense: 13, initMod: 2, initiative: null,
+    attaques: [{ id: "arc", nom: "Arc court", bonus: 7, degats: "1d6" }],
+    effets: [],
+    sorts: [],
+    capacites: [],
+    niveau: 3,
+    ressources: {},
+    statut: "actif",
+    profil: "Rôdeur",
+    caracs: { AGI: 3, CON: 1, FOR: 1, PER: 2, CHA: 0, INT: 0, VOL: 0 },
+    usagesSorts: {},
+  };
+}
+
+describe("rodeur (voies du livre)", () => {
+  it("flèche de mort : dé bonus + 1d4° ou état au choix (aveuglé)", () => {
+    const atk = { ...rodeur(), capacites: ["Flèche de mort"] };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 3 puis 19 gardé (dé bonus), 19+7 touché ; 1d6 : 4, 1d4° : 3 => 7.
+    const r1 = resolveAttack(s, a, t, "arc", fixedRng([0.1, 0.9, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS, {
+      deBonus: true, degatsBonus: ["1d4°"],
+    });
+    expect(r1.resolution.desAvantage).toBe("bonus");
+    expect(r1.resolution.degatsTotal).toBe(7);
+    // Variante état : aveuglé 1 round, sans dégâts bonus.
+    const r2 = resolveAttack(s, a, t, "arc", fixedRng([0.9, 0.5]), DEFAULT_COMBAT_OPTIONS, {
+      deBonus: true, effetSupp: { cle: "aveugle", duree: 1 },
+    });
+    const aveugle = r2.state.participants[1].effets.find((e) => e.nom === "Aveuglé");
+    expect(aveugle?.toursRestants).toBe(1);
+    expect(aveugle?.modificateurs).toMatchObject({ attaque: -3 });
+    expect(r2.state.log.some((l) => l.message.includes("Aveuglé"))).toBe(true);
+  });
+
+  it("attaque éclair : bonus et DM à l'AGI (pas FOR)", () => {
+    const atk = { ...rodeur(), capacites: ["Attaque éclair"] };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // niv 3 + AGI 3 = +6 (au lieu de +7) ; 1d6+3 : 4+3 = 7.
+    const r = resolveAttack(s, a, t, "arc", fixedRng([0.5, 0.5]), DEFAULT_COMBAT_OPTIONS, {
+      bonusOverride: 6, degatsOverride: "1d6+3",
+    });
+    expect(r.resolution.jetTotal).toBe(17);
+    expect(r.resolution.degatsTotal).toBe(7);
+    expect(r.state.log.some((l) => l.message.includes("Dégâts : 1d6+3"))).toBe(true);
+  });
+
+  it("double peine : +1d4° à la 2e touche même cible même round, une fois", () => {
+    const atk = { ...rodeur(), capacites: ["Double peine"] };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Touche 1 : 4 DM, mémoire posée (enchaine false).
+    const r1 = resolveAttack(s, a, t, "arc", fixedRng([0.9, 0.5]));
+    expect(r1.state.participants[1].pv).toBe(36);
+    expect(r1.state.participants[0].dernierCoup).toMatchObject({ enchaine: false });
+    // Touche 2 : 4 + 1d4°(3) = 7, mémoire verrouillée.
+    const r2 = resolveAttack(r1.state, a, t, "arc", fixedRng([0.9, 0.5, 0.5]));
+    expect(r2.resolution.degatsTotal).toBe(7);
+    expect(r2.state.participants[1].pv).toBe(29);
+    expect(r2.state.log.some((l) => l.message.includes("Double peine"))).toBe(true);
+    expect(r2.state.participants[0].dernierCoup).toMatchObject({ enchaine: true });
+    // Touche 3 : 4 DM seuls (une fois par round).
+    const r3 = resolveAttack(r2.state, a, t, "arc", fixedRng([0.9, 0.5]));
+    expect(r3.resolution.degatsTotal).toBe(4);
+    expect(r3.state.participants[1].pv).toBe(25);
+  });
+
+  it("attaque à suivre signalée au raté (sauf Droite-gauche ou sort)", () => {
+    const atk = { ...rodeur(), capacites: ["Attaque à suivre"] };
+    const s = createCombat([atk, pj("Mur", 30)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 3+7 = 10 < 30 raté.
+    const r1 = resolveAttack(s, a, t, "arc", fixedRng([0.1, 0.5]));
+    expect(r1.state.log.some((l) => l.message.includes("Attaque à suivre (G)"))).toBe(true);
+    // Droite-gauche remplace : plus de signal.
+    const sub = { ...rodeur(), capacites: ["Attaque à suivre", "Droite-gauche"] };
+    const s2 = createCombat([sub, pj("Mur", 30)]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    const r2 = resolveAttack(s2, a2, t2, "arc", fixedRng([0.1, 0.5]));
+    expect(r2.state.log.some((l) => l.message.includes("Attaque à suivre"))).toBe(false);
+    // Sort raté : pas de signal (main principale = arme).
+    const mage = {
+      ...rodeur(), capacites: ["Attaque à suivre"],
+      attaques: [{ id: "sort:s", nom: "✦ S", bonus: 0, degats: "1d1-1" }],
+      sorts: [{ id: "s", nom: "S", type: "offensif" as const }],
+    };
+    const s3 = createCombat([mage, pj("Mur", 30)]);
+    const [a3, t3] = s3.participants.map((p) => p.instanceId);
+    const r3 = resolveAttack(s3, a3, t3, "sort:s", fixedRng([0.1, 0.1]));
+    expect(r3.state.log.some((l) => l.message.includes("Attaque à suivre"))).toBe(false);
+  });
+
+  it("riposte : pas de signal sur sort raté (contact uniquement)", () => {
+    const cible = { ...pj("Tank", 30), capacites: ["Riposte"] };
+    const mage = {
+      ...rodeur(),
+      attaques: [{ id: "sort:s", nom: "✦ S", bonus: 0, degats: "1d1-1" }],
+      sorts: [{ id: "s", nom: "S", type: "offensif" as const }],
+    };
+    const s = createCombat([mage, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const r = resolveAttack(s, a, t, "sort:s", fixedRng([0.1, 0.1]));
+    expect(r.resolution.touche).toBe(false);
+    expect(r.state.log.some((l) => l.message.includes("Riposte"))).toBe(false);
+  });
+
+  it("compagnon : loup (DEF 13, PV niv×4), alpha auto, sans talent = erreur", () => {
+    const s = createCombat([rodeur(), gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    expect(() => invoquerCompagnon(s, a)).toThrow(/pas de compagnon/);
+    const avec = { ...rodeur(), capacites: ["Le loup"] };
+    const s2 = createCombat([{ ...avec, niveau: 3, bonusMagique: 6 }, gobelin("G")]);
+    const [a2] = s2.participants.map((p) => p.instanceId);
+    const r = invoquerCompagnon(s2, a2);
+    expect(r.resolution.invoqueNom).toBe("Loup (Rodeur)");
+    const loup = r.state.participants[2];
+    expect(loup.camp).toBe("pj");
+    expect(loup.pv).toBe(12);
+    expect(loup.defense).toBe(13); // 12 + rang 1
+    expect(loup.attaques[0]).toMatchObject({ bonus: 6, degats: "1d4+2" });
+    // Alpha : DEF 18, PV niv×5, 1d4°+5.
+    const alpha = { ...rodeur(), capacites: ["Le loup", "Loup alpha"], niveau: 4, bonusMagique: 7 };
+    const s3 = createCombat([alpha, gobelin("G")]);
+    const [a3] = s3.participants.map((p) => p.instanceId);
+    const ra = invoquerCompagnon(s3, a3);
+    expect(ra.resolution.invoqueNom).toBe("Loup alpha (Rodeur)");
+    expect(ra.state.participants[2].pv).toBe(20);
+    expect(ra.state.participants[2].defense).toBe(18);
+    expect(ra.state.participants[2].attaques[0].degats).toBe("1d4°+5");
+    // Tactiques + Flèche (R5) : +1 archer +1 compagnon (celle-ci incluse) = +2.
+    const tact = { ...rodeur(), capacites: ["Le loup", "Tactiques de meute", "Flèche de mort"] };
+    const s4 = createCombat([tact, gobelin("G")]);
+    const [a4] = s4.participants.map((p) => p.instanceId);
+    expect(invoquerCompagnon(s4, a4).state.participants[2].defense).toBe(19); // 12 + rang 5 + 2
+  });
+
+  it("increvable : soin 4d4°+CON, +5 DEF, purge, réveille un KO", () => {
+    const lanceur = { ...rodeur(), capacites: ["Increvable"] };
+    const cible = {
+      ...rodeur("Cible"), pv: 0, statut: "ko" as const,
+      effets: [
+        createEffect("saignement", { dureeTours: 3 }),
+        createEffect("protection", { dureeTours: null }),
+      ],
+    };
+    const s = createCombat([lanceur, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 4d4° : 3+3+3+3 = 12 + CON 1 = 13 PV.
+    const { state, resolution } = utiliserCapacite(s, a, t, "Increvable", {
+      effetCle: "Increvable", dureeTours: 1, mods: { defense: 5 }, soin: "4d4°+CON", nettoie: true,
+    }, fixedRng([0.5, 0.5, 0.5, 0.5]));
+    expect(resolution.soinTotal).toBe(13);
+    const apres = state.participants[1];
+    expect(apres.pv).toBe(13);
+    expect(apres.statut).toBe("actif");
+    expect(apres.effets.map((e) => e.nom).sort()).toEqual(["Increvable", "Protection"]);
+    expect(apres.effets.find((e) => e.nom === "Increvable")?.modificateurs).toMatchObject({ defense: 5 });
+    expect(state.log.some((l) => l.message.includes("purgés"))).toBe(true);
+  });
+
+  it("usages : Loup et Increvable avec soin et purge", () => {
+    const loup = CAPACITES_USABLES.find((u) => u.talent === "Le loup");
+    expect(loup?.actionSpeciale).toBe("compagnon");
+    const inc = CAPACITES_USABLES.find((u) => u.talent === "Increvable");
+    expect(inc).toMatchObject({ effetCle: "Increvable", dureeTours: 1, mods: { defense: 5 }, soin: "4d4°+CON", nettoie: true });
   });
 });
