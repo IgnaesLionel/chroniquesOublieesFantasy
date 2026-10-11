@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 12
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-12-Dragon-Rouge-2efd3d06b09880b8b26afb21c6db87f4
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : absent du DRS en ligne (11/10/2026, ancienne édition).
 
 ## Profil — Dragon rouge (blocs ancienne édition, tels qu'affichés)
 

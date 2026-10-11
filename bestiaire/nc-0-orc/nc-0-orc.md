@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 0
 - Source Notion : https://silver-pen-32f.notion.site/NC-0-Orc-2eed3d06b098813f972ef7251bbdd41e
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Hache/masse + Sensible à la lumière).
+  - NC 0 (VTT) conservé ; DRS en ligne : NC 1/2.
 - Description : Les orcs sont des créatures robustes, un peu plus grandes que les humains, dotées de traits bestiaux et habituellement violentes. Ils vivent en tribus sous la domination d'un chef qui règne par la loi du plus fort. Les orcs parlent le noir parler.
 
 ## Profil — Orc

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
 import { exportJson } from "@/src/lib/store/repository";
-import { ITEM_CATEGORIES, type Item, type ItemCategorie } from "@/src/lib/rules/world/types";
+import { ARME_FAMILLES, DEGAT_LABEL, ITEM_CATEGORIES, labelFamilleArme, type ArmeFamille, type DegatType, type Item, type ItemCategorie } from "@/src/lib/rules/world/types";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
 
@@ -29,8 +29,12 @@ export default function ItemsPage() {
   const { items, setItems } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
   const [editing, setEditing] = useState<Item | null>(null);
   const [filter, setFilter] = useState<"toutes" | ItemCategorie>("toutes");
+  const [famille, setFamille] = useState<"toutes" | ArmeFamille>("toutes");
 
-  const visible = filter === "toutes" ? items : items.filter((o) => o.categorie === filter);
+  const visible = items.filter((o) =>
+    (filter === "toutes" || o.categorie === filter) &&
+    (filter !== "arme" || famille === "toutes" || o.familles?.includes(famille))
+  );
 
   const save = () => {
     if (!editing || !editing.nom.trim()) return;
@@ -66,6 +70,20 @@ export default function ItemsPage() {
         ))}
       </div>
 
+      {filter === "arme" && (
+        <label className="flex items-center gap-2 text-sm text-zinc-400">Famille
+          <select value={famille} onChange={(e) => setFamille(e.target.value as "toutes" | ArmeFamille)} className="bg-zinc-800 rounded px-2 py-1.5 text-sm">
+            <option value="toutes">Toutes familles</option>
+            {(Object.keys(DEGAT_LABEL) as DegatType[]).map((d) => (
+              <optgroup key={d} label={DEGAT_LABEL[d]}>
+                {ARME_FAMILLES.filter((f) => f.degat === d).map((f) => (
+                  <option key={f.key} value={f.key}>{f.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="rounded-lg border border-zinc-800 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-zinc-900 text-zinc-400 text-xs uppercase">
@@ -85,7 +103,7 @@ export default function ItemsPage() {
                   {o.exemple && <span className="text-xs text-amber-400 ml-1">· ex</span>}
                   {o.description && <span className="block text-xs text-zinc-500">{o.description}</span>}
                 </td>
-                <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-zinc-800">{CAT_LABEL[o.categorie]}</span></td>
+                <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-zinc-800">{CAT_LABEL[o.categorie]}</span>{o.familles?.map((f) => (<span key={f} title={ARME_FAMILLES.find((x) => x.key === f)?.exemples} className="ml-1 text-xs px-2 py-0.5 rounded bg-amber-900/60 text-amber-200">{labelFamilleArme(f)}</span>))}</td>
                 <td className="px-3 py-2 text-xs text-zinc-400">
                   {o.estArme && <span className="block text-amber-300 font-mono">🗡 +{o.bonusAttaque ?? 0} · {o.degats ?? "1d6"}{o.effetCle ? ` · ✦${o.effetCle}` : ""}</span>}
                   {o.effet ?? "—"}
@@ -125,7 +143,7 @@ export default function ItemsPage() {
             <label className="flex items-center gap-2 text-sm bg-zinc-950 border border-zinc-800 rounded px-2.5 py-2">
               <input
                 type="checkbox" checked={!!editing.estArme}
-                onChange={(e) => setEditing({ ...editing, estArme: e.target.checked || undefined })}
+                onChange={(e) => setEditing({ ...editing, estArme: e.target.checked || undefined, familles: e.target.checked ? editing.familles : undefined })}
               />
               🗡 C'est une arme (utilisable en combat)
             </label>
@@ -141,6 +159,34 @@ export default function ItemsPage() {
                 {editing.degats && !degatsValide(editing.degats) && (
                   <p className="text-xs text-red-400">Expression invalide (attendu : 1d6, 2d6+3...).</p>
                 )}
+                <div className="space-y-1.5">
+                  <span className="text-zinc-400">Familles (cumul possible : ex. hachette de lancer = Haches + Jet)</span>
+                  {(Object.keys(DEGAT_LABEL) as DegatType[]).map((d) => (
+                    <div key={d}>
+                      <span className="text-xs uppercase text-zinc-500">{DEGAT_LABEL[d]} <span className="normal-case">({ARME_FAMILLES.find((f) => f.degat === d)?.verbes})</span></span>
+                      <div className="flex flex-wrap gap-1.5 mt-0.5">
+                        {ARME_FAMILLES.filter((f) => f.degat === d).map((f) => {
+                          const on = editing.familles?.includes(f.key) ?? false;
+                          return (
+                            <label key={f.key} title={f.exemples} className={`flex items-center gap-1 text-xs px-2 py-1 rounded cursor-pointer ${on ? "bg-amber-500 text-black font-bold" : "bg-zinc-800"}`}>
+                              <input
+                                type="checkbox" checked={on}
+                                onChange={() => {
+                                  const next = on
+                                    ? (editing.familles ?? []).filter((x) => x !== f.key)
+                                    : [...(editing.familles ?? []), f.key];
+                                  setEditing({ ...editing, familles: next.length > 0 ? next : undefined });
+                                }}
+                                className="accent-amber-500"
+                              />
+                              {f.label}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <label>Effet si TOUCHÉ
                     <select

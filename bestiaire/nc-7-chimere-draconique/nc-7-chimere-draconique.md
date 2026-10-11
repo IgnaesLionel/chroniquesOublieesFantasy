@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 7
 - Source Notion : https://silver-pen-32f.notion.site/NC-7-Chim-re-draconique-2eed3d06b09881b1ace5e05a79400b26
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : La chimère draconique est une cousine de la chimère ordinaire, mais sa tête d'aigle est remplacée par une tête de dragon. Encore plus dangereuse, elle est dotée d'un souffle qui dépend de la couleur de la tête de dragon (…).
 
 ## Profil — Chimère draconique

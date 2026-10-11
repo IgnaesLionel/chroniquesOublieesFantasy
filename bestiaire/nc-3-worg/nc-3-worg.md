@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/NC-3-Worg-2eed3d06b09881ebb0ebfe32dbbe4300
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Morsure + Embuscade PER 16 + Brise-genou).
+  - Worg en meute (DRS, NC 8+) : meute de 8+, Attaque en traître (L), L'Hallali.
 - Description : Les worgs sont des cousins maléfiques des loups, plus puissants (jusqu'à 150 kg) et plus intelligents. Ils comprennent le noir parler et ils servent parfois de monture aux gobelins.
 
 ## Profil — Worg

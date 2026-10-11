@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-1-Homme-Lezard-2efd3d06b09880f38e3bcaf716a576b3
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : absent du DRS en ligne (11/10/2026).
 
 ## Profil — Homme-lézard (bloc ancienne édition, tel qu'affiché)
 

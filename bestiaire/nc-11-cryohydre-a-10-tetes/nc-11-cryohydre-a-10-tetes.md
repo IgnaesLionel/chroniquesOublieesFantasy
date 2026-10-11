@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 11
 - Source Notion : https://silver-pen-32f.notion.site/NC-11-CryoHydre-10-t-tes-2eed3d06b098813da95fc1b895a158ad
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : créature distincte du « Cryohydre à dix têtes » du DRS (NC 5, DEF 23, PV 150).
+  - DRS : Morsure(10) +13 1d8+4+1d6 froid + Souffle 6d6+18 + têtes. Non repris (homebrew).
 
 ## Profil — CryoHydre à 10 têtes
 

@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/NC-3-Licorne-2eed3d06b0988197a920f75d44a6e967
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description :
   - La licorne ressemble à un cheval aux proportions parfaites et à la robe immaculée et elle est pourvue d'une corne torsadée unique. Cet animal féérique et majestueux habite seulement au sein des forêts sauvages et vierges. Il est très rare de l'apercevoir tant elle est discrète et prompte à s'éclipser. La corne de la licorne conserve ses propriétés magiques, même si elle est sectionnée, ce qui pousse souvent les créatures sans scrupule comme les orcs et même les humains à la chasser.
   - Les légendes disent que la licorne accepte parfois de servir de monture à une jeune fille au cœur pur.

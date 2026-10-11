@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 0.5
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-0-5-Aigle-2eed3d06b09880d7a5f1ebfb51b8f150
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Ce profil correspond à tous les oiseaux de proie de grande taille (environ 2 m d'envergure).
 
 ## Profil — Aigle commun

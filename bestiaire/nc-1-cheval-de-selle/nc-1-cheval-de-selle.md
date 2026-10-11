@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-1-Cheval-de-selle-2eed3d06b0988013b424c2c2e69cd4ac
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Monture (DRS).
 
 ## Profil — Cheval de selle
 
@@ -11,8 +13,13 @@
 - Initiative 10 — Défense 11 — RD 0
 - Vigueur 14 — DM Temp. 0 — Déplacement 10 m — États : —
 - Attaques : Ruade +2, DM 1d4+4 (Attaque +2, Dommages 1d4+4)
-- Actions : Soutenir (L)
+- Actions : Soutenir (L) ; Monture
 - Propriétés : Un cheval de selle n'est pas apte à subir le stress du combat, son cavalier subit un dé malus à toutes ses actions en selle en situation de combat.
+
+
+### Monture (Capacité)
+
+La créature double sa FOR pour porter une charge. (DRS)
 
 ## Images
 

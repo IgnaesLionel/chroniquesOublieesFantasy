@@ -114,7 +114,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const d = deriverPersonnage(c);
     expect(d.initiative).toBe(11);
     expect(d.defense).toBe(11);
-    expect(d.pvMax).toBe(13); // fiche affiche 14 : écart documenté en note
+    expect(d.pvMax).toBe(16); // DRS : 10+CON 3 + Robustesse (+3) ; fiche d'origine 14
     expect(d.chanceMax).toBe(2);
     expect(d.drType).toBe("d10");
     expect(d.drNombre).toBe(5);
@@ -227,7 +227,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     };
     const r = remettreAZeroPersonnage(modifie, dorain.inventaire);
     expect(r.niveau).toBe(1);
-    expect(r.pvMax).toBe(13); // 10 + CON 3, niveau 1
+    expect(r.pvMax).toBe(13); // reset : talents vidés, sans Robustesse (10 + CON 3)
     expect(r.pv).toBe(13);
     expect(r.capacites).toEqual([]);
     expect(r.sorts).toEqual([]);
@@ -338,16 +338,16 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
 
   it("monter/descendreNiveau : PV +gain+CON, planchers respectés", () => {
     const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    expect(dorain.pvMax).toBe(13);
+    expect(dorain.pvMax).toBe(16); // 10+CON 3 + Robustesse 3
     const n2 = monterNiveau(dorain); // Guerrier CON+3 : +8 PV.
     expect(n2.niveau).toBe(2);
-    expect(n2.pvMax).toBe(21);
-    expect(n2.pv).toBe(21);
+    expect(n2.pvMax).toBe(24);
+    expect(n2.pv).toBe(24);
     expect(dorain.niveau).toBe(1); // non muté
     const n1 = descendreNiveau(n2);
     expect(n1.niveau).toBe(1);
-    expect(n1.pvMax).toBe(13);
-    expect(n1.pv).toBe(13);
+    expect(n1.pvMax).toBe(16);
+    expect(n1.pv).toBe(16);
     // Niveau 1 : descente sans effet ; PV plancher à 1.
     expect(descendreNiveau(dorain)).toBe(dorain);
     const ko = descendreNiveau({ ...n2, pvMax: 3, pv: 0 });

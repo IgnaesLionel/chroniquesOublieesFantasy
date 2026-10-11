@@ -256,8 +256,14 @@ export function resolveAttack(
       doublePeineLog = `Double peine : +${Math.max(0, b.total)} DM [${b.rolls.join(", ")}] (2e touche)`;
     }
     if (attaqueOpts.bonusDM) degatsTotal += attaqueOpts.bonusDM;
-    if (bonusDetails.length > 0 || attaqueOpts.bonusDM) {
-      bonusLog = `+${[...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : [])].join(" + ")} (coup spécial)`;
+    // Archer émérite (Rôdeur) : +PER aux DM à l’arc, permanent, sans activation.
+    const bonusEmerite = talentConnu(attaquant, "Archer émérite") && (attaque.familles ?? []).includes("arcs")
+      ? (attaquant.caracs?.PER ?? 0)
+      : 0;
+    if (bonusEmerite) degatsTotal += bonusEmerite;
+    if (bonusDetails.length > 0 || attaqueOpts.bonusDM || bonusEmerite) {
+      const parties = [...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : []), ...(bonusEmerite ? [`${bonusEmerite} (Archer émérite)`] : [])];
+      bonusLog = `+${parties.join(" + ")}${bonusDetails.length > 0 || attaqueOpts.bonusDM ? " (coup spécial)" : ""}`;
     }
     degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
   } else if (attaque.demiDegatsSiRate) {
@@ -403,6 +409,10 @@ export function depenserChanceApresCoup(
     const roll = rollDiceExpression(parseDiceExpression(attaque.degats), rng);
     degatsDetails = roll.rolls;
     degatsTotal = roll.total;
+    // Archer émérite : +PER permanent, même sur un jet rattrapé.
+    if (talentConnu(attaquant, "Archer émérite") && (attaque.familles ?? []).includes("arcs")) {
+      degatsTotal += attaquant.caracs?.PER ?? 0;
+    }
   }
 
   const pvAvant = cible.pv;
@@ -572,7 +582,7 @@ function cleTalent(nom: string): string {
 }
 
 /** Le participant connaît-il ce talent (insensible casse/tirets) ? */
-function talentConnu(p: Pick<CombatParticipant, "capacites">, nom: string): boolean {
+export function talentConnu(p: Pick<CombatParticipant, "capacites">, nom: string): boolean {
   const q = cleTalent(nom);
   return (p.capacites ?? []).some((t) => cleTalent(t) === q);
 }
@@ -828,23 +838,20 @@ export function invoquer(
 }
 
 /**
- * Appelle le compagnon animal (Rôdeur, talent Le loup) : loup ou alpha selon
- * les talents connus. DEF 12+rang (18 alpha), PV niv×4 (×5 alpha), contact au
- * bonus magique, 1d4+2 (1d4°+5 alpha), +1 DEF par rang 5 en voie (Tactiques).
- * Au camp du lanceur, agit en fin d'ordre.
+ * Construit le compagnon loup permanent du rôdeur (talent Le loup) :
+ * loup ou alpha selon les talents connus. DRS : DEF 12+rang (+1 par rang 5
+ * en voie avec Tactiques de meute), PV niv×4, contact au bonus magique
+ * du rôdeur (1d4+2, 1d4°+5 alpha). Le loup est un participant à part
+ * entière : ajouté en préparation de combat, avec sa propre initiative
+ * (lancée ensuite).
  */
-export function invoquerCompagnon(
-  state: CombatState,
-  lanceurId: string,
-  rng: Rng = Math.random
-): { state: CombatState; resolution: InvocationResolution } {
-  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
-  if (!lanceur) throw new Error("Lanceur introuvable.");
+export function construireLoupCompagnon(
+  lanceur: CombatParticipant,
+  opts: { instanceId?: string; templateId?: string; initMod?: number; initiative?: number | null } = {}
+): CombatParticipant {
   if (!talentConnu(lanceur, "Le loup")) throw new Error(`${lanceur.nom} : pas de compagnon (Le loup).`);
-  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
-
   const connus = new Set([
-    ...(lanceur.capacites ?? []).map((t) => cleTalent(t)),
+    ...(lanceur.capacites ?? []).map((x) => cleTalent(x)),
     ...(lanceur.sorts ?? []).map((x) => cleTalent(x.nom)),
   ]);
   const voies = (lanceur.profil && CAPACITES[lanceur.profil]) || [];
@@ -861,20 +868,20 @@ export function invoquerCompagnon(
     }
   }
   const niv = Math.max(1, Math.floor(lanceur.niveau));
-  const pv = niv * (alpha ? 5 : 4);
-  const defense = (alpha ? 18 : 12 + rangLoup) + rang5;
+  const pv = niv * 4;
+  const defense = 12 + rangLoup + rang5;
   const bonus = lanceur.bonusMagique ?? niv;
   const nom = `${alpha ? "Loup alpha" : "Loup"} (${lanceur.nom})`;
-  const frais: CombatParticipant = {
-    instanceId: `loup-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`,
-    templateId: "compagnon:loup",
+  return {
+    instanceId: opts.instanceId ?? `loup-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`,
+    templateId: opts.templateId ?? "compagnon:loup",
     nom,
     camp: lanceur.camp,
     pvMax: pv,
     pv,
     defense,
-    initMod: 0,
-    initiative: lanceur.initiative,
+    initMod: opts.initMod ?? 0,
+    initiative: opts.initiative !== undefined ? opts.initiative : lanceur.initiative,
     attaques: [{ id: "loup-morsure", nom: "Morsure", bonus, degats: alpha ? "1d4°+5" : "1d4+2" }],
     effets: [],
     sorts: [],
@@ -884,15 +891,32 @@ export function invoquerCompagnon(
     statut: "actif",
     usagesSorts: {},
   };
+}
+
+/**
+ * Appel en cours de combat (repli MJ : le loup est normalement ajouté en
+ * préparation via construireLoupCompagnon) : ajoute le loup en fin
+ * d'ordre, au camp du lanceur.
+ */
+export function invoquerCompagnon(
+  state: CombatState,
+  lanceurId: string,
+  rng: Rng = Math.random
+): { state: CombatState; resolution: InvocationResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (!talentConnu(lanceur, "Le loup")) throw new Error(`${lanceur.nom} : pas de compagnon (Le loup).`);
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+  const frais = construireLoupCompagnon(lanceur);
   const participants = [...state.participants, frais];
   const log = [
     ...state.log,
-    { id: `loup-${Date.now()}`, at: stamp(), manche: state.manche, message: `${lanceur.nom} appelle ${nom} (${pv} PV, Déf ${defense}) — agit en fin d'ordre` },
+    { id: `loup-${Date.now()}`, at: stamp(), manche: state.manche, message: `${lanceur.nom} appelle ${frais.nom} (${frais.pv} PV, Déf ${frais.defense}) — agit en fin d'ordre` },
   ];
   void rng;
   return {
     state: checkEnd({ ...state, participants, log }),
-    resolution: { lanceurNom: lanceur.nom, sortNom: "Le loup", invoqueNom: nom, pv },
+    resolution: { lanceurNom: lanceur.nom, sortNom: "Le loup", invoqueNom: frais.nom, pv: frais.pv },
   };
 }
 

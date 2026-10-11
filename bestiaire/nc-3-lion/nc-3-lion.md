@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-3-Lion-2eed3d06b098803f9859c178f5299179
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 
 ## Profil — Lion
 

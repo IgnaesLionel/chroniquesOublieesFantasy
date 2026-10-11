@@ -21,9 +21,11 @@ interface Props {
   onHeal: (id: string, n: number) => void;
   onSelectAttacker: (id: string) => void;
   attackerId: string | null;
+  onSync?: (id: string) => void;
+  syncIds?: string[];
 }
 
-export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerId }: Props) {
+export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerId, onSync, syncIds }: Props) {
   return (
     <div className="rounded-lg border border-zinc-800 overflow-hidden">
       <table className="w-full text-sm">
@@ -79,6 +81,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                     <button onClick={() => onHit(p.instanceId, 1)} className="px-1.5 rounded bg-red-900 text-xs">−1</button>
                     <button onClick={() => onHit(p.instanceId, 5)} className="px-1.5 rounded bg-red-900 text-xs">−5</button>
                     <button onClick={() => onHeal(p.instanceId, 5)} className="px-1.5 rounded bg-green-900 text-xs">+5</button>
+                      {onSync && syncIds?.includes(p.instanceId) && (<button onClick={() => onSync(p.instanceId)} title="Resynchroniser depuis la fiche (attaques, sorts, talents)" className="px-1.5 rounded bg-zinc-700 text-xs">↻</button>)}
                   </div>
                 </td>
                 <td className="px-3 py-2 font-mono">{p.defense}</td>

@@ -8,7 +8,7 @@ import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, castSoutien, depenserChanceApresCoup, frapperZone, invoquerCompagnon, renvoyerSort, resolveAttack, utiliserCapacite, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, castSoutien, construireLoupCompagnon, depenserChanceApresCoup, frapperZone, renvoyerSort, resolveAttack, talentConnu, utiliserCapacite, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
@@ -16,11 +16,12 @@ import { CombatTable } from "@/src/components/combat/CombatTable";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
 import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
 import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
+import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 
 export default function CombatPage() {
-  const { items: characters } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
+  const { items: characters, setItems: setCharacters } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
   const { items: monsters } = useLocalCollection<MonsterTemplate>("cof.monsters.v2", SEED_MONSTERS);
   const { items: catalogue } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
 
@@ -35,19 +36,38 @@ export default function CombatPage() {
 
   const active = combat ? getActive(combat) : null;
 
-  const addPJ = (c: Character) => {
-    // Normalisé (migration sorts incluse) puis reconstruit : les attaques/sorts suivent la fiche à jour.
+  /** PJ (+ loup éventuel) reconstruits depuis la fiche : attaques/sorts/talents à jour. */
+  const pjNeufs = (c: Character): CombatParticipant[] => {
     const frais = participantFromCharacter(normaliserPersonnage(c as unknown as Record<string, unknown>), catalogue);
-    setStaging((s) => (s.some((p) => p.templateId === c.id) ? s.map((p) => (p.templateId === c.id ? frais : p)) : [...s, frais]));
+    if (!talentConnu(frais, "Le loup")) return [frais];
+    return [frais, construireLoupCompagnon(frais, {
+      instanceId: `compagnon-${frais.instanceId}`,
+      templateId: `compagnon:loup:${c.id}`,
+      initMod: frais.initMod,
+      initiative: null,
+    })];
+  };
+  /** Reconstruit les PJ depuis leurs fiches (staging et demarrage). */
+  const stagingAJour = (liste: CombatParticipant[]): CombatParticipant[] =>
+    liste.flatMap((p) => {
+      if (p.templateId.startsWith("compagnon:loup")) return [];
+      const fiche = characters.find((c) => c.id === p.templateId);
+      return fiche && p.camp === "pj" ? pjNeufs(fiche) : [p];
+    });
+  const addPJ = (c: Character) => {
+    setStaging((s) => [...s.filter((p) => p.templateId !== c.id && p.templateId !== `compagnon:loup:${c.id}`), ...pjNeufs(c)]);
   };
   const addMonsters = (m: MonsterTemplate) => {
     const n = Math.max(1, Math.min(12, quantities[m.id] ?? 1));
     setStaging((s) => [...s, ...monsterInstances(m, n)]);
   };
 
+  const resyncStaging = () => setStaging((s) => stagingAJour(s));
   const start = () => {
     if (staging.length < 2) return;
-    const rolled = rollInitiatives(createCombat(staging));
+    const frais = stagingAJour(staging);
+    setStaging(frais);
+    const rolled = rollInitiatives(createCombat(frais));
     setCombat(rolled);
     setAttackerId(rolled.participants[rolled.tourIndex]?.instanceId ?? null);
     setTargetId(rolled.participants.find((p) => p.instanceId !== rolled.participants[rolled.tourIndex]?.instanceId && p.statut === "actif")?.instanceId ?? null);
@@ -95,6 +115,59 @@ export default function CombatPage() {
     }
   };
 
+  const syncIds = useMemo(() => {
+    if (!combat) return [] as string[];
+    return combat.participants
+      .filter((p) => characters.some((c) => c.id === p.templateId))
+      .map((p) => p.instanceId);
+  }, [combat, characters]);
+
+  /** Applique une fiche à son participant (attaques, sorts, talents) : PV, effets et état conservés. */
+  const appliquerFiche = (instanceId: string, cibleNom: string, fiche: Character) => {
+    const frais = participantFromCharacter(normaliserPersonnage(fiche as unknown as Record<string, unknown>), catalogue);
+    setCombat((c) => {
+      if (!c) return c;
+      const cible = c.participants.find((x) => x.instanceId === instanceId);
+      if (!cible) return c;
+      // Attaques accordées en cours de combat (sort-tmp:) conservées.
+      const gardees = cible.attaques.filter((a) => a.id.startsWith("sort-tmp:"));
+      const attaques = [...frais.attaques.filter((a) => !gardees.some((g) => g.id === a.id)), ...gardees];
+      const nouvelles = frais.attaques.filter((a) => !cible.attaques.some((x) => x.id === a.id)).map((a) => a.nom);
+      return {
+        ...c,
+        participants: c.participants.map((x) => (x.instanceId === instanceId
+          ? { ...x, attaques, sorts: frais.sorts, capacites: frais.capacites, bonusMagique: frais.bonusMagique, niveau: frais.niveau, caracs: frais.caracs }
+          : x)),
+        log: [...c.log, { id: `sync-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: `${cibleNom} resynchronisé depuis sa fiche (${attaques.length} attaque(s)${nouvelles.length > 0 ? `, + ${nouvelles.join(", ")}` : ""}).` }],
+      };
+    });
+    setAttackId(null);
+  };
+
+  /** Resynchronise un PJ depuis sa fiche (raccourci du bouton ↻). */
+  const syncDepuisFiche = (instanceId: string) => {
+    if (!combat) return;
+    const cible = combat.participants.find((x) => x.instanceId === instanceId);
+    const fiche = characters.find((x) => x.id === cible?.templateId);
+    if (!cible || !fiche) {
+      setCombat((x) => (x ? { ...x, log: [...x.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: x.manche, message: "Resynchronisation impossible : pas de fiche liée." }] } : x));
+      return;
+    }
+    appliquerFiche(instanceId, cible.nom, fiche);
+  };
+
+  /** Équiper / déséquiper en combat (sortir du sac) : fiche + participant à jour aussitôt. */
+  const toggleEquipe = (instanceId: string, itemId: string) => {
+    const cible = combat?.participants.find((x) => x.instanceId === instanceId);
+    const fiche = characters.find((x) => x.id === cible?.templateId);
+    const entree = (fiche?.inventaire ?? []).find((x) => x.itemId === itemId);
+    const item = catalogue.find((x) => x.id === itemId);
+    if (!cible || !fiche || !entree || !item?.estArme) return;
+    const updated: Character = { ...fiche, inventaire: (fiche.inventaire ?? []).map((x) => (x.itemId === itemId ? { ...x, equipe: !x.equipe } : x)) };
+    setCharacters((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+    appliquerFiche(instanceId, cible.nom, updated);
+    setCombat((x) => (x ? { ...x, log: [...x.log, { id: `eq-${Date.now()}`, at: new Date().toISOString(), manche: x.manche, message: `${cible.nom} ${entree.equipe ? "rengaine" : "sort"} ${item.nom} (${entree.equipe ? "déséquipée" : "équipée"}).` }] } : x));
+  };
   const selectedParticipant = combat?.participants.find((p) => p.instanceId === attackerId) ?? null;
 
   /** Re-cible si l'ancienne cible est devenue invalide (ex. l'attaquant lui-même) : priorité aux ennemis. */
@@ -148,13 +221,14 @@ export default function CombatPage() {
             {staging.map((p) => {
               const nbSorts = p.attaques.filter((a) => a.id.startsWith("sort:")).length;
               return (
-                <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) dont ${nbSorts} sort(s}`}>
-                  {p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span> <button onClick={() => setStaging((s) => s.filter((x) => x.instanceId !== p.instanceId))} className="text-red-400 ml-1">✕</button>
+                <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) (${p.attaques.map((a) => a.nom).join(", ") || "aucune"}) dont ${nbSorts} sort(s)}`}>
+                  {p.templateId.startsWith("compagnon:loup") ? "🐺 " : ""}{p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span> <button onClick={() => setStaging((s) => s.filter((x) => x.instanceId !== p.instanceId && x.instanceId !== `compagnon-${p.instanceId}`))} className="text-red-400 ml-1">✕</button>
                 </span>
               );
             })}
           </div>
           <div className="flex gap-2 mt-3">
+            <button onClick={resyncStaging} title="Reconstruit chaque PJ depuis sa fiche (attaques, sorts, talents, loup)" className="px-4 py-2 rounded bg-zinc-800 text-sm">↻ Actualiser</button>
             <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>
             <button onClick={start} disabled={staging.length < 2} className="flex-1 py-2.5 rounded bg-amber-400 text-black font-bold disabled:opacity-40">
               Lancer les initiatives ({staging.length})
@@ -215,6 +289,8 @@ export default function CombatPage() {
           <CombatTable
             combat={combat}
             attackerId={attackerId}
+            syncIds={syncIds}
+            onSync={syncDepuisFiche}
             onSelectAttacker={(id) => {
               setAttackerId(id);
               setAttackId(null);
@@ -245,6 +321,13 @@ export default function CombatPage() {
             onRoll={rollAttack}
             onChance={useChance}
           />
+          <EquipementPanel
+            participants={combat.participants}
+            lanceurId={attackerId}
+            characters={characters}
+            catalogue={catalogue}
+            onToggle={toggleEquipe}
+          />
           <SoutienPanel
             participants={combat.participants}
             lanceurId={attackerId}
@@ -271,9 +354,7 @@ export default function CombatPage() {
               try {
                 const { state } = opts.actionSpeciale === "renvoi"
                   ? renvoyerSort(combat, lanceurId, cibleId)
-                  : opts.actionSpeciale === "compagnon"
-                    ? invoquerCompagnon(combat, lanceurId)
-                    : utiliserCapacite(combat, lanceurId, cibleId, talentNom, {
+                  : utiliserCapacite(combat, lanceurId, cibleId, talentNom, {
                       effetCle: opts.effetCle,
                       dureeTours: opts.dureeTours,
                       mods: opts.mods,

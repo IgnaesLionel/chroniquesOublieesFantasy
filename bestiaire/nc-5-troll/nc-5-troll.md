@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 5
 - Source Notion : https://silver-pen-32f.notion.site/NC-5-Troll-2eed3d06b0988145bf5eccc288a91292
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Fauchage 17-20/FOR-AGI 16/RD 3 + Vitalité).
+  - Attaque « ou » (VTT) contre « et » (DRS) : équivalent en jeu.
 - Description : Les trolls sont de grands humanoïdes de 2,70 m à la peau caoutchouteuse verdâtre ouverte d'excroissances et de champignons. Non seulement les armes rebondissent sur cette épaisse peau élastique, mais en plus les blessures infligées se referment comme par magie. Aussi, le troll est un monstre dénué de peur, confiant en sa capacité à échapper à la mort et il combat férocement. Les trolls parlent en général le noir parler. Ils vivent le plus souvent dans des endroits reculés : forêts profondes, marais nauséabonds.
 
 ## Profil — Troll

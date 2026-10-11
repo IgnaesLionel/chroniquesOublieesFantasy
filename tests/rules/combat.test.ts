@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import type { AttackDef } from "@/src/lib/rules/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, castSoutien, checkEnd, depenserChanceApresCoup, etatLimite, frapperZone, invoquerCompagnon, renvoyerSort, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, castSoutien, checkEnd, construireLoupCompagnon, depenserChanceApresCoup, etatLimite, frapperZone, invoquerCompagnon, renvoyerSort, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -356,11 +357,11 @@ describe("sorcier (voies du livre)", () => {
     expect(state.log.some((l) => l.message.includes("sacrifie 4 PV"))).toBe(true);
   });
 
-  it("touche auto (Rituel de sang) : sans jet, sacrifice + effet", () => {
-    const sort = { id: "r", nom: "Rituel de sang", type: "offensif" as const, cout: { ressource: "mana", montant: 4 }, coutPV: "1d4" };
+  it("touche auto (Rituel du sang) : sans jet, sacrifice + effet", () => {
+    const sort = { id: "r", nom: "Rituel du sang", type: "offensif" as const, cout: { ressource: "mana", montant: 4 }, coutPV: "1d4" };
     const atk = {
       ...sorcier(),
-      attaques: [{ id: "sort:r", nom: "✦ Rituel de sang", bonus: 0, degats: "1d1-1", toucheAuto: true, effetTouche: { cle: "Saignement rituel", duree: null } }],
+      attaques: [{ id: "sort:r", nom: "✦ Rituel du sang", bonus: 0, degats: "1d1-1", toucheAuto: true, effetTouche: { cle: "Saignement rituel", duree: null } }],
       sorts: [sort],
     };
     const s = createCombat([atk, pj("Tank", 30)]);
@@ -834,20 +835,39 @@ describe("rodeur (voies du livre)", () => {
     expect(loup.pv).toBe(12);
     expect(loup.defense).toBe(13); // 12 + rang 1
     expect(loup.attaques[0]).toMatchObject({ bonus: 6, degats: "1d4+2" });
-    // Alpha : DEF 18, PV niv×5, 1d4°+5.
+    // Alpha DRS : DEF 12+rang (12+4=16), PV niv×4 (4×4=16), 1d4°+5.
     const alpha = { ...rodeur(), capacites: ["Le loup", "Loup alpha"], niveau: 4, bonusMagique: 7 };
     const s3 = createCombat([alpha, gobelin("G")]);
     const [a3] = s3.participants.map((p) => p.instanceId);
     const ra = invoquerCompagnon(s3, a3);
     expect(ra.resolution.invoqueNom).toBe("Loup alpha (Rodeur)");
-    expect(ra.state.participants[2].pv).toBe(20);
-    expect(ra.state.participants[2].defense).toBe(18);
+    expect(ra.state.participants[2].pv).toBe(16);
+    expect(ra.state.participants[2].defense).toBe(16);
     expect(ra.state.participants[2].attaques[0].degats).toBe("1d4°+5");
     // Tactiques + Flèche (R5) : +1 archer +1 compagnon (celle-ci incluse) = +2.
     const tact = { ...rodeur(), capacites: ["Le loup", "Tactiques de meute", "Flèche de mort"] };
     const s4 = createCombat([tact, gobelin("G")]);
     const [a4] = s4.participants.map((p) => p.instanceId);
     expect(invoquerCompagnon(s4, a4).state.participants[2].defense).toBe(19); // 12 + rang 5 + 2
+  });
+  it("archer émérite : +PER auto aux DM à l’arc, sans activation", () => {
+    const atk = { ...rodeur(), capacites: ["Archer émérite"], attaques: [{ id: "arc", nom: "Arc court", bonus: 7, degats: "1d6", familles: ["arcs"] } as AttackDef] };
+    // rodeur() : PER 2. Touché : 15+7 = 22 vs déf 10 ; 1d6 : 4 + PER 2 = 6.
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, b] = s.participants.map((x) => x.instanceId);
+    const r = resolveAttack(s, a, b, "arc", fixedRng([0.7, 0.5]));
+    expect(r.resolution.touche).toBe(true);
+    expect(r.resolution.degatsTotal).toBe(6);
+    expect(r.state.log.some((l) => l.message.includes("Archer émérite"))).toBe(true);
+    // Dague (perforant, pas un arc) : pas de bonus.
+    const dag = { ...rodeur(), capacites: ["Archer émérite"], attaques: [{ id: "dague", nom: "Dague", bonus: 7, degats: "1d6", familles: ["dagues"] } as AttackDef] };
+    const s2 = createCombat([dag, pj("Tank", 10)]);
+    const [a2, b2] = s2.participants.map((x) => x.instanceId);
+    expect(resolveAttack(s2, a2, b2, "dague", fixedRng([0.7, 0.5])).resolution.degatsTotal).toBe(4);
+    // Sans le talent : pas de bonus même à l’arc.
+    const s3 = createCombat([{ ...rodeur(), attaques: [{ id: "arc", nom: "Arc court", bonus: 7, degats: "1d6", familles: ["arcs"] } as AttackDef] }, pj("Tank", 10)]);
+    const [a3, b3] = s3.participants.map((x) => x.instanceId);
+    expect(resolveAttack(s3, a3, b3, "arc", fixedRng([0.7, 0.5])).resolution.degatsTotal).toBe(4);
   });
 
   it("increvable : soin 4d4°+CON, +5 DEF, purge, réveille un KO", () => {
@@ -874,9 +894,22 @@ describe("rodeur (voies du livre)", () => {
     expect(state.log.some((l) => l.message.includes("purgés"))).toBe(true);
   });
 
-  it("usages : Loup et Increvable avec soin et purge", () => {
-    const loup = CAPACITES_USABLES.find((u) => u.talent === "Le loup");
-    expect(loup?.actionSpeciale).toBe("compagnon");
+  it("loup : compagnon permanent, plus une capacite lancable en combat", () => {
+    expect(CAPACITES_USABLES.some((u) => u.talent === "Le loup")).toBe(false);
+    const avec = { ...rodeur(), capacites: ["Le loup"], niveau: 3, bonusMagique: 6 };
+    const loup = construireLoupCompagnon(avec, {
+      instanceId: "compagnon-test",
+      templateId: "compagnon:loup:test",
+      initMod: avec.initMod,
+      initiative: null,
+    });
+    expect(loup.nom).toBe("Loup (Rodeur)");
+    expect(loup.camp).toBe("pj");
+    expect(loup.pv).toBe(12);
+    expect(loup.defense).toBe(13); // 12 + rang 1
+    expect(loup.initiative).toBeNull();
+    expect(loup.attaques[0]).toMatchObject({ bonus: 6, degats: "1d4+2" });
+    expect(() => construireLoupCompagnon(rodeur(), { instanceId: "x" })).toThrow(/pas de compagnon/);
     const inc = CAPACITES_USABLES.find((u) => u.talent === "Increvable");
     expect(inc).toMatchObject({ effetCle: "Increvable", dureeTours: 1, mods: { defense: 5 }, soin: "4d4°+CON", nettoie: true });
   });

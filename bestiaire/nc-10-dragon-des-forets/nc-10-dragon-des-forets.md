@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 10
 - Source Notion : https://silver-pen-32f.notion.site/NC-10-Dragon-des-forets-2eed3d06b09880619c60dfcbcc07fbb8
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Immunités (DRS).
 - Description :
   - Énormes créatures reptiliennes, les dragons possèdent quatre pattes et de grandes ailes membraneuses semblables à celles des chauves-souris. Les dragons des forêts sont reconnaissables aux patchs de plumes qui poussent au creux de certaines de leurs articulations (cou notamment) et en vieillissant leurs écailles ressemblent à de l'écorce.
   - Leur souffle est un nuage empoisonné et ils utilisent généralement la magie druidique. Le caractère de chaque dragon varie selon l'individu, mais tous sont orgueilleux et attirés par les trésors et ceux qui ont réuni un butin fabuleux évitent de s'en éloigner.
@@ -14,8 +16,8 @@
 - Caractéristiques : AGI +3 (*) / CON +8 / FOR +8 / PER +3 (*) / CHA +2 / INT +2 / VOL +5
 - Initiative 16 — Défense 24 — RD 0
 - Vigueur 140 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Morsure et griffes (2 attaques) +14, DM 1d12+8 (Attaque +14, Dommages 1d12+8) ; Attaque magique +15 DM (Attaque +15)
-- Actions : Coup de queue (G) ; Souffle (L) ; Soutenir (L) ; Vol rapide - En vol attaque cible au sol
+- Attaques : Morsure et griffes (2 attaques) +14, DM 1d12+8 (Attaque +14, Dommages 1d12+8) ; Attaque magique +15, DM spécial (Attaque +15, spécial)
+- Actions : Coup de queue (G) ; Souffle (L) ; Soutenir (L) ; Vol rapide - En vol attaque cible au sol ; Immunités
 - Propriétés : IMMUNITÉS — immunisé au sommeil et à la paralysie et ne subit aucun DM de poison. Attaque magique : +15.
 
 ## Capacités
@@ -35,6 +37,11 @@ Lorsque le dragon attaque pour la première fois, toutes les créatures à moins
 ### Souffle (Capacité, nuage empoisonné)
 
 Le souffle est un nuage de gaz empoisonné affectant toutes les créatures dans un cône de 15 m × 15 m. Retenir sa respiration est inutile, le poison fonctionne par simple contact. L'attaque inflige automatiquement (pas de test d'attaque) 6d6+18 DM de poison. Les DM sont divisés par deux si la victime réussit un test d'AGI difficulté 15. La créature doit attendre 1d4 rounds avant d'utiliser à nouveau son souffle après chaque utilisation.
+
+
+### Immunités (Capacité)
+
+Un dragon des forêts est immunisé au sommeil et à la paralysie et ne subit aucun DM de poison. (DRS)
 
 ## Images
 

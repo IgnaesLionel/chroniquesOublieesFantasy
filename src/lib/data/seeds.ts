@@ -127,8 +127,8 @@ export const SEED_CHARACTERS: Character[] = [
     // Fiche : "Habitants des tunnels" (pluriel) ; nom DRS canonique au singulier
     // pour matcher la voie (cases du modal, règle de création).
     traitsPeuple: ["Habitant des tunnels"],
-    // Fiche affiche 14 PV (10+CON = 13) : écart de 1 conservé en note, valeur recalculée 13.
-    pvMax: 13, pv: 13, defense: 11, initMod: 1,
+    // DRS Robustesse (Voie résistance R1) : PV max +rang+2 = +3 auto (10+CON 3+3 = 16).
+    pvMax: 16, pv: 16, defense: 11, initMod: 1,
     defenseEquipement: 0, defenseMod: 0,
     attaques: [],
     // Création : 2 pts -> Protéger un allié + Robustesse (rang 1 Guerrier).
@@ -138,7 +138,7 @@ export const SEED_CHARACTERS: Character[] = [
       chance: { max: 2, actuel: 2 },
     },
     desRecuperation: { type: "d10", max: 5, actuel: 2 },
-    effets: [], notes: "Fiche d'origine : 14 PV affichés pour 10+CON (10+3=13).", exemple: false,
+    effets: [], notes: "Fiche d'origine : 14 PV affichés (DRS : 10+CON+Robustesse = 16).", exemple: false,
     inventaire: [{ itemId: "item-hache-1main", quantite: 1, equipe: true }],
     sorts: [],
   },

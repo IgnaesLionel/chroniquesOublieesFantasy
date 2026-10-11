@@ -1,0 +1,158 @@
+DRS: 91 / LOCAL: 99 / MATCHES: 85 / OK: 55
+
+[OK] DRS 'Aigle commun' (NC 1/2) <-> local 'Aigle commun' (notion-nc-0-5-aigle)
+[OK] DRS 'Animal minuscule' (NC 0) <-> local 'Animal minuscule' (notion-nc-0-animal-minuscule)
+[OK] DRS 'Animal petit' (NC 0) <-> local 'Animal petit' (notion-nc-0-animal-petit-chien)
+[OK] DRS 'Animal très petit' (NC 0) <-> local 'Animal très petit' (notion-nc-0-animal-tres-petit-chat)
+[ÉCARTS] DRS 'Araignée géante' (NC 3) <-> local 'Araignée géante' (notion-nc-3-araignee-geante)
+    - attaque DRS 'Attaque+6 · DM 2d6+4 + poison mortel (2d6, difficulté 12)' : SANS équivalent local
+[OK] DRS 'Assassin' (NC 4) <-> local 'Assassin' (notion-nc-4-assassin)
+[OK] DRS 'Bandit de base' (NC 1/2) <-> local 'Bandit de base' (notion-nc-0-5-bandit-de-base)
+[OK] DRS 'Bandit vétaran' (NC 1) <-> local 'Bandit vétéran' (notion-nc-1-bandit-veteran)
+[OK] DRS 'Basilic' (NC 3) <-> local 'Basilic' (notion-nc-3-basilic)
+[OK] DRS 'Bison' (NC 2) <-> local 'Bison' (notion-nc-2-bison)
+[OK] DRS 'Zombie ourhible' (NC 4) <-> local 'Zombie ourhible' (notion-zombie-ourhible)
+[ÉCARTS] DRS 'Bison, grand mâle' (NC 3) <-> local 'Bison grand mâle' (notion-nc-3-grand-bison)
+    - attaque 'Corne' : DRS bonus=8 DM=2d6+8 vs local bonus=8 DM=2d6+6
+[OK] DRS 'Capitaine' (NC 4) <-> local 'Capitaine' (notion-nc-4-capitaine)
+[OK] DRS 'Chasseur ailé' (NC 5) <-> local 'Chasseur ailé' (notion-chasseur-aile)
+[OK] DRS 'Chef bandit' (NC 2) <-> local 'Chef bandit' (notion-nc-2-chef-bandit)
+[OK] DRS 'Cheval de guerre' (NC 1) <-> local 'Cheval de guerre' (notion-nc-1-cheval-de-guerre)
+[OK] DRS 'Cheval de selle' (NC 1) <-> local 'Cheval de selle' (notion-nc-1-cheval-de-selle)
+--- DRS 'Chien fou' (NC 1/2) : ABSENT du bestiaire local
+[ÉCARTS] DRS 'Chimère' (NC 7) <-> local 'Chimère' (notion-nc-7-chimere)
+    - attaque DRS 'Morsuer de serpent+14 · DM 1d4+3 + poison' : SANS équivalent local
+[ÉCARTS] DRS 'Chimère draconique' (NC 7) <-> local 'Chimère draconique' (notion-nc-7-chimere-draconique)
+    - capacités DRS non reprises en local: ['Riposte sournoise']
+[ÉCARTS] DRS 'Crocodile' (NC 2) <-> local 'Crocodile' (notion-nc-2-crocodile)
+    - capacités DRS non reprises en local: ['Ambuscade']
+[ÉCARTS] DRS 'Cryohydre à dix têtes' (NC 5) <-> local 'CryoHydre à 10 têtes' (notion-nc-11-cryohydre-a-10-tetes)
+    - NC DRS=5 vs local=11.0
+    - attaque 'Morsure (1 attaque par tête)' : DRS bonus=13 DM=1d8+4 + 1d6 de froid vs local bonus=13 DM=1d8+4+1d6
+    - attaque DRS 'Souffle glacial(cône de 20 m, tous les 1d4 rounds)  · DM 6d6+18 (test d'AGI difficulté 15 pour réduire les DM de moitié)' : SANS équivalent local
+    - nb attaques : DRS=2 vs local=1
+    - capacités DRS non reprises en local: ['Ajouter des têtes', 'Attaques multiples', 'Couper une tête']
+[ÉCARTS] DRS 'Démonet' (NC 2) <-> local 'Démonet' (notion-nc-2-demonet)
+    - capacités DRS non reprises en local: ['Résistance']
+[ÉCARTS] DRS 'Dragon des forêts' (NC 10) <-> local 'Dragon des forêts' (notion-nc-10-dragon-des-forets)
+    - nb attaques : DRS=0 vs local=2
+[ÉCARTS] DRS 'Élémentaire d'eau (grand)' (NC 5) <-> local 'Élémentaire d'eau (grand)' (notion-nc-5-elementaire-d-eau-grand)
+    - capacités DRS non reprises en local: ['Vision']
+[OK] DRS 'Éléphant' (NC 6) <-> local 'Éléphant' (notion-nc-6-elephant)
+--- DRS 'Forcené' (NC 1/2) : ABSENT du bestiaire local
+[OK] DRS 'Garde de la ville' (NC 1) <-> local 'Garde de la ville' (notion-nc-1-garde-de-la-ville)
+[OK] DRS 'Garde du corps' (NC 3) <-> local 'Garde du corps' (notion-nc-3-garde-du-corps)
+[OK] DRS 'Géant du feu' (NC 9) <-> local 'Géant du feu' (notion-nc-9-geant-de-feu)
+[OK] DRS 'Geoselachis' (NC 7) <-> local 'Géoselachis' (notion-nc-7-geoselachis)
+[OK] DRS 'Gnoll (chef)' (NC 4) <-> local 'Chef Gnoll' (notion-nc-4-chef-gnoll)
+[OK] DRS 'Gnoll de base' (NC 1) <-> local 'Gnoll' (notion-nc-1-gnoll)
+[OK] DRS 'Gnoll (meute)' (NC 1) <-> local 'Gnoll' (notion-nc-1-gnoll)
+[OK] DRS 'Gnoll (sergent)' (NC 2) <-> local 'Sergent Gnoll' (notion-nc-2-sergent-gnoll)
+[ÉCARTS] DRS 'Gobelin (chef)' (NC 2) <-> local 'Chef Gobelin' (notion-nc-2-chef-goblin)
+    - capacités DRS non reprises en local: ['Sergent']
+[OK] DRS 'Gobelin de base' (NC 0) <-> local 'Gobelin de base' (notion-nc-0-gobelin-de-base)
+[OK] DRS 'Gobelin élite' (NC 1/2) <-> local 'Gobelin d'élite' (notion-nc-0-5-gobelin-d-elite)
+[ÉCARTS] DRS 'Gobelin (shaman)' (NC 1) <-> local 'Shaman Gobelin' (notion-nc-1-shaman-gobelin)
+    - nb attaques : DRS=1 vs local=2
+    - capacités DRS non reprises en local: ['Attaque magique+4 Attaque en meute', 'Attaque magique A']
+[OK] DRS 'Golem de chair' (NC 7) <-> local 'Golem de chair' (notion-nc-7-golem-de-chair)
+[OK] DRS 'Gorille' (NC 3) <-> local 'Gorille' (notion-nc-3-gorille)
+[OK] DRS 'Goule' (NC 2) <-> local 'Goule' (notion-nc-2-goule)
+[ÉCARTS] DRS 'Goule (abomination)' (NC 4) <-> local 'Abomination' (notion-nc-4-ghoule-abomination)
+    - capacités DRS non reprises en local: ['Fièvre des goules', 'Paralysie']
+[OK] DRS 'Griffon' (NC 4) <-> local 'Griffon' (notion-nc-4-griffon)
+[OK] DRS 'Hydre à cinq têtes' (NC 5) <-> local 'Hydre à 5 têtes' (notion-nc-5-hydre-a-5-tetes)
+--- DRS 'Incarnation de Zamorda' (NC 6) : ABSENT du bestiaire local
+[OK] DRS 'Kobold (chef)' (NC 1) <-> local 'Chef Kobold' (notion-nc-1-chef-kobold)
+[OK] DRS 'Kobold de base' (NC 0) <-> local 'Kobold' (notion-nc-0-kobold)
+[ÉCARTS] DRS 'Kobold (prêtre)' (NC 2) <-> local 'Prêtre Kobold' (notion-nc-2-pretre-kobold)
+    - DEF DRS=13 vs local=15
+[OK] DRS 'Licorne' (NC 3) <-> local 'Licorne' (notion-nc-3-licorne)
+[OK] DRS 'Lion' (NC 3) <-> local 'Lion' (notion-nc-3-lion)
+[OK] DRS 'Lion, grand mâle' (NC 4) <-> local 'Lion grand mâle' (notion-nc-4-grand-lion)
+[ÉCARTS] DRS 'Loup' (NC 1) <-> local 'Loup' (notion-nc-1-loup)
+    - capacités DRS non reprises en local: ['Interchangeable']
+[OK] DRS 'Loup, mâle alpha' (NC 2) <-> local 'Loup (Mâle alpha)' (notion-nc-2-loup-alpha)
+--- DRS 'Maëla' (NC 9) : ABSENT du bestiaire local
+[ÉCARTS] DRS 'Milicien' (NC 1/2) <-> local 'Milicien' (notion-nc-0-milicien)
+    - NC DRS=1/2 vs local=0.0
+[OK] DRS 'Momie' (NC 5) <-> local 'Momie' (notion-nc-5-momie)
+[OK] DRS 'Momie auguste' (NC 10) <-> local 'Momie auguste' (notion-nc-10-momie-auguste)
+--- DRS 'Murra' (NC 6) : ABSENT du bestiaire local
+[ÉCARTS] DRS 'Ogre (chef)' (NC 6) <-> local 'Chef Ogre' (notion-nc-6-chef-ogre)
+    - capacités DRS non reprises en local: ['Une capacité au choix parmi Tape dur ou Imparable.', 'Note de conception', 'Tape dur']
+[ÉCARTS] DRS 'Ogre de base' (NC 3) <-> local 'Ogre' (notion-nc-3-ogre)
+    - capacités DRS non reprises en local: ['Une capacité au choix parmi Tape dur ou Imparable.', 'Note de conception']
+[OK] DRS 'Orc berserker' (NC 2) <-> local 'Berserk orc' (notion-nc-2-berserk-orc)
+[ÉCARTS] DRS 'Orc (chef)' (NC 6) <-> local 'Chef orc' (notion-nc-6-chef-orc)
+    - INIT DRS=10 vs local fiche=13
+    - capacités DRS non reprises en local: ['Brise-genou', 'Commandant']
+[ÉCARTS] DRS 'Orc de base' (NC 1/2) <-> local 'Orc' (notion-nc-0-orc)
+    - NC DRS=1/2 vs local=0.0
+[OK] DRS 'Orc noir' (NC 1) <-> local 'Orc noir' (notion-nc-1-orc-noir)
+[OK] DRS 'Orc (sergent)' (NC 3) <-> local 'Sergent orc' (notion-nc-3-sergent-orc)
+[ÉCARTS] DRS 'Orc (shaman)' (NC 3) <-> local 'Shaman orc' (notion-nc-3-shaman-orc)
+    - nb attaques : DRS=0 vs local=2
+[OK] DRS 'Ourhible' (NC 5) <-> local 'Ourhible' (notion-nc-5-ourhible)
+[OK] DRS 'Ours brun' (NC 4) <-> local 'Ours brun (tel qu'affiché : NC 4)' (notion-nc-2-ours-brun)
+[OK] DRS 'Ours noir' (NC 2) <-> local 'Ours noir' (notion-nc-2-ours-noir)
+[OK] DRS 'Ours polaire' (NC 6) <-> local 'Ours polaire' (notion-nc-6-ours-polaire)
+[OK] DRS 'Panthère' (NC 2) <-> local 'Panthère' (notion-nc-2-panthere)
+[ÉCARTS] DRS 'Rat géant' (NC 1/2) <-> local 'Rat géant' (notion-nc-0-5-rat-geant)
+    - INIT DRS=5 vs local fiche=15
+[ÉCARTS] DRS 'Requin' (NC 4) <-> local 'Requin' (notion-nc-4-requin)
+    - INIT DRS=13 vs local fiche=16
+[OK] DRS 'Rhinocéros' (NC 4) <-> local 'Rhinocéros' (notion-nc-4-rhinoceros)
+[ÉCARTS] DRS 'Sanglier' (NC 3) <-> local 'Sanglier' (notion-nc-3-sanglier)
+    - attaque 'Défenses' : DRS bonus=8 DM=2d4+3 vs local bonus=6 DM=2d4+3
+[OK] DRS 'Serpent constricteur' (NC 3) <-> local 'Serpent constricteur' (notion-nc-3-serpent-constricteur)
+[OK] DRS 'Serpent venimeux' (NC 1) <-> local 'Serpent venimeux' (notion-nc-1-serpent-venimeux-crotale-vipere)
+[OK] DRS 'Skrambler' (NC 3) <-> local 'Skrambler' (notion-nc-3-skrambler)
+[ÉCARTS] DRS 'Sorcier' (NC 5) <-> local 'Sorcier' (notion-nc-5-sorcier)
+    - nb attaques : DRS=0 vs local=2
+[OK] DRS 'Squelette de base' (NC 1) <-> local 'Squelette' (notion-nc-1-squelette)
+[ÉCARTS] DRS 'Squelette géant' (NC 4) <-> local 'Squelette géant' (notion-nc-4-squelette-geant)
+    - attaque DRS 'Massue à deux mains+9 · DM 2d8+6' : SANS équivalent local
+    - capacités DRS non reprises en local: ['Résistance aux DM']
+[OK] DRS 'Troll' (NC 5) <-> local 'Troll' (notion-nc-5-troll)
+[OK] DRS 'Vampirien' (NC 4) <-> local 'Vampirien' (notion-nc-4-vampirien)
+[OK] DRS 'Vampire' (NC 8) <-> local 'Vampire' (notion-nc-8-vampire)
+[ÉCARTS] DRS 'Vampire ancien' (NC 13) <-> local 'Vampire ancien' (notion-nc-13-vampire-ancien)
+    - capacités DRS non reprises en local: ['Forme gazeuse A', 'Immortel', 'Riposte éclair']
+[ÉCARTS] DRS 'Vétéran ou garde du palais ducal' (NC 1) <-> local 'Vétéran' (notion-nc-2-veteran)
+    - NC DRS=1 vs local=2.0
+[ÉCARTS] DRS 'Worg' (NC 3) <-> local 'Worg' (notion-nc-3-worg)
+    - capacités DRS non reprises en local: ['Brise genou']
+--- DRS 'Worg en meute' (NC 8) : ABSENT du bestiaire local
+[ÉCARTS] DRS 'Zombie humain' (NC 1) <-> local 'Zombie humain' (notion-nc-1-zombie-humain)
+    - attaque DRS 'Attaque+4 · DM 1d6+3 ou selon arme +3' : SANS équivalent local
+    - capacités DRS non reprises en local: ['Insensible à la douleur', 'Lenteur', 'Résistance aux DM', 'Sans esprit']
+[ÉCARTS] DRS 'Zombie humain (variante)' (NC 1) <-> local 'Zombie humain' (notion-nc-1-zombie-humain)
+    - DEF DRS=? vs local=10
+    - PV DRS=? vs local=18
+    - INIT DRS=? vs local fiche=8
+    - nb attaques : DRS=0 vs local=1
+--- local 'Arbre animé' (notion-druid-arbre-anime) : SANS équivalent DRS
+--- local 'Strige' (notion-nc-0-5-strige) : SANS équivalent DRS
+--- local 'Bandit vétéran' (notion-nc-1-bandit-veteran) : SANS équivalent DRS
+--- local 'Chef Kobold' (notion-nc-1-chef-kobold) : SANS équivalent DRS
+--- local 'Homme-lézard' (notion-nc-1-homme-lezard) : SANS équivalent DRS
+--- local 'Shaman Gobelin' (notion-nc-1-shaman-gobelin) : SANS équivalent DRS
+--- local 'Dragon rouge (blocs ancienne édition, tels qu'affichés)' (notion-nc-12-dragon-rouge) : SANS équivalent DRS
+--- local 'Berserk orc' (notion-nc-2-berserk-orc) : SANS équivalent DRS
+--- local 'Chef Gobelin' (notion-nc-2-chef-goblin) : SANS équivalent DRS
+--- local 'NC 2 Elfe Noir' (notion-nc-2-elfe-noir) : SANS équivalent DRS
+--- local 'Prêtre Kobold' (notion-nc-2-pretre-kobold) : SANS équivalent DRS
+--- local 'Sergent Gnoll' (notion-nc-2-sergent-gnoll) : SANS équivalent DRS
+--- local 'Sergent orc' (notion-nc-3-sergent-orc) : SANS équivalent DRS
+--- local 'Shaman orc' (notion-nc-3-shaman-orc) : SANS équivalent DRS
+--- local 'Chef Gnoll' (notion-nc-4-chef-gnoll) : SANS équivalent DRS
+--- local 'Minotaure' (notion-nc-4-minotaure) : SANS équivalent DRS
+--- local 'Ombre' (notion-nc-4-ombre) : SANS équivalent DRS
+--- local 'Zombie choursette' (notion-nc-4-zombie-choursette) : SANS équivalent DRS
+--- local 'Chef Ogre' (notion-nc-6-chef-ogre) : SANS équivalent DRS
+--- local 'Chef orc' (notion-nc-6-chef-orc) : SANS équivalent DRS
+--- local 'Géant des collines' (notion-nc-6-geant-des-collines) : SANS équivalent DRS
+--- local 'Sigméus, le nécromant' (notion-sigmeus-le-necromant) : SANS équivalent DRS
+--- local 'Élémentaire d'air (Forme de)' (notion-voir-elementaire-d-air-rang-8-forme-elementaire-d-air) : SANS équivalent DRS
+--- local 'Zombies coriaces' (notion-zombie-coriasse) : SANS équivalent DRS

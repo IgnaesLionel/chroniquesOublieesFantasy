@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 6
 - Source Notion : https://silver-pen-32f.notion.site/NC-6-Chef-Ogre-2eed3d06b098810b88a6f89934d6ff61
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Hachoir(2) + Enragé/Imparable/Tape dur/Teigneuse).
+  - Au choix Tape dur ou Imparable (DRS) ; Imparable : +2d4 (VTT), DRS ogre : +1d6.
 
 ## Profil — Chef Ogre
 
@@ -36,5 +39,6 @@ Voir transcription dans `nc-3-sanglier` (même texte).
 - `./images/img-5.webp` (Enragé)
 
 ## Notes
+- DRS : au choix Tape dur ou Imparable (note de conception : nombreux ogres Tape dur redoutables sans attaque groupée).
 
 - Capacités communes : Soutenir, Imparable, Tape dur, Enragé, Teigneuse.

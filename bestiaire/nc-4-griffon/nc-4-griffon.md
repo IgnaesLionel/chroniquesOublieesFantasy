@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 4
 - Source Notion : https://silver-pen-32f.notion.site/NC-4-Griffon-2eed3d06b09881ceb8efe2a206fb1d83
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Le griffon est une puissante créature au corps de lion pourvue de la tête et des ailes d'un aigle. Ce mélange ne manque pas de majesté et cet animal fantastique est parfois utilisé comme monture par les chevaliers. La créature pèse environ 300 kg pour une envergure de 7 m. Un griffon est plus intelligent qu'un simple animal et, même s'il ne parle pas, il peut apprendre à comprendre une langue s'il y est habitué très tôt.
 
 ## Profil — Griffon

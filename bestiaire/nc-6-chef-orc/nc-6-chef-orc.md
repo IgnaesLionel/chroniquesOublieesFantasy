@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 6
 - Source Notion : https://silver-pen-32f.notion.site/NC-6-Chef-Orc-2eed3d06b09881a8aafbd72cf295a6b5
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Capitaine/Commandant/Imparable/Brise-genou).
+  - INIT 13 (VTT) conservée ; DRS en ligne : INIT 10.
 
 ## Profil — Chef orc
 

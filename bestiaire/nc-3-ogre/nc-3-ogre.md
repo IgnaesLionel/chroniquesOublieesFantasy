@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/NC-3-Ogre-2eed3d06b09881e29fd6ec324aa95c4f
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Hachoir + Imparable/Tape dur).
+  - Au choix Tape dur ou Imparable (DRS) ; Imparable : +2d4 (VTT), DRS ogre : +1d6.
 - Description :
   - L'ogre est une brute épaisse mesurant plus de 2,50 m (pour 300 kg). Cette créature maléfique a un penchant pour les armes démesurées et la boucherie gratuite. C'est un adversaire formidable et un combat contre un ogre n'est jamais sans risque. Il parle le noir parler et parfois le commun.
   - Un chef ogre accompagné de 5 ogres est une rencontre ordinaire de niveau 10.
@@ -40,5 +43,6 @@ Les ogres : la brute épaisse qui vous contemple d'un air ahuri mesure plus de 2
 - `./images/img-4.webp` (bloc ancienne édition)
 
 ## Notes
+- DRS : au choix Tape dur ou Imparable (note de conception : nombreux ogres Tape dur redoutables sans attaque groupée).
 
 - Capacités communes : Soutenir, Imparable, Tape dur.

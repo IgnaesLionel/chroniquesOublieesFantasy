@@ -3,6 +3,9 @@
 - Catégorie : Animaux
 - NC : 2
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-2-Crocodile-2eed3d06b0988060999bde6da78f5048
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Morsure + Embuscade + Dévorer).
+  - Le DRS écrit « Ambuscade » ; Embuscade PER 16 (VTT), DRS : PER 15.
 - Description : Ces caractéristiques correspondent à tous les lézards de grande taille (environ 3 m) à forte dentition (alligator et autres varans).
 
 ## Profil — Crocodile

@@ -3,6 +3,9 @@
 - Catégorie : Animaux
 - NC : 7
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-7-Grand-El-phant-2eed3d06b098801ebb60f049e38baace
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : absent du DRS en ligne (variante locale).
+  - Voir « Grand mâle » (NC +1, +2 att/DEF/DM, +20 PV, DRS).
 
 ## Profil — Éléphant grand mâle
 

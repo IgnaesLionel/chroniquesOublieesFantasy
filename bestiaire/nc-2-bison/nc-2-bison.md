@@ -3,6 +3,9 @@
 - Catégorie : Animaux
 - NC : 2
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-2-Bison-2eed3d06b0988061a296f13fef3fac53
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme ; Charge : texte VTT (FOR 13).
+  - Charge : DRS en ligne FOR difficulté 14.
 
 ## Profil — Bison
 

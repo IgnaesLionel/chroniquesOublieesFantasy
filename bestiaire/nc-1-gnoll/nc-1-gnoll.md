@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/NC-1-Gnoll-2eed3d06b0988133b924d0f2602efc87
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 
 ## Profil — Gnoll
 

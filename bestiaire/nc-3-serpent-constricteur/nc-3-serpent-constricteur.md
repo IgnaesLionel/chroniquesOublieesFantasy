@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-3-Serpent-Constricteur-2eed3d06b098800887b5f8e9189137a6
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Ce profil correspond au boa ou au python. Un spécimen d'environ 4 m pour 80 kg.
 
 ## Profil — Serpent constricteur
@@ -11,7 +13,7 @@
 - Caractéristiques : AGI +0 / CON +4 / FOR +4 (*) / PER +0 (*) / CHA -2 / INT -4 / VOL +0
 - Initiative 13 — Défense 15 — RD 0
 - Vigueur 30 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Morsure +4, DM 1d6+4 (Attaque +4, Dommages 1d6+4)
+- Attaques : Morsure +4, DM 1d6+4 + étreinte (Attaque +4, Dommages 1d6+4 + étreinte)
 - Actions : Embuscade ; Étreinte - DM de l'étreinte ; Soutenir (L)
 
 ## Capacités

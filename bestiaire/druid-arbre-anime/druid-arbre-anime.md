@@ -2,6 +2,8 @@
 
 - Catégorie : Compagnions
 - Source Notion : https://silver-pen-32f.notion.site/Druid-Arbre-Anim-2efd3d06b09881d4a0e3ebda082191d3
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : compagnon druidique, hors liste DRS en ligne.
 - Description (voie) :
   - Druide.
   - Le druide peut animer un arbre en le touchant.

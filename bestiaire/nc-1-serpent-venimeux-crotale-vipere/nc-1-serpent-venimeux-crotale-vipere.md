@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-1-Serpent-Venimeux-crotale-Vipere-2eed3d06b098809d824beb2c5c81d141
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 
 ## Profil — Serpent venimeux
 
@@ -10,7 +12,7 @@
 - Caractéristiques : AGI +3 (*) / CON +0 (*) / FOR -3 / PER +2 / CHA -2 / INT -4 / VOL -2
 - Initiative 12 — Défense 15 — RD 0
 - Vigueur 2 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Morsure +3, DM 1 (Attaque +3, Dommages 1)
+- Attaques : Morsure +3, DM 1 + venin (Attaque +3, Dommages 1 + venin)
 - Actions : Embuscade ; Soutenir (L) ; Venin - En cas d'échec de la cible
 
 ## Capacités

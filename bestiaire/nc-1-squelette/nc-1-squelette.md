@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/NC-1-Squelette-2eed3d06b09881beb470d7d5e9271803
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Sans esprit (DRS).
 - Description : En animant par magie les ossements d'une créature défunte, on obtient un mort-vivant assez fragile appelé le squelette. Un squelette est une créature sans cervelle immunisée à toute forme d'attaque mentale. Et non, il ne parle pas !
 
 ## Profil — Squelette
@@ -12,7 +14,7 @@
 - Initiative 9 — Défense 13 — RD 0
 - Vigueur 9 — DM Temp. 0 — Déplacement 10 m — États : —
 - Attaques : Épée (ou autre) +4, DM 1d6+1 (Attaque +4, Dommages 1d6+1)
-- Actions : Réduction des DM de froid - Contre DM de froid (1) ; Soutenir (L)
+- Actions : Réduction des DM de froid - Contre DM de froid (1) ; Soutenir (L) ; Sans esprit
 - Propriétés : SANS ESPRIT — aucune âme n'habite la carcasse morte, le squelette est immunisé à tous les sorts qui affectent l'esprit.
 
 ## Capacités
@@ -26,6 +28,11 @@ Usage en jeu : aucune automatisation. Au MJ d'utiliser le bouton dommages divis�
 ### Réduction des DM de froid (Capacité)
 
 Réduit de 5 tous les DM de froid reçus.
+
+
+### Sans esprit (Capacité)
+
+Aucune âme n'habite la carcasse morte, le squelette est immunisé à tous les sorts qui affectent l'esprit. (DRS)
 
 ## Images
 

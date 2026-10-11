@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 5
 - Source Notion : https://silver-pen-32f.notion.site/NC-5-Ourhible-2eed3d06b098813db2e3db7e629fd11b
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description :
   - Les ourhibles sont des ours mutants dont la tête a été remplacée par celle d'un autre animal : crapaud, sanglier, rapace ou même crocodile. Les ourhibles ont les membres supérieurs hypertrophiés prolongés de griffes puissantes. Très agressifs, ils attaquent sans sommation, les yeux injectés de sang et le regard fou.
   - Dans les Terres d'Osgild : les ourhibles ont été créés lors de la période sombre des guerres qui ont succédé à la chute de l'empire d'Osgild. Le plus célèbre et plus commun des ourhibles est le terrible choursette, mélange de chouette et d'ours.

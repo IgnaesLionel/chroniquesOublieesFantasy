@@ -3,13 +3,16 @@
 - Catégorie : Animaux
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-3-Gorille-2eed3d06b09880d1965cccfb13f019c6
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : PV corrigés 30 (DRS ; la capture VTT affichait 0) ; Charge : texte VTT (FOR 13).
+  - Charge : DRS en ligne FOR difficulté 15.
 
 ## Profil — Gorille
 
 - État : Vivante — Taille : Grande — NC 3
 - Caractéristiques : AGI +4 (*) / CON +5 (*) / FOR +5 (*) / PER +2 / CHA -2 / INT -3 / VOL +0
 - Initiative 12 — Défense 18 — RD 0
-- Vigueur 0 (affichée à 0 sur l'image) — DM Temp. 0 — Déplacement 10 m — États : —
+- Vigueur 30 — DM Temp. 0 — Déplacement 10 m — États : —
 - Attaques : Poings et morsures +7, DM 2d6+5 (Attaque +7, Dommages 2d6+5)
 - Actions : Charge (L) ; Soutenir (L)
 
@@ -32,4 +35,4 @@ Le gorille se déplace aussi vite dans les arbres qu'au sol. Le gorille obtient 
 ## Notes
 
 - Capacités communes : Soutenir, Charge.
-- Vigueur affichée à 0 sur la capture (à vérifier en jeu).
+- Vigueur : 30 (DRS ; la capture VTT affichait 0, coquille).

@@ -3,6 +3,8 @@
 - Catégorie : Humains
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/NC-1-Bandit-v-t-ran-2eed3d06b09881bb9055fe80e17fe8aa
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (le DRS écrit « vétaran », coquille).
 
 ## Profil — Bandit vétéran
 

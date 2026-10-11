@@ -152,11 +152,12 @@ export function chanceMax(cha: number, profil: string, familleReplis?: FamilleCO
   return Math.max(0, 2 + cha + r.bonusChance - (eclaireur ? 1 : 0));
 }
 
-/** Nombre de dés de récupération : 2 + CON (+1 si Mystique, +1 si Éclaireur). Min 0. */
-export function drNombre(con: number, profil: string, familleReplis?: FamilleCOF, talents: string[] = []): number {
+/** Nombre de dés de récupération : 2 + CON (+1 si Mystique, +1 si Éclaireur, +VOL si Pacte démoniaque). Min 0. */
+export function drNombre(con: number, profil: string, familleReplis?: FamilleCOF, talents: string[] = [], vol = 0): number {
   const r = regleProfil(profil, familleReplis);
   const eclaireur = talents.some((t) => normaliserNomCapacite(t) === "éclaireur");
-  return Math.max(0, 2 + con + r.bonusDR + (eclaireur ? 1 : 0));
+  const pacte = talents.some((t) => normaliserNomCapacite(t) === "pacte démoniaque");
+  return Math.max(0, 2 + con + r.bonusDR + (eclaireur ? 1 : 0) + (pacte ? vol : 0));
 }
 
 /**
@@ -235,14 +236,44 @@ function nomsConnus(c: Pick<Character, "capacites" | "sorts">): Set<string> {
   return s;
 }
 
-/** Bonus DEF permanent des talents connus (Armure d'os +3 ; Défense au bouclier +1, +1 avec Renvoi ; Dur à cuire +1 ; Rempart +1 ; Parade croisée +1, +1 avec Double peine ; Tactiques +1 par rang 5 en voie du profil). */
+/** Bonus DEF permanent des talents connus (DRS) :
+ * - Armure d'os +3, +1 par rang 4 en voie sorcier
+ * - Défense au bouclier +1 (+1 avec Renvoi = rang 5)
+ * - Bouclier de la foi +1 (+1 avec Mot de pouvoir = rang 5)
+ * - Dur à cuire +1 ; Rempart +1
+ * - Parade croisée +1 (+1 au rang 5 = Double peine)
+ * - Grand pas +1 en nature (+1 au rang 5 = Increvable, MJ : extérieur)
+ * - Tactiques +1 par rang 5 en voie du profil. */
 export function bonusDefenseTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
   const noms = nomsConnus(c);
+  const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+  const voies = CAPACITES[profil] ?? [];
+  const rangMax = (nomVoie: string): number => {
+    const v = voies.find((x) => x.voie === nomVoie);
+    if (!v) return 0;
+    const rangs = v.capacites.filter((x) => noms.has(normaliserNomCapacite(x.nom))).map((x) => x.rang);
+    return rangs.length > 0 ? Math.max(...rangs) : 0;
+  };
+  const compteRang = (rang: number, prefixeVoie?: string): number => {
+    let n = 0;
+    for (const v of voies) {
+      if (prefixeVoie && !v.voie.toLowerCase().includes(prefixeVoie)) continue;
+      if (v.capacites.some((x) => x.rang === rang && noms.has(normaliserNomCapacite(x.nom)))) n += 1;
+    }
+    return n;
+  };
   let bonus = 0;
-  if (noms.has(normaliserNomCapacite("Armure d'os"))) bonus += 3;
+  if (noms.has(normaliserNomCapacite("Armure d'os"))) {
+    // DRS : +3, +1 par rang 4 atteint dans une voie de sorcier.
+    bonus += 3 + compteRang(4);
+  }
   if (noms.has(normaliserNomCapacite("Défense au bouclier"))) {
     bonus += 1;
     if (noms.has(normaliserNomCapacite("Renvoi de sort"))) bonus += 1;
+  }
+  if (noms.has(normaliserNomCapacite("Bouclier de la foi"))) {
+    bonus += 1;
+    if (noms.has(normaliserNomCapacite("Mot de pouvoir"))) bonus += 1;
   }
   if (noms.has(normaliserNomCapacite("Dur à cuire"))) bonus += 1;
   if (noms.has(normaliserNomCapacite("Rempart"))) bonus += 1;
@@ -250,13 +281,29 @@ export function bonusDefenseTalents(c: Pick<Character, "capacites" | "sorts" | "
     bonus += 1;
     if (noms.has(normaliserNomCapacite("Double peine"))) bonus += 1;
   }
+  if (noms.has(normaliserNomCapacite("Grand pas"))) {
+    bonus += 1;
+    if (rangMax("Voie de la survie") >= 5) bonus += 1;
+  }
   if (noms.has(normaliserNomCapacite("Tactiques de meute"))) {
-    const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
-    for (const v of CAPACITES[profil] ?? []) {
+    for (const v of voies) {
       if (v.capacites.some((x) => x.rang === 5 && noms.has(normaliserNomCapacite(x.nom)))) bonus += 1;
     }
   }
   return bonus;
+}
+
+/** Bonus PV max permanent des talents connus (DRS) : Robustesse (Guerrier) +rang+2
+ * où rang = rang max connu en Voie de la résistance. */
+export function bonusPvTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
+  const noms = nomsConnus(c);
+  if (!noms.has(normaliserNomCapacite("Robustesse"))) return 0;
+  const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+  const voie = (CAPACITES[profil] ?? []).find((v) => v.voie === "Voie de la résistance");
+  if (!voie) return 0;
+  const rangs = voie.capacites.filter((x) => noms.has(normaliserNomCapacite(x.nom))).map((x) => x.rang);
+  if (rangs.length === 0) return 0;
+  return Math.max(...rangs) + 2;
 }
 
 /** Bonus INIT permanent des talents connus (Vivacité +3 ; Archer émérite +1 par rang dans la voie, version arc). */
@@ -287,10 +334,10 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
     famille,
     initiative: initiativeBase(car) + bonusInitiativeTalents(c),
     defense: defenseBase(car, equipementEffectif(c) + bonusDefenseTalents(c), modEffectif(c)),
-    pvMax: pvMaxBase(famille, car.CON, c.niveau),
+    pvMax: pvMaxBase(famille, car.CON, c.niveau) + bonusPvTalents(c),
     chanceMax: chanceMax(car.CHA, profil, famille, c.capacites ?? []),
     drType: drType(profil, famille),
-    drNombre: drNombre(car.CON, profil, famille, c.capacites ?? []),
+    drNombre: drNombre(car.CON, profil, famille, c.capacites ?? [], car.VOL),
     manaMax: manaMax(car.VOL, nbSorts),
     attaques: attaquesBase(c.niveau, car),
     de: deEvolutif(c.niveau),
@@ -379,7 +426,7 @@ export function verifierPersonnage(c: Character): string[] {
   if (!(PROFILS_PAR_FAMILLE[c.famille] ?? []).includes(profil)) {
     ecarts.push(`Profil ${profil || "?"} impossible en famille ${c.famille} (corriger dans Éditer)`);
   }
-  if (c.pvMax !== d.pvMax) ecarts.push(`PV ${c.pvMax} ≠ ${d.pvMax} (${PV_BASE_PAR_FAMILLE[d.famille]}+CON)`);
+  if (c.pvMax !== d.pvMax) ecarts.push(`PV ${c.pvMax} ≠ ${d.pvMax} (${PV_BASE_PAR_FAMILLE[d.famille]}+CON+Robustesse)`);
   if (c.defense !== d.defense) ecarts.push(`DEF ${c.defense} ≠ ${d.defense} (10+AGI+Équip+Mod)`);
   if (c.initMod !== d.initiative - 10) ecarts.push(`Init ${c.initMod} ≠ +${d.initiative - 10} (10+PER=${d.initiative})`);
   const manaMaxStocke = c.ressources?.mana?.max;
@@ -453,7 +500,7 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
   const drSaisi = (o.desRecuperation ?? undefined) as Character["desRecuperation"];
   const desRecuperation = drSaisi ?? {
     type: drType(profil, famille),
-    max: drNombre(caracteristiques.CON, profil, famille, capacites),
+    max: drNombre(caracteristiques.CON, profil, famille, capacites, caracteristiques.VOL),
     actuel: drInitial(caracteristiques.CON, profil, famille),
   };
   // Migration sorts (one-shot) : un talent qui est aussi un sort obtient son

@@ -113,7 +113,7 @@ export const CAPACITES_AVENTURIER: Record<string, VoieDetail[]> = {
     {
       voie: "Voie de l'archer",
       capacites: [
-        { nom: "Archer émérite", rang: 1, resume: "+PER aux DM à l'arc (saisir en Bonus DM ; variante lancer : +FOR, portée doublée, sans Init, MJ) et +1 Init par rang auto." },
+        { nom: "Archer émérite", rang: 1, resume: "+PER aux DM à l'arc (bonus appliqué auto, sans activation ; variante lancer : +FOR, portée doublée, sans Init, MJ) et +1 Init par rang auto." },
         { nom: "Tir chirurgical", rang: 2, resume: "Tir en mêlée sans pénalité, jamais d'allié touché même en critique (moteur : aucun tir ami modélisé)." },
         { nom: "Dans le mille", rang: 3, resume: "À distance (A) : dé malus + +2d4° DM (L : +3d4°). Cumulable Tir rapide et Flèche de mort. Cocher dans le panneau Attaque." },
         { nom: "Tir rapide", rang: 4, resume: "Action limitée (L) : deux attaques à distance à -2 (saisir -2 en Mod. attaque, 2 lancers)." },
@@ -124,7 +124,7 @@ export const CAPACITES_AVENTURIER: Record<string, VoieDetail[]> = {
       voie: "Voie du combat à deux armes",
       capacites: [
         { nom: "Attaque à suivre", rang: 1, resume: "Action gratuite (G), 1/round : une attaque principale ratée donne une attaque de l'autre main (dague, hachette, épée courte). Signalé auto au raté (MJ : attaque manuelle ; remplacé par Droite-gauche)." },
-        { nom: "Parade croisée", rang: 2, resume: "+1 DEF auto à deux armes (+2 avec Double peine ; doublé si renonce à la secondaire, MJ)." },
+        { nom: "Parade croisée", rang: 2, resume: "Passif : +1 DEF à deux armes (+2 au rang 5, doublé si renonce à la secondaire, MJ)." },
         { nom: "Droite-gauche", rang: 3, resume: "Action gratuite (G), 1/round : attaque principale + secondaire gratuite (dé malus si cible différente, MJ : 2e attaque manuelle). Remplace Attaque à suivre." },
         { nom: "Combattant héroïque", rang: 4, resume: "AGI +1 (Éditer) et dé bonus en AGI, ou FOR +1 (sans dé bonus) + même arme en secondaire sans malus (MJ : choix)." },
         { nom: "Double peine", rang: 5, resume: "Deux armes touchant la même cible au même tour : +1d4° DM auto à la 2e touche." },
@@ -133,10 +133,10 @@ export const CAPACITES_AVENTURIER: Record<string, VoieDetail[]> = {
     {
       voie: "Voie du compagnon animal",
       capacites: [
-        { nom: "Le loup", rang: 1, resume: "Compagnon loup (DEF 12+rang auto, PV niv×4, contact bonus magique 1d4+2), ordres simples. Appeler via Capacités (🐺). Fuit à 0 PV en nature (revient en 8 h, MJ)." },
+        { nom: "Le loup", rang: 1, resume: "Compagnon loup permanent (AGI+1 CON+1 FOR+2 PER+2 CHA-2 INT-3 VOL+2 ; DEF 12+rang, PV niv×4, contact bonus magique 1d4+2, sa propre initiative), ordres simples. Ajouté auto en préparation de combat. En ville : reste dehors (ou gros chien). Fuit à 0 PV en nature (revient en 8 h, MJ) ; nouveau au niveau suivant si mort." },
         { nom: "Travail d'équipe", rang: 2, resume: "Au contact (MJ : adjacence) : loup en dé bonus d'attaque, rôdeur en dé bonus de pistage et anti-surprise." },
         { nom: "Lien empathique", rang: 3, resume: "Action limitée (L) : télépathie + soigne le loup avec ses propres PV (1 pour 1, MJ : boutons ±PV)." },
-        { nom: "Loup alpha", rang: 4, resume: "Upgrade auto du loup appelé (DEF 18, PV niv×5, 1d4°+5)." },
+        { nom: "Loup alpha", rang: 4, resume: "Upgrade auto du loup appelé (AGI+1 CON+3 FOR+5 PER+2 ; DEF 12+rang, PV niv×4, 1d4°+5)." },
         { nom: "Tactiques de meute", rang: 5, resume: "Même cible : loup +1d4° (saisir en Bonus DM, MJ), PV donnés doublés (MJ), +1 DEF chacun par rang 5 en voie auto." },
       ],
     },
@@ -145,7 +145,7 @@ export const CAPACITES_AVENTURIER: Record<string, VoieDetail[]> = {
       capacites: [
         { nom: "Survie", rang: 1, resume: "Rang+2 en escalade et survie nature (dont récupération, MJ) ; la nuit en nature, 1 DR dépensé = +1d4° PV (MJ)." },
         { nom: "Nature nourricière", rang: 2, resume: "1/jour, 1d6 h en nature sauvage (MJ : hors combat) : nourriture pour rang personnes + plantes (PER 10) soignant 1d4° PV par rang." },
-        { nom: "Grand pas", rang: 3, resume: "Action gratuite (G), en nature (MJ : extérieur) : +1 DEF (+2 au rang 5, Éditer), +10 m, ignore les terrains difficiles." },
+        { nom: "Grand pas", rang: 3, resume: "Action gratuite (G), en nature (MJ : extérieur) : +1 DEF auto (+2 au rang 5), +10 m, ignore les terrains difficiles naturels." },
         { nom: "Constitution héroïque", rang: 4, resume: "CON +1 (Éditer) et dé bonus aux tests de CON (MJ)." },
         { nom: "Increvable", rang: 5, resume: "Action limitée (L), 1/combat (MJ) : à 0 PV, +4d4°+CON auto via Capacités, +5 DEF 1 round, purge des états." },
       ],

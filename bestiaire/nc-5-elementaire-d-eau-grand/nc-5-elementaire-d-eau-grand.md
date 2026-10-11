@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 5
 - Source Notion : https://silver-pen-32f.notion.site/NC-5-Elementaire-d-eau-Grand-2eed3d06b09881389278ea12ae0628a2
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme ; Fauchage corrigé FOR-AGI 16 + Vision DRS.
+  - Fauchage : la fiche indiquait FOR-AGI 20, DRS : 16.
 - Description : L'élémentaire d'eau est l'incarnation de son élément primordial. Il peut être invoqué par magie et se manifeste dans notre monde sous la forme d'une créature au buste vaguement humanoïde mêlée à un tourbillon d'eau. L'élémentaire d'eau percute l'adversaire ou le noie.
 
 ## Profil — Élémentaire d'eau (grand)
@@ -26,8 +29,7 @@ Usage en jeu : il s'agit d'une action activable qui redonne 5 PV à la créature
 
 ### Fauchage (Capacité)
 
-Sur 15 à 20 au test d'attaque, si l'attaque est réussie, la victime doit réussir au choix un test de FOR ou d'AGI difficulté 20 ou être renversée.
-
+Sur 17 à 20 au test d'attaque, si l'attaque est réussie, la victime doit réussir au choix un test de FOR ou d'AGI difficulté 16 ou être renversée. (DRS ; la fiche indiquait 20)
 ### Grand (Capacité, origine : Livre des règles p280)
 
 La créature retranche 3 à tous les DM subis (RD 3).
@@ -46,8 +48,7 @@ Une fois par combat, un élémentaire peut se transformer en tourbillon liquide 
 
 ### Vision dans le noir (Capacité)
 
-La créature voit dans le noir.
-
+Ils voient dans le noir à 30 m et ils peuvent déterminer la localisation de toute créature en contact avec leur élément à moins de 30 m, même si celle-ci est invisible. (DRS)
 ## Images
 
 - `./images/img-1.webp` (profil)

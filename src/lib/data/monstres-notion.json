@@ -33,6 +33,80 @@
   "exemple": false
  },
  {
+  "id": "notion-compagnon-loup",
+  "kind": "monstre",
+  "nom": "Loup (compagnon du rôdeur)",
+  "type": "Créature",
+  "niveau": 0.0,
+  "pv": 4,
+  "pvMax": 4,
+  "defense": 13,
+  "initMod": 1,
+  "attaques": [
+   {
+    "id": "notion-compagnon-loup-a0",
+    "nom": "Morsure",
+    "bonus": 1,
+    "degats": "1d4+2",
+    "degatsAffiche": "1d4+2"
+   }
+  ],
+  "capacites": [
+   "Soutenir"
+  ],
+  "capacitesPartagees": [
+   "soutenir"
+  ],
+  "capacitesDetails": [],
+  "description": "",
+  "comportement": "",
+  "taille": "Moyenne",
+  "categorie": "Compagnions",
+  "rd": 0,
+  "deplacement": 10,
+  "initiativeFiche": 10,
+  "sourceUrl": "",
+  "notes": "",
+  "exemple": false
+ },
+ {
+  "id": "notion-compagnon-loup-alpha",
+  "kind": "monstre",
+  "nom": "Loup alpha (compagnon du rôdeur)",
+  "type": "Créature",
+  "niveau": 0.0,
+  "pv": 4,
+  "pvMax": 4,
+  "defense": 16,
+  "initMod": 1,
+  "attaques": [
+   {
+    "id": "notion-compagnon-loup-alpha-a0",
+    "nom": "Morsure",
+    "bonus": 1,
+    "degats": "1d4+5",
+    "degatsAffiche": "1d4+5"
+   }
+  ],
+  "capacites": [
+   "Soutenir"
+  ],
+  "capacitesPartagees": [
+   "soutenir"
+  ],
+  "capacitesDetails": [],
+  "description": "",
+  "comportement": "",
+  "taille": "Moyenne",
+  "categorie": "Compagnions",
+  "rd": 0,
+  "deplacement": 10,
+  "initiativeFiche": 10,
+  "sourceUrl": "",
+  "notes": "",
+  "exemple": false
+ },
+ {
   "id": "notion-druid-arbre-anime",
   "kind": "monstre",
   "nom": "Arbre animé",
@@ -299,10 +373,21 @@
    }
   ],
   "capacites": [
-   "Soutenir"
+   "Soutenir",
+   "Attaques ridicules",
+   "Minuscule"
   ],
   "capacitesPartagees": [],
-  "capacitesDetails": [],
+  "capacitesDetails": [
+   {
+    "nom": "Attaques ridicules",
+    "description": "La créature n'inflige pas de DM sauf sur une réussite critique (1 DM). (DRS)"
+   },
+   {
+    "nom": "Minuscule",
+    "description": "La créature obtient un bonus de +10 aux tests d'escalade et de discrétion. (DRS)"
+   }
+  ],
   "description": "",
   "comportement": "",
   "taille": "Minuscule",
@@ -690,10 +775,16 @@
    }
   ],
   "capacites": [
-   "Soutenir"
+   "Soutenir",
+   "Monture"
   ],
   "capacitesPartagees": [],
-  "capacitesDetails": [],
+  "capacitesDetails": [
+   {
+    "nom": "Monture",
+    "description": "La créature double sa FOR pour porter une charge. Un cheval de guerre est apte à porter une barde. Caparaçon de maille : +2 DEF (100 pa). Barde de plaques : +4 DEF (400 pa), malus en Init. égal au bonus. La DEF de la fidèle monture du chevalier tient déjà compte d'une éventuelle barde. En PNJ, un cheval lourd peut bénéficier de rangs de boss. (DRS)"
+   }
+  ],
   "description": "",
   "comportement": "",
   "taille": "Grande",
@@ -725,10 +816,16 @@
    }
   ],
   "capacites": [
-   "Soutenir"
+   "Soutenir",
+   "Monture"
   ],
   "capacitesPartagees": [],
-  "capacitesDetails": [],
+  "capacitesDetails": [
+   {
+    "nom": "Monture",
+    "description": "La créature double sa FOR pour porter une charge. (DRS)"
+   }
+  ],
   "description": "",
   "comportement": "",
   "taille": "Grande",
@@ -901,7 +998,8 @@
   "capacites": [
    "Interchangeables",
    "Soutenir",
-   "Interchangeables (Capacité)"
+   "Interchangeables (Capacité)",
+   "Chien"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -911,6 +1009,10 @@
    {
     "nom": "Interchangeables (Capacité)",
     "description": "Tant que la créature et ses alliées sont plus nombreuses que la cible, elles se relaient pour esquiver ses attaques et elles obtiennent un bonus de +3 en DEF. Si plusieurs créatures semblables sont au contact du PJ, le MJ a toute latitude pour infliger les DM d'une attaque sur une créature au hasard, le personnage ne sait jamais laquelle il blesse. Seul, le loup n'a pas usage de la capacité Interchangeable et son NC passe à ½.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Interchangeables)\n- Capacités communes : Soutenir, Interchangeables (meutes)."
+   },
+   {
+    "nom": "Chien",
+    "description": "Vous pouvez aussi utiliser le profil du loup pour les gros chiens en retirant de 2 à 4 PV. (DRS)"
    }
   ],
   "description": "",
@@ -975,7 +1077,7 @@
     "nom": "Morsure",
     "bonus": 3,
     "degats": "1d1",
-    "degatsAffiche": "1"
+    "degatsAffiche": "1 + venin"
    }
   ],
   "capacites": [
@@ -1038,7 +1140,7 @@
     "nom": "Attaque magique",
     "bonus": 4,
     "degats": "2d6",
-    "degatsAffiche": "2d6"
+    "degatsAffiche": "2d6 (30 m)"
    }
   ],
   "capacites": [
@@ -1090,12 +1192,14 @@
    "Réduction des DM de froid",
    "Soutenir",
    "Résistance aux DM (Capacité, origine : Livre des règles p278)",
-   "Réduction des DM de froid (Capacité)"
+   "Réduction des DM de froid (Capacité)",
+   "Sans esprit"
   ],
   "capacitesPartagees": [
    "soutenir",
    "resistance-squelette",
-   "reduction-froid"
+   "reduction-froid",
+   "sans-esprit"
   ],
   "capacitesDetails": [
    {
@@ -1105,6 +1209,10 @@
    {
     "nom": "Réduction des DM de froid (Capacité)",
     "description": "Réduit de 5 tous les DM de froid reçus.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Résistance aux DM — commune avec Squelette Géant)\n- `./images/img-3.webp` (Réduction des DM de froid — commune)\n- Capacités communes : Soutenir, Résistance aux DM, Réduction froid (partagées avec Squelette Géant)."
+   },
+   {
+    "nom": "Sans esprit",
+    "description": "Aucune âme n'habite la carcasse morte, le squelette est immunisé à tous les sorts qui affectent l'esprit. (DRS)"
    }
   ],
   "description": "En animant par magie les ossements d'une créature défunte, on obtient un mort-vivant assez fragile appelé le squelette. Un squelette est une créature sans cervelle immunisée à toute forme d'attaque mentale. Et non, il ne parle pas !",
@@ -1134,7 +1242,7 @@
     "nom": "Arme",
     "bonus": 4,
     "degats": "1d6+3",
-    "degatsAffiche": "1d6+3"
+    "degatsAffiche": "1d6+3 (ou arme +3)"
    }
   ],
   "capacites": [
@@ -1188,7 +1296,7 @@
     "nom": "Attaque magique",
     "bonus": 15,
     "degats": "1d1",
-    "degatsAffiche": "DM — [à vérifier]"
+    "degatsAffiche": "spécial (voir pouvoirs)"
    }
   ],
   "capacites": [
@@ -1199,7 +1307,8 @@
    "Coup de queue (Capacité)",
    "Emporter dans les airs (Capacité)",
    "Inspirer la terreur (Capacité)",
-   "Souffle (Capacité, nuage empoisonné)"
+   "Souffle (Capacité, nuage empoisonné)",
+   "Immunités"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -1224,6 +1333,10 @@
    {
     "nom": "Souffle (Capacité, nuage empoisonné)",
     "description": "Le souffle est un nuage de gaz empoisonné affectant toutes les créatures dans un cône de 15 m × 15 m. Retenir sa respiration est inutile, le poison fonctionne par simple contact. L'attaque inflige automatiquement (pas de test d'attaque) 6d6+18 DM de poison. Les DM sont divisés par deux si la victime réussit un test d'AGI difficulté 15. La créature doit attendre 1d4 rounds avant d'utiliser à nouveau son souffle après chaque utilisation.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Coup de queue)\n- `./images/img-3.webp` (Emporter dans les airs)\n- `./images/img-4.webp` (Inspirer la t"
+   },
+   {
+    "nom": "Immunités",
+    "description": "Un dragon des forêts est immunisé au sommeil et à la paralysie et ne subit aucun DM de poison. (DRS)"
    }
   ],
   "description": "",
@@ -1253,7 +1366,7 @@
     "nom": "Coup (2 attaques)",
     "bonus": 16,
     "degats": "2d6+8",
-    "degatsAffiche": "2d6+8"
+    "degatsAffiche": "2d6+8 + putréfaction"
    }
   ],
   "capacites": [
@@ -1271,7 +1384,8 @@
    "Lumière (Capacité, origine : Livre des règles p106)",
    "Familier (Capacité, origine : Livre des règles p106)",
    "Vol (Capacité, origine : Livre des règles p106)",
-   "Téléportation (Capacité, origine : Livre des règles p106)"
+   "Téléportation (Capacité, origine : Livre des règles p106)",
+   "Voie de la magie universelle rang 5"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -1288,7 +1402,7 @@
    },
    {
     "nom": "Putréfaction (Capacité)",
-    "description": "Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs, une sorte de lèpre fulgurante. La victime subit 1d6 DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie. L'utilisation de la capacité de prêtre Délivrance permet de soigner cette maladie.\nUsage en jeu : l'action permet d'infliger les DM et d'appliquer une perte périodique de DM pendant"
+    "description": "Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs, une sorte de lèpre fulgurante. La victime subit 1d10 DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie. (DRS, momie auguste)"
    },
    {
     "nom": "Injonction mortelle (Capacité)",
@@ -1309,6 +1423,10 @@
    {
     "nom": "Téléportation (Capacité, origine : Livre des règles p106)",
     "description": "Une fois par jour, le magicien disparaît et réapparaît à un autre endroit situé à moins de (niveau × INT) kilomètres. Le lieu d'arrivée doit être soit en vue, soit parfaitement connu par le magicien. Le magicien peut emmener avec lui un allié à partir du niveau 10, un deuxième au niveau 13, un troisième au niveau 16 et enfin un quatrième au niveau 19.\nUsage en jeu : le joueur clique sur l'action \"activation du sort\" pour dépenser ses PM. Les effets sont gérés à la main.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Résistance aux DM)\n- `./images/img-3.webp` (Putréfaction)\n- `./imag"
+   },
+   {
+    "nom": "Voie de la magie universelle rang 5",
+    "description": "La momie auguste peut lancer tous les sorts de cette voie à volonté. (DRS)"
    }
   ],
   "description": "La momie est un mort-vivant couvert de bandelettes, un cadavre animé par une magie antique qui permet à un humanoïde une parodie de vie après la mort. La momie doit rester éternellement immobile au fond de son sarcophage et elle ne peut que rarement trouver l'énergie de s'en extraire. Toutefois, lorsque cela arrive, elle fait preuve d'une haine des vivants qui dérangent son sommeil et d'une force impie qui défie les lois de la physique.",
@@ -1435,14 +1553,14 @@
     "nom": "Griffes et morsures (2 attaques)",
     "bonus": 14,
     "degats": "2d8+8",
-    "degatsAffiche": "1d8+8+1d8"
+    "degatsAffiche": "1d8+8 + 1d8 de froid + absorption d'énergie"
    },
    {
     "id": "notion-nc-13-vampire-ancien-a1",
     "nom": "Épée longue (2 attaques)",
     "bonus": 14,
     "degats": "2d8+8",
-    "degatsAffiche": "1d8+8+1d8"
+    "degatsAffiche": "1d8+8 + 1d8 de froid"
    }
   ],
   "capacites": [
@@ -1453,7 +1571,9 @@
    "Vulnérabilité au soleil",
    "Absorption d'énergie, Immortel, Forme gazeuse, Regard envoûtant, Résistance impie, Riposte éclair, Transformation en chauve-souris, Vulnérabilité au soleil (Capacités communes)",
    "Estropier (Capacité)",
-   "Magicien (Capacité)"
+   "Magicien (Capacité)",
+   "Pattes d'araignée",
+   "Regard envoûtant (ancien)"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -1478,6 +1598,14 @@
    {
     "nom": "Magicien (Capacité)",
     "description": "La plupart des vampires anciens sont aussi des magiciens ; choisissez une voie de mage au rang 5 (souvent une voie de sorcier).\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` à `./images/img-9.webp` (communes avec Vampire)\n- `./images/img-10.webp` (Estropier)\n- `./images/img-11.webp` (Magicien)\n- Capacités communes : Soutenir + cycle vampirique complet."
+   },
+   {
+    "nom": "Pattes d'araignée",
+    "description": "Le vampire peut se déplacer de 10 m par action de mouvement sur les murs et les plafonds. (DRS)"
+   },
+   {
+    "nom": "Regard envoûtant (ancien)",
+    "description": "Le regard du vampire sape la volonté de ses opposants. Il peut utiliser une action de mouvement pour tenter d'envoûter son adversaire. La cible doit réussir un test de VOL difficulté 20 ou être affaiblie pour 1d6 rounds ; les créatures de niveau 3 ou inférieur passent sous le contrôle du vampire. (DRS, vampire ancien ; la version commune (VOL 15) figure dans la fiche du vampire)"
    }
   ],
   "description": "",
@@ -1768,7 +1896,7 @@
     "nom": "Queue fourchue",
     "bonus": 4,
     "degats": "1d1",
-    "degatsAffiche": "1"
+    "degatsAffiche": "1 + venin"
    }
   ],
   "capacites": [
@@ -1778,7 +1906,15 @@
    "Résistance feu et acide (Capacité)",
    "Résistance aux armes (Capacité, origine : Livre des règles p278)",
    "Invisibilité (Capacité)",
-   "Transformation (Capacité)"
+   "Transformation (Capacité)",
+   "Démon",
+   "Tentation du mal",
+   "Télépathie",
+   "Téléportation",
+   "Ténèbres",
+   "Venin",
+   "Vision dans le noir",
+   "Vol"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -1801,13 +1937,45 @@
    {
     "nom": "Transformation (Capacité)",
     "description": "Le démonet peut se transformer en n'importe quel animal de taille très petite (chien, chat, rat, corbeau, etc.) aussi longtemps qu'il le souhaite.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Résistance feu et acide)\n- `./images/img-3.webp` (Résistance aux armes)\n- `./images/img-4.webp` (Invisibilité)\n- `./images/img-5.webp` (Transformation)\n- Capacités communes : Soutenir, Vision dans le noir, Résistances (démons)."
+   },
+   {
+    "nom": "Démon",
+    "description": "Les démons ne sont pas considérés comme des créatures non vivantes. Toutefois, ils partagent avec celles-ci de nombreux traits. Ils ne respirent pas, ne dorment jamais, ne connaissent pas la fatigue et sont immunisés au poison et aux maladies non magiques. Ils n'ont pas besoin de se sustenter, du moins pas de nourritures terrestres. (DRS)"
+   },
+   {
+    "nom": "Tentation du mal",
+    "description": "Les démons aiment corrompre les mortels en leur offrant le pouvoir. Un démon peut donner un dé bonus à toutes les actions d'un mortel durant 24 h (niveau inférieur au NC du démon). Ensuite, le mortel est affaibli pendant une semaine (+1 semaine par période de 24 h), jusqu'à obtenir son âme. (DRS, résumé)"
+   },
+   {
+    "nom": "Télépathie",
+    "description": "Les démons peuvent communiquer avec toutes les créatures par télépathie à une distance de 50 m sans avoir besoin de partager une langue commune. Ils parlent l'abyssal. (DRS)"
+   },
+   {
+    "nom": "Téléportation",
+    "description": "Le démonet peut se téléporter à n'importe quel endroit qu'il voit ou qu'il connaît à une distance maximale de 200 m jusqu'à 3 fois par combat. (DRS, action limitée ; fiche VTT : 3 fois par jour)"
+   },
+   {
+    "nom": "Ténèbres",
+    "description": "Tous les démons peuvent invoquer à volonté une zone fixe de ténèbres magiques de 10 m de diamètre, à une portée de 20 m pour une durée de 1 min. Même les créatures capables de voir dans le noir sont aveuglées. Une seule zone à la fois. (DRS, action limitée)"
+   },
+   {
+    "nom": "Venin",
+    "description": "La victime doit réussir un test de CON difficulté 10 ou être affaiblie pendant 1d6 min. (DRS)"
+   },
+   {
+    "nom": "Vision dans le noir",
+    "description": "Tous les démons voient dans le noir comme en plein jour à une distance de 30 m. (DRS)"
+   },
+   {
+    "nom": "Vol",
+    "description": "Un démonet peut se déplacer en vol de 10 m par action de mouvement. (DRS)"
    }
   ],
   "description": "",
   "comportement": "",
   "taille": "Très petite",
   "categorie": "Monstres/Créatures",
-  "rd": 0,
+  "rd": 5,
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-D-monet-2eed3d06b098816db760f7c26828e532",
@@ -1870,13 +2038,14 @@
     "nom": "Morsures et griffes",
     "bonus": 5,
     "degats": "1d6+2",
-    "degatsAffiche": "1d6+2"
+    "degatsAffiche": "1d6+2 + paralysie"
    }
   ],
   "capacites": [
    "Soutenir",
    "Paralysie (Capacité)",
-   "Fièvre des goules (Capacité)"
+   "Fièvre des goules (Capacité)",
+   "Devenir une goule"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -1895,6 +2064,10 @@
    {
     "nom": "Bloc ancienne édition (img-4, tel qu'affiché)",
     "description": "L'hideuse créature qui se rue sur vous possède de longues griffes et sa peau morte est molle et froide. FOR +1 / DEX +1 / CON +1 / INT +0 / SAG +2 / CHA -4 — Initiative 12 — DEF 15 — PV 19. Morsure ou griffes +3, DM 1d6+2. Paralysie : CON 10 ou paralysée 1d6 tours (les elfes sont immunisés). Fièvre des goules : CON 15 ou maladie ; chaque jour 1d4 de PV maximum en moins et nouveau test CON 15 ; à 0 PV transformation en goule ; PV perdus récupérables si guérison ; sort de Guérison (rang 4 de la voie des soins) met immédiatement fin à la maladie.\n- `./images/img-1.webp` (profil)\n- `./images/img-2"
+   },
+   {
+    "nom": "Devenir une goule",
+    "description": "Une créature tuée par une goule en devient une à son tour au prochain crépuscule. (DRS)"
    }
   ],
   "description": "La goule est un humanoïde mort d'une maladie atroce appelée fièvre des goules. Son corps cadavérique est décharné, et même partiellement décomposé, des griffes noires et des dents acérées lui poussent tandis qu'un appétit insatiable pour la chair humaine le submerge.",
@@ -1958,7 +2131,7 @@
   "kind": "monstre",
   "nom": "Ours brun (tel qu'affiché : NC 4)",
   "type": "Animal",
-  "niveau": 2.0,
+  "niveau": 4.0,
   "pv": 50,
   "pvMax": 50,
   "defense": 18,
@@ -1991,7 +2164,7 @@
    },
    {
     "nom": "Charge (Capacité)",
-    "description": "Voir transcription dans `nc-2-bison` (capacité commune, même image) : 20 m max + attaque avec dé bonus, test FOR diff. 13 ou renversée, DM doublés (piétine/embroche).\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Enragé — même image que Lion)\n- Divergence : titre NC 2 mais profil NC 4.\n- Capacités communes : Soutenir, Charge, Enragé (Enragé partagée avec Lion, Sanglier)."
+    "description": "La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 16 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (DRS)"
    }
   ],
   "description": "",
@@ -2061,13 +2234,25 @@
   ],
   "capacites": [
    "Embuscade",
-   "Soutenir"
+   "Soutenir",
+   "Dévorer",
+   "Ambuscade"
   ],
   "capacitesPartagees": [
    "soutenir",
-   "embuscade"
+   "embuscade",
+   "devorer"
   ],
-  "capacitesDetails": [],
+  "capacitesDetails": [
+   {
+    "nom": "Dévorer",
+    "description": "Lorsque la créature réussit une attaque avec un résultat de 15-20 au d20, elle saisit sa proie entre ses crocs ou ses griffes et lui inflige immédiatement une attaque gratuite supplémentaire. (DRS)"
+   },
+   {
+    "nom": "Ambuscade",
+    "description": "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion. (DRS)"
+   }
+  ],
   "description": "",
   "comportement": "",
   "taille": "Moyenne",
@@ -2102,7 +2287,7 @@
     "nom": "Attaque magique (élémentaire)",
     "bonus": 6,
     "degats": "3d6",
-    "degatsAffiche": "3d6"
+    "degatsAffiche": "3d6 (élémentaires)"
    }
   ],
   "capacites": [
@@ -2259,7 +2444,9 @@
    "Toile",
    "Poison mortel (Capacité)",
    "Toile (Capacité)",
-   "Araignée chasseuse (Capacité, origine : Livre des règles p275)"
+   "Araignée chasseuse (Capacité, origine : Livre des règles p275)",
+   "Vermine",
+   "Variantes"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -2277,6 +2464,14 @@
    {
     "nom": "Araignée chasseuse (Capacité, origine : Livre des règles p275)",
     "description": "Au premier round de combat, si l'environnement permet de se dissimuler, la cible doit faire un test de PER difficulté 19 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Poison mortel)\n- `./images/img-3.webp` (Toile)\n- `./images/img-4.webp` (Araignée chasseuse)\n- Capacités communes : Soutenir, Araignée chasseuse/Embuscade (variante à PER 19)."
+   },
+   {
+    "nom": "Vermine",
+    "description": "Une araignée géante peut encore agir un round complet lorsqu'elle atteint 0 PV. Une araignée se déplace de 15 m par action de mouvement. (DRS)"
+   },
+   {
+    "nom": "Variantes",
+    "description": "Choisissez un type de poison et soit Toile (L), soit Araignée chasseuse. (DRS)"
    }
   ],
   "description": "",
@@ -2312,7 +2507,9 @@
   "capacites": [
    "Soutenir",
    "Regard pétrifiant (Capacité)",
-   "Vision dans le noir (Capacité)"
+   "Vision dans le noir (Capacité)",
+   "Détourner le regard",
+   "Fermer les yeux"
   ],
   "capacitesPartagees": [],
   "capacitesDetails": [
@@ -2323,6 +2520,14 @@
    {
     "nom": "Vision dans le noir (Capacité)",
     "description": "La créature voit dans le noir.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Regard pétrifiant)\n- `./images/img-3.webp` (Vision dans le noir)\n- Capacité commune : Soutenir, Vision dans le noir (nombreux monstres)."
+   },
+   {
+    "nom": "Détourner le regard",
+    "description": "Un personnage qui combat le basilic sans tactique particulière, si ce n'est éviter de croiser son regard, doit réussir un test de CON difficulté 10 au début de son tour ou être pétrifié. Il subit un dé malus en attaque. (DRS)"
+   },
+   {
+    "nom": "Fermer les yeux",
+    "description": "Le personnage est aveuglé (-5 en DEF et en attaque, pas d'attaque à distance ni de sorts ciblés), mais il ne risque pas d'être pétrifié, sauf échec critique en attaque (dans ce cas test de CON difficulté 10). (DRS)"
    }
   ],
   "description": "Le basilic est un reptile à 8 pattes d'environ 150 kg particulièrement hideux. Toutefois, peu de personnes peuvent se vanter de connaître son apparence exacte, car son regard pétrifiant rend son observation directe particulièrement mortelle. Le basilic vit dans une grande variété de milieux naturels, mais il est très commun dans les déserts ou les montagnes. Un basilic voit dans le noir.",
@@ -2389,8 +2594,8 @@
   "nom": "Gorille",
   "type": "Animal",
   "niveau": 3.0,
-  "pv": 1,
-  "pvMax": 1,
+  "pv": 30,
+  "pvMax": 30,
   "defense": 18,
   "initMod": 4,
   "attaques": [
@@ -2465,6 +2670,10 @@
    {
     "nom": "Charge (Capacité, image commune avec Bison)",
     "description": "Même capacité que `nc-2-bison` (même attachment) : 20 m max + attaque avec dé bonus, test FOR diff. 13 ou renversée, DM doublés.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Charge — image commune avec Bison)\n- Capacités communes : Soutenir, Charge."
+   },
+   {
+    "nom": "Charge (Capacité)",
+    "description": "La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 13 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (VTT ; DRS : FOR 14)"
    }
   ],
   "description": "",
@@ -2673,7 +2882,8 @@
    "Enragé",
    "Soutenir",
    "Charge (Capacité)",
-   "Enragé (Capacité)"
+   "Enragé (Capacité)",
+   "Tape dur"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -2688,6 +2898,10 @@
    {
     "nom": "Enragé (Capacité)",
     "description": "Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +1d4. Elle peut encore agir un tour complet après avoir atteint 0 PV.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Charge)\n- `./images/img-3.webp` (Enragé)\n- Capacités communes : Soutenir, Charge, Enragé."
+   },
+   {
+    "nom": "Tape dur",
+    "description": "Si la créature obtient 15 à 20 au dé du test d'attaque, l'attaque est automatiquement réussie. De surcroît, la victime doit réussir un test de CON difficulté 13 ou être étourdie pendant 1 round. (DRS)"
    }
   ],
   "description": "",
@@ -2714,7 +2928,7 @@
   "attaques": [
    {
     "id": "notion-nc-3-sergent-orc-a0",
-    "nom": "Arme à deux mains",
+    "nom": "Épée à deux mains",
     "bonus": 7,
     "degats": "2d6+6",
     "degatsAffiche": "2d6+6"
@@ -2762,7 +2976,7 @@
     "nom": "Morsure",
     "bonus": 4,
     "degats": "1d6+4",
-    "degatsAffiche": "1d6+4"
+    "degatsAffiche": "1d6+4 + étreinte"
    }
   ],
   "capacites": [
@@ -2820,7 +3034,7 @@
     "nom": "Attaque magique",
     "bonus": 6,
     "degats": "1d1",
-    "degatsAffiche": "DM — [à vérifier]"
+    "degatsAffiche": "spécial (voir pouvoirs)"
    }
   ],
   "capacites": [
@@ -2874,7 +3088,8 @@
    "Onde dévastatrice (1) (A)",
    "Soutenir",
    "Embuscade (Capacité)",
-   "Onde dévastatrice (Capacité)"
+   "Onde dévastatrice (Capacité)",
+   "Creuser"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -2883,11 +3098,15 @@
   "capacitesDetails": [
    {
     "nom": "Embuscade (Capacité)",
-    "description": "Au premier round de combat, si l'environnement permet de se dissimuler, la cible doit faire un test de PER difficulté 16 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion.\nCette onde fracture la roche dans un cône de 10 m de long pour 3 m de large. Une créature dans la zone d'effet (même s'il n'y a pas de roche !) subit 5d6 DM et peut faire un test de CON difficulté 15 pour diviser les DM par deux.\n- `./images/img-"
+    "description": "Au premier round de combat, si l'environnement permet à la créature de se dissimuler, la cible doit faire un test de PER difficulté 16 ou être surprise. Si elle attaque avec succès une cible surprise, la créature inflige +1d4 DM et toute créature dont la FOR est inférieure à la sienne est renversée. La créature obtient un bonus de +5 à tous les tests de discrétion et en Init. (DRS)"
    },
    {
     "nom": "Onde dévastatrice (Capacité)",
     "description": "Cette onde fracture la roche dans un cône de 10 m de long pour 3 m de large. Une créature dans la zone d'effet (même s'il n'y a pas de roche !) subit 5d6 DM et peut faire un test de CON difficulté 15 pour diviser les DM par deux.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Embuscade)\n- `./images/img-3.webp` (Onde dévastatrice)\n- Capacités communes : Soutenir, Embuscade."
+   },
+   {
+    "nom": "Creuser",
+    "description": "Au prix d'une action limitée, le skrambler est capable de creuser sur une profondeur de 10 m par round. Le tunnel s'effondre derrière lui. Il peut utiliser sa capacité Embuscade pour surgir du sol et attaquer. (DRS, action limitée)"
    }
   ],
   "description": "Le skrambler est une horrible créature souterraine qui ressemble à une énorme mante religieuse. Son corps est muni d'une épaisse carapace de chitine et de huit pattes. Ses pattes antérieures sont similaires à des faux géantes et sont chargées de saisir et découper ses proies. Le skrambler est capable de se déplacer sous terre grâce à un cône d'onde vibratoire qui fracture la roche. Il n'a alors plus qu'à se dégager un passage à l'aide de ses terribles pattes avant. Il mesure environ 3 m pour 400 kg.",
@@ -2992,7 +3211,7 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Humains",
-  "rd": 0,
+  "rd": 15,
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-4-Assassin-2eed3d06b09880bfb07dc535959c88ec",
@@ -3021,13 +3240,18 @@
   "capacites": [
    "Capitaine",
    "Soutenir",
-   "Capitaine (Capacité)"
+   "Capitaine (Capacité)",
+   "Riposte"
   ],
   "capacitesPartagees": [],
   "capacitesDetails": [
    {
     "nom": "Capitaine (Capacité)",
     "description": "Le capitaine donne un bonus de +2 en initiative, en attaque et aux DM à toutes les créatures sous ses ordres à portée de vue.\nUsage en jeu : l'action permet d'appliquer les bonus aux cibles. L'effet dure 20 rounds et fonctionne uniquement en mode Combat.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Capitaine)\n- Capacité commune : Soutenir."
+   },
+   {
+    "nom": "Riposte",
+    "description": "La créature peut effectuer une attaque en action gratuite contre chaque adversaire qui l'attaque à l'exception de celui qu'elle a elle-même choisi d'attaquer à son tour. (DRS, action gratuite)"
    }
   ],
   "description": "",
@@ -3118,7 +3342,7 @@
     "nom": "Morsures",
     "bonus": 9,
     "degats": "1d6+4",
-    "degatsAffiche": "1d6+4"
+    "degatsAffiche": "1d6+4 + paralysie"
    },
    {
     "id": "notion-nc-4-ghoule-abomination-a1",
@@ -3132,7 +3356,8 @@
    "Miasmes",
    "Soutenir",
    "Paralysie, Fièvre des goules (Capacités communes)",
-   "Miasmes (Capacité)"
+   "Miasmes (Capacité)",
+   "Devenir une goule"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -3147,6 +3372,10 @@
    {
     "nom": "Miasmes (Capacité)",
     "description": "La goule puissante émet une odeur de cadavre en décomposition absolument infâme et des miasmes toxiques dans un rayon de 2 m. À chaque round, à la fin du tour de la goule, ses adversaires au contact doivent réussir un test de CON difficulté 10 ou être affaiblis et perdre 1d4 PV.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Paralysie — commune)\n- `./images/img-3.webp` (Fièvre des goules — commune)\n- `./images/img-4.webp` (Miasmes)\n- Capacités communes : Soutenir, Paralysie, Fièvre des goules."
+   },
+   {
+    "nom": "Devenir une goule",
+    "description": "Une créature tuée par une goule en devient une à son tour au prochain crépuscule. (DRS)"
    }
   ],
   "description": "L'abomination est une goule plus puissante, plus ancienne et sans doute un meneur ou un personnage important de son vivant. Avec l'âge, elle a développé des excroissances osseuses acérées au niveau des articulations (coude, genou, épine dorsale) et sa bouche s'est totalement déformée en une gueule immonde.",
@@ -3367,7 +3596,7 @@
   "capacitesDetails": [
    {
     "nom": "Dévorer (Capacité)",
-    "description": "Lorsque la créature réussit une attaque avec un résultat de 15–20 au d20, elle saisit sa proie entre ses crocs ou ses griffes et lui inflige immédiatement une attaque gratuite supplémentaire.\nLe requin ne subit aucune pénalité pour attaquer et se déplacer sous l'eau et il bénéficie d'un bonus de +3 en initiative.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Dévorer)\n- `./images/img-3.webp` (Créature aquatique)\n- Capacités communes : Soutenir, Dévorer."
+    "description": "Lorsque le requin réussit une attaque avec un résultat de 15-20 au d20, il saisit sa proie entre ses crocs et lui inflige immédiatement une attaque gratuite supplémentaire. Si la FOR de la cible est inférieure ou égale au prédateur, elle est de plus immobilisée. Pour se libérer, la victime doit réussir un test de FOR difficulté 15 lors de son tour et cela lui demande une action de mouvement. (DRS)"
    },
    {
     "nom": "Créature aquatique (Capacité)",
@@ -3419,6 +3648,10 @@
    {
     "nom": "Charge, Enragé (Capacités communes)",
     "description": "Transcriptions dans `nc-3-sanglier` (mêmes textes).\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Charge)\n- `./images/img-3.webp` (Enragé)\n- Capacités communes : Soutenir, Charge, Enragé."
+   },
+   {
+    "nom": "Charge (Capacité)",
+    "description": "La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 13 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (VTT ; DRS : FOR 18)"
    }
   ],
   "description": "",
@@ -3454,17 +3687,23 @@
   "capacites": [
    "Réduction des DM de froid",
    "Soutenir",
-   "Résistance aux DM, Réduction des DM de froid (Capacités communes)"
+   "Résistance aux DM, Réduction des DM de froid (Capacités communes)",
+   "Sans esprit"
   ],
   "capacitesPartagees": [
    "soutenir",
    "resistance-squelette",
-   "reduction-froid"
+   "reduction-froid",
+   "sans-esprit"
   ],
   "capacitesDetails": [
    {
     "nom": "Résistance aux DM, Réduction des DM de froid (Capacités communes)",
     "description": "Transcriptions dans `nc-1-squelette` (mêmes images partagées : img-2, img-3).\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Résistance aux DM — commune)\n- `./images/img-3.webp` (Réduction des DM de froid — commune)\n- Capacités communes : Soutenir, Résistance aux DM, Réduction froid."
+   },
+   {
+    "nom": "Sans esprit",
+    "description": "Aucune âme n'habite la carcasse morte, le squelette est immunisé à tous les sorts qui affectent l'esprit. (DRS)"
    }
   ],
   "description": "En animant par magie les ossements d'une créature défunte, on obtient un mort-vivant assez fragile appelé le squelette (cf. `nc-1-squelette`). Un squelette d'ogre ou de troll de presque 3 m de haut…",
@@ -3494,7 +3733,7 @@
     "nom": "Morsure et griffes (2 attaques)",
     "bonus": 6,
     "degats": "1d6+3",
-    "degatsAffiche": "1d6+3"
+    "degatsAffiche": "1d6+3 + absorption d'énergie"
    }
   ],
   "capacites": [
@@ -3502,7 +3741,12 @@
    "Résistance impie",
    "Soutenir",
    "Vulnérabilité au soleil",
-   "Absorption d'énergie, Forme gazeuse, Regard envoûtant, Résistance impie, Vulnérabilité au soleil (Capacités communes)"
+   "Absorption d'énergie, Forme gazeuse, Regard envoûtant, Résistance impie, Vulnérabilité au soleil (Capacités communes)",
+   "Pattes d'araignée",
+   "Regard envoûtant (vampirien)",
+   "Forme gazeuse (vampirien)",
+   "Résistances (vampirien)",
+   "Vulnérabilité au soleil (vampirien)"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -3519,13 +3763,33 @@
    {
     "nom": "Absorption d'énergie, Forme gazeuse, Regard envoûtant, Résistance impie, Vulnérabilité au soleil (Capacités communes)",
     "description": "Transcriptions dans `nc-8-vampire` (mêmes images partagées).\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Absorption d'énergie — commune)\n- `./images/img-3.webp` (Forme gazeuse — commune)\n- `./images/img-4.webp` (Regard envoûtant — commune)\n- `./images/img-5.webp` (Résistance impie — commune)\n- `./images/img-6.webp` (Vulnérabilité au soleil — commune)\n- Capacités communes : Soutenir + cycle vampirique."
+   },
+   {
+    "nom": "Pattes d'araignée",
+    "description": "Le vampirien peut se déplacer de 10 m par action de mouvement sur les murs et les plafonds. (DRS)"
+   },
+   {
+    "nom": "Regard envoûtant (vampirien)",
+    "description": "Le regard du vampirien sape la volonté de ses opposants. Une fois par combat, il peut utiliser une action d'attaque pour tenter d'envoûter son adversaire. La cible doit réussir un test de VOL difficulté 10 ou être affaiblie tant qu'elle est sous le regard du vampirien. (DRS ; la version commune du vampire (VOL 15) est partagée en image)"
+   },
+   {
+    "nom": "Forme gazeuse (vampirien)",
+    "description": "Une fois par jour, le vampirien prend la consistance d'un gaz pendant 1 min. Il se déplace au ras du sol à 5 m par action de mouvement (M), passe par les interstices, mais ne peut utiliser aucune capacité ni subir de DM. (DRS, action d'attaque ; la version commune du vampire est partagée en image)"
+   },
+   {
+    "nom": "Résistances (vampirien)",
+    "description": "Le vampirien retranche 5 à tous les DM, sauf s'ils sont infligés par des armes en argent ou par le feu. (DRS)"
+   },
+   {
+    "nom": "Vulnérabilité au soleil (vampirien)",
+    "description": "Un vampirien exposé au soleil subit 2d6 DM par tour sur son maximum de PV (non régénérables à la lumière). À 0 : réduit en cendre, définitivement détruit. (DRS)"
    }
   ],
   "description": "Le vampirien est un mort-vivant mineur au service du vampire qui l'a créé, il ressemble à un humain d'une pâleur mortelle.",
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
-  "rd": 0,
+  "rd": 5,
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-4-Vampirien-2eed3d06b09881488844f807d6fc703c",
@@ -3635,7 +3899,7 @@
    },
    {
     "nom": "Fauchage (Capacité)",
-    "description": "Sur 15 à 20 au test d'attaque, si l'attaque est réussie, la victime doit réussir au choix un test de FOR ou d'AGI difficulté 20 ou être renversée.\nLa créature retranche 3 à tous les DM subis (RD 3).\nUsage en jeu : il s'agit d'une amélioration permanente de RD 3.\nLes élémentaires divisent par deux tous les DM des armes non magiques (de +0 à +1 au NC selon l'équipement des PJ). Les élémentaires d'eau sont immunisés aux DM d'acide.\nUsage en jeu : pas d'automatisation, à gérer manuellement par le MJ.\nUne fois par combat, un élémentaire peut se transformer en tourbillon liquide pendant 3 rounds. So"
+    "description": "Sur 17 à 20 au test d'attaque, si l'attaque est réussie, la victime doit réussir au choix un test de FOR ou d'AGI difficulté 16 ou être renversée. (DRS)"
    },
    {
     "nom": "Grand (Capacité, origine : Livre des règles p280)",
@@ -3651,14 +3915,14 @@
    },
    {
     "nom": "Vision dans le noir (Capacité)",
-    "description": "La créature voit dans le noir.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Eau de vie)\n- `./images/img-3.webp` (Fauchage)\n- `./images/img-4.webp` (Grand)\n- `./images/img-5.webp` (Résistance Élémentaire)\n- `./images/img-6.webp` (Tourbillon)\n- `./images/img-7.webp` (Vision dans le noir)\n- Capacités communes : Soutenir, Vision dans le noir, Fauchage."
+    "description": "Ils voient dans le noir à 30 m et ils peuvent déterminer la localisation de toute créature en contact avec leur élément à moins de 30 m, même si celle-ci est invisible. (DRS)"
    }
   ],
   "description": "L'élémentaire d'eau est l'incarnation de son élément primordial. Il peut être invoqué par magie et se manifeste dans notre monde sous la forme d'une créature au buste vaguement humanoïde mêlée à un tourbillon d'eau. L'élémentaire d'eau percute l'adversaire ou le noie.",
   "comportement": "",
   "taille": "Grande",
   "categorie": "Monstres/Créatures",
-  "rd": 0,
+  "rd": 3,
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Elementaire-d-eau-Grand-2eed3d06b09881389278ea12ae0628a2",
@@ -3687,13 +3951,28 @@
   "capacites": [
    "Guérison accélérée (G)",
    "Soutenir",
-   "Guérison accélérée (Capacité, origine : Livre des règles p288)"
+   "Guérison accélérée (Capacité, origine : Livre des règles p288)",
+   "Ajouter des têtes",
+   "Attaques multiples",
+   "Couper une tête"
   ],
   "capacitesPartagees": [],
   "capacitesDetails": [
    {
     "nom": "Guérison accélérée (Capacité, origine : Livre des règles p288)",
     "description": "L'hydre régénère 5 PV par round sauf contre les DM de feu.\nUsage en jeu : la guérison n'est pas automatique, il faut cliquer sur l'action chaque round pour soigner l'hydre.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Guérison accélérée)\n- Capacité commune : Soutenir."
+   },
+   {
+    "nom": "Ajouter des têtes",
+    "description": "Pour chaque tête supplémentaire, ajoutez 20 PV, +1 en attaque et en DEF et une attaque supplémentaire. Le NC augmente de +1. (DRS)"
+   },
+   {
+    "nom": "Attaques multiples",
+    "description": "L'hydre peut effectuer un total de 5 attaques, mais pas plus de 4 attaques sur la même cible chaque round. Utilisez la règle des attaques groupées pour gagner du temps (par exemple, +5 pour l'attaque de deux têtes à la fois). (DRS)"
+   },
+   {
+    "nom": "Couper une tête",
+    "description": "Pour réduire le nombre de têtes, un personnage peut tenter de la décapiter. L'attaque souffre d'une pénalité de -5 et doit infliger au moins 10 DM en une seule fois. En cas de réussite, la tête est coupée et les PV du monstre baissent de 10. La guérison accélérée fait repousser la tête en 2 rounds (sauf DM de feu). En cas d'échec, l'hydre ne subit aucun DM. (DRS)"
    }
   ],
   "description": "L'hydre est une grande créature reptilienne de presque 2 tonnes pourvue de multiples têtes. Imaginez un petit diplodocus doté de 5 à 12 têtes de dragon et vous aurez une idée de l'apparence de cet épouvantable monstre.",
@@ -3723,7 +4002,7 @@
     "nom": "Coup (2 attaques)",
     "bonus": 10,
     "degats": "1d8+5",
-    "degatsAffiche": "1d8+5"
+    "degatsAffiche": "1d8+5 + putréfaction"
    }
   ],
   "capacites": [
@@ -3822,14 +4101,14 @@
     "nom": "Dague",
     "bonus": 6,
     "degats": "1d4+9",
-    "degatsAffiche": "1d4+2+2d6"
+    "degatsAffiche": "1d4+2 +2d6 poison"
    },
    {
     "id": "notion-nc-5-sorcier-a1",
     "nom": "Attaque magique",
     "bonus": 10,
     "degats": "1d1",
-    "degatsAffiche": "DM — [à vérifier]"
+    "degatsAffiche": "spécial (voir pouvoirs)"
    }
   ],
   "capacites": [
@@ -3921,7 +4200,7 @@
   "comportement": "",
   "taille": "Grande",
   "categorie": "Monstres/Créatures",
-  "rd": 0,
+  "rd": 3,
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Troll-2eed3d06b0988145bf5eccc288a91292",
@@ -4060,7 +4339,8 @@
    "Charge",
    "Soutenir",
    "Fauchage (Capacité)",
-   "Charge (Capacité)"
+   "Charge (Capacité)",
+   "Grand mâle"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -4074,14 +4354,18 @@
    },
    {
     "nom": "Charge (Capacité)",
-    "description": "Voir transcription dans `nc-2-bison`.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Fauchage)\n- `./images/img-3.webp` (Charge — image commune avec Grand Éléphant)\n- Capacités communes : Soutenir, Charge, Fauchage (partagée avec Grand Éléphant)."
+    "description": "La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 20 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (DRS)"
+   },
+   {
+    "nom": "Grand mâle",
+    "description": "Les grands mâles ont généralement un NC augmenté de 1 et +2 en attaque, en DEF et aux DM ainsi que +20 PV. (DRS)"
    }
   ],
   "description": "",
   "comportement": "",
   "taille": "Énorme",
   "categorie": "Animaux",
-  "rd": 0,
+  "rd": 3,
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-6-El-phant-2eed3d06b098809cbd02d451db21a785",
@@ -4151,17 +4435,27 @@
    "Charge",
    "Enragé",
    "Soutenir",
-   "Charge, Enragé (Capacités communes)"
+   "Charge, Enragé (Capacités communes)",
+   "Dévorer"
   ],
   "capacitesPartagees": [
    "soutenir",
    "charge",
-   "enrage"
+   "enrage",
+   "devorer"
   ],
   "capacitesDetails": [
    {
     "nom": "Charge, Enragé (Capacités communes)",
     "description": "Transcriptions dans `nc-3-sanglier` (mêmes textes).\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Charge)\n- `./images/img-3.webp` (Enragé)\n- Capacités communes : Soutenir, Charge, Enragé."
+   },
+   {
+    "nom": "Dévorer",
+    "description": "Lorsque la créature réussit une attaque avec un résultat de 15-20 au d20, elle saisit sa proie entre ses crocs ou ses griffes et lui inflige immédiatement une attaque gratuite supplémentaire. (DRS)"
+   },
+   {
+    "nom": "Charge (Capacité)",
+    "description": "La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 13 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (VTT ; DRS : FOR 16)"
    }
   ],
   "description": "",
@@ -4181,8 +4475,8 @@
   "nom": "Chimère",
   "type": "Humanoïde",
   "niveau": 7.0,
-  "pv": 1,
-  "pvMax": 1,
+  "pv": 100,
+  "pvMax": 100,
   "defense": 21,
   "initMod": 1,
   "attaques": [
@@ -4264,7 +4558,7 @@
     "nom": "Morsure de serpent",
     "bonus": 14,
     "degats": "1d4+3",
-    "degatsAffiche": "1d4+3"
+    "degatsAffiche": "1d4+3 + poison"
    }
   ],
   "capacites": [
@@ -4327,7 +4621,8 @@
    "Embuscade",
    "Soutenir",
    "Embuscade (Capacité)",
-   "Encorner (Capacité)"
+   "Encorner (Capacité)",
+   "Déplacement sous terre"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -4341,6 +4636,10 @@
    {
     "nom": "Encorner (Capacité)",
     "description": "Lorsque la créature réussit une attaque avec un résultat de 17–20 au d20, elle encorne sa proie et lui inflige immédiatement une attaque gratuite supplémentaire.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Embuscade)\n- `./images/img-3.webp` (Encorner)\n- Capacités communes : Soutenir, Embuscade (variante PER 15 / +1d6 DM)."
+   },
+   {
+    "nom": "Déplacement sous terre",
+    "description": "Le geoselachis est capable de parcourir 5 m par action de mouvement en creusant dans un sol meuble (le tunnel s'effondre derrière lui). (DRS)"
    }
   ],
   "description": "",
@@ -4380,7 +4679,8 @@
    "Une petite dernière (Capacité)",
    "Tape dur (Capacité)",
    "Enragé (Capacité — variante de texte)",
-   "Résistance (Golem) (Capacité)"
+   "Résistance (Golem) (Capacité)",
+   "Absorber l'électricité"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -4402,6 +4702,10 @@
    {
     "nom": "Résistance (Golem) (Capacité)",
     "description": "Le golem divise par 2 tous les DM élémentaires (feu, froid, acide) ainsi que les DM contondants. Il est immunisé au poison.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Une petite dernière)\n- `./images/img-3.webp` (Tape dur)\n- `./images/img-4.webp` (Enragé)\n- `./images/img-5.webp` (Résistance Golem)\n- Capacités communes : Soutenir, Enragé."
+   },
+   {
+    "nom": "Absorber l'électricité",
+    "description": "Non seulement le golem de chair est immunisé à l'électricité, mais en plus les DM de ce type lui permettent de guérir de ses blessures. Il régénère 1 PV pour 3 points de DM d'électricité qui lui sont infligés. (DRS)"
    }
   ],
   "description": "Un golem de chair ressemble approximativement au monstre de Frankenstein. Il fait preuve d'une force inhumaine. Créature à la fois pitoyable et effrayante, le golem est une créature imposante mesurant presque 2,50 m constituée de l'assemblage grossier de divers cadavres.",
@@ -4477,7 +4781,7 @@
     "nom": "Griffes et morsures (2 attaques)",
     "bonus": 11,
     "degats": "1d8+5",
-    "degatsAffiche": "1d8+5"
+    "degatsAffiche": "1d8+5 + absorption d'énergie"
    },
    {
     "id": "notion-nc-8-vampire-a1",
@@ -4500,7 +4804,8 @@
    "Résistance impie (Capacité)",
    "Riposte éclair (Capacité)",
    "Transformation en chauve-souris (Capacité)",
-   "Vulnérabilité au soleil (Capacité)"
+   "Vulnérabilité au soleil (Capacité)",
+   "Pattes d'araignée"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -4545,6 +4850,10 @@
    {
     "nom": "Vulnérabilité au soleil (Capacité)",
     "description": "Un vampire exposé au soleil subit 2d10 DM par tour sur son maximum de PV (il ne peut pas le régénérer tant qu'il reste à la lumière). Si son maximum de PV est réduit à 0 de cette façon, il est réduit en cendre et définitivement détruit.\nUsage en jeu : l'action permet de réaliser un jet de DM dans un message du tchat. Le résultat doit être retiré des PV maximum du vampire et pas seulement aux PV actuels.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Absorption d'énergie — commune)\n- `./images/img-3.webp` (Immortel — commune)\n- `./images/img-4.webp` (Forme gazeuse — commune)\n- `./ima"
+   },
+   {
+    "nom": "Pattes d'araignée",
+    "description": "Le vampire peut se déplacer de 10 m par action de mouvement sur les murs et les plafonds. (DRS)"
    }
   ],
   "description": "Le vampire est un humanoïde mort-vivant qui se nourrit du sang des vivants, il peut aisément passer pour un être humain lorsqu'il vient de se gaver de sang frais. Toutefois, il peut aussi prendre une apparence plus ou moins cadavérique ou encore la forme d'une chauve-souris.",
@@ -4588,7 +4897,8 @@
    "Balayage (A)",
    "Soutenir",
    "Fauchage (Capacité)",
-   "Balayage (Capacité)"
+   "Balayage (Capacité)",
+   "Immunisé au feu"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -4602,13 +4912,17 @@
    {
     "nom": "Balayage (Capacité)",
     "description": "La créature utilise sa grande taille pour affecter deux créatures à son contact d'un seul coup de patte/arme. Faites un seul test et comparez-le à la DEF des deux cibles. Si les deux cibles sont touchées, la cible secondaire (désignée par le MJ) subit la moitié des DM.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Fauchage)\n- `./images/img-3.webp` (Balayage)\n- Capacités communes : Soutenir, Fauchage, Balayage (grandes créatures)."
+   },
+   {
+    "nom": "Immunisé au feu",
+    "description": "Le géant du feu est immunisé aux DM de feu. (DRS)"
    }
   ],
   "description": "Les géants du feu sont de grandes créatures à la peau charbonneuse, aux cheveux et à la barbe de feu. Le front des mâles est orné de cornes recourbées, plus ou moins longues selon leur âge. Ils aiment arborer des tatouages et des décorations en or.",
   "comportement": "",
   "taille": "Énorme",
   "categorie": "Monstres/Créatures",
-  "rd": 0,
+  "rd": 6,
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-9-Geant-de-feu-2eed3d06b0988113a4bce754aa623a48",
@@ -4711,6 +5025,118 @@
   "deplacement": null,
   "initiativeFiche": 8,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/Zombie-Coriasse-2efd3d06b098801995daea9c1e8bb4ca",
+  "notes": "",
+  "exemple": false
+ },
+ {
+  "id": "notion-chasseur-aile",
+  "kind": "monstre",
+  "nom": "Chasseur ailé",
+  "type": "Créature",
+  "niveau": 5,
+  "pv": 50,
+  "pvMax": 50,
+  "defense": 18,
+  "initMod": 1,
+  "attaques": [
+   {
+    "id": "notion-chasseur-aile-a0",
+    "nom": "Serres",
+    "bonus": 10,
+    "degats": "2d6+6",
+    "degatsAffiche": "2d6+6"
+   }
+  ],
+  "capacites": [
+   "Enlèvement",
+   "Soutenir",
+   "Vol rapide"
+  ],
+  "capacitesPartagees": [
+   "soutenir",
+   "vol-rapide",
+   "enlevement"
+  ],
+  "capacitesDetails": [
+   {
+    "nom": "Enlèvement",
+    "description": "Le chasseur ailé peut tenter d'agripper une cible de taille moyenne ou inférieure en action d'attaque. Test de FOR opposé à la première attaque, sinon immobilisée jusqu'à relâche ou destruction. (DRS)"
+   },
+   {
+    "nom": "Vol rapide",
+    "description": "Action de mouvement supplémentaire par round en vol. Au premier round : bonus de +5 en attaque et +1d6 aux DM contre une créature au sol, enlèvement possible. (DRS, variante)"
+   }
+  ],
+  "description": "Serviteur ailé non-vivant (DRS).",
+  "comportement": "",
+  "taille": "Grande",
+  "categorie": "Monstres/Créatures",
+  "rd": 0,
+  "deplacement": 10,
+  "initiativeFiche": 12,
+  "sourceUrl": "https://drs.chroniques-oubliees.fr/fantasy/creatures",
+  "notes": "",
+  "exemple": false
+ },
+ {
+  "id": "notion-zombie-ourhible",
+  "kind": "monstre",
+  "nom": "Zombie ourhible",
+  "type": "Créature",
+  "niveau": 4,
+  "pv": 85,
+  "pvMax": 85,
+  "defense": 13,
+  "initMod": 1,
+  "attaques": [
+   {
+    "id": "notion-zombie-ourhible-a0",
+    "nom": "Bec et griffes",
+    "bonus": 12,
+    "degats": "2d8+10",
+    "degatsAffiche": "2d8+10"
+   }
+  ],
+  "capacites": [
+   "Soutenir",
+   "Insensible à la douleur",
+   "Lenteur",
+   "Résistance aux DM",
+   "Sans esprit"
+  ],
+  "capacitesPartagees": [
+   "soutenir",
+   "sans-esprit",
+   "lenteur",
+   "insensible-douleur",
+   "resistance-zombie"
+  ],
+  "capacitesDetails": [
+   {
+    "nom": "Insensible à la douleur",
+    "description": "Ajoutez 3 x NC aux PV et retranchez 5 à la DEF. La créature peut encore faire une action (attaque ou mouvement) après avoir été réduite à 0 PV. (DRS)"
+   },
+   {
+    "nom": "Lenteur",
+    "description": "Le zombie voit son AGI réduite à -1 et sa PER à -2, et il ne se déplace que de 5 m par action de mouvement. (DRS)"
+   },
+   {
+    "nom": "Résistance aux DM",
+    "description": "Divisez par deux tous les DM infligés au zombie par des armes, sauf s'il s'agit d'armes tranchantes. (DRS)"
+   },
+   {
+    "nom": "Sans esprit",
+    "description": "Aucune âme n'habite la carcasse morte, le zombie est immunisé à tous les sorts qui affectent l'esprit. L'INT et le CHA passent à -4, la VOL à +6. (DRS)"
+   }
+  ],
+  "description": "Un ourhible mort-vivant (DRS).",
+  "comportement": "",
+  "taille": "Grande",
+  "categorie": "Monstres/Créatures",
+  "rd": 0,
+  "deplacement": 5,
+  "initiativeFiche": 8,
+  "sourceUrl": "https://drs.chroniques-oubliees.fr/fantasy/creatures",
   "notes": "",
   "exemple": false
  }

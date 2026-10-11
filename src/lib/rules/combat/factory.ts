@@ -19,6 +19,7 @@ export function attaqueFromItem(item: Item): AttackDef | null {
     nom: `🗡 ${item.nom}`,
     bonus: item.bonusAttaque ?? 0,
     degats: item.degats ?? "1d6",
+    familles: item.familles ? [...item.familles] : undefined,
     effetTouche: item.effetCle ? { cle: item.effetCle, duree: item.effetDuree ?? null } : undefined,
   };
 }

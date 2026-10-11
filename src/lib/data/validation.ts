@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ARME_FAMILLE_KEYS } from "@/src/lib/rules/world/types";
 import type { Condition } from "@/src/lib/rules/scenario/types";
 
 const caracteristiquesSchema = z.object({
@@ -30,6 +31,7 @@ const attackSchema = z.object({
   volDeVie: z.boolean().optional(),
   toucheAuto: z.boolean().optional(),
   demiDegatsSiRate: z.boolean().optional(),
+  familles: z.array(z.enum(ARME_FAMILLE_KEYS)).optional(),
   effetTouche: z.object({
     cle: z.string(),
     duree: z.number().int().min(1).nullable(),
@@ -207,6 +209,7 @@ export const itemSchema = z.object({
   degats: z.string().optional(),
   effetCle: z.string().optional(),
   effetDuree: z.number().int().min(1).nullable().optional(),
+  familles: z.array(z.enum(ARME_FAMILLE_KEYS)).optional(),
   exemple: z.boolean(),
 });
 

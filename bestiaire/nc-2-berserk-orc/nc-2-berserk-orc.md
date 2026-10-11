@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 2
 - Source Notion : https://silver-pen-32f.notion.site/NC-2-Berserk-Orc-2eed3d06b09881e287f0cd0e1653965a
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Les orcs sont des créatures robustes (…) et les orcs noirs une race d'élite (…), cf. `nc-0-orc` et `nc-1-orc-noir`.
 
 ## Profil — Berserk orc

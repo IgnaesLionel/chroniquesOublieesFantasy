@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 10
 - Source Notion : https://silver-pen-32f.notion.site/NC-10-Momie-Auguste-2eed3d06b098814493bbf86f9a7b82a2
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Voie de la magie universelle (DRS) ; Putréfaction corrigée 1d10.
+  - Putréfaction : la fiche indiquait 1d6 (momie de base), DRS auguste : 1d10.
 - Description : La momie est un mort-vivant couvert de bandelettes, un cadavre animé par une magie antique qui permet à un humanoïde une parodie de vie après la mort. La momie doit rester éternellement immobile au fond de son sarcophage et elle ne peut que rarement trouver l'énergie de s'en extraire. Toutefois, lorsque cela arrive, elle fait preuve d'une haine des vivants qui dérangent son sommeil et d'une force impie qui défie les lois de la physique.
 
 ## Profil — Momie auguste
@@ -11,8 +14,8 @@
 - Caractéristiques : AGI +3 / CON +6 (*) / FOR +6 (*) / PER +2 / CHA -2 / INT +3 (*) / VOL +6
 - Initiative 12 — Défense 24 — RD 0
 - Vigueur 160 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Coup (2 attaques) +16, DM 2d6+8 (Attaque +16, Dommages 2d6+8)
-- Actions : Familier - Familier en vue (A, 0 PM) ; Injonction mortelle - Si injonction mortelle ratée (L) ; Lumière - Aveugler une cible (L, 0 PM) ; Putréfaction ; Résistance aux DM - RD sauf DM feu ; Soutenir (L) ; Téléportation - Activation du sort (L, 0 PM) ; Vol - Activation du sort (A, 0 PM)
+- Attaques : Coup (2 attaques) +16, DM 2d6+8 + putréfaction (Attaque +16, Dommages 2d6+8 + putréfaction)
+- Actions : Familier - Familier en vue (A, 0 PM) ; Injonction mortelle - Si injonction mortelle ratée (L) ; Lumière - Aveugler une cible (L, 0 PM) ; Putréfaction ; Résistance aux DM - RD sauf DM feu ; Soutenir (L) ; Téléportation - Activation du sort (L, 0 PM) ; Vol - Activation du sort (A, 0 PM) ; Voie de la magie universelle rang 5
 
 ## Capacités
 
@@ -22,10 +25,7 @@ La momie réduit de 5 tous les DM subis, sauf par le feu.
 
 ### Putréfaction (Capacité)
 
-Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs, une sorte de lèpre fulgurante. La victime subit 1d6 DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie. L'utilisation de la capacité de prêtre Délivrance permet de soigner cette maladie.
-
-Usage en jeu : l'action permet d'infliger les DM et d'appliquer une perte périodique de DM pendant 5 rounds. Les DM périodiques fonctionnent uniquement en mode Combat.
-
+Toute créature blessée par une momie doit réussir un test de CON difficulté 15 ou contracter une horrible maladie qui occasionne le pourrissement rapide de ses chairs, une sorte de lèpre fulgurante. La victime subit 1d10 DM par round pendant 5 rounds. Tant qu'elle est sous l'effet de la putréfaction, il n'est pas nécessaire de réaliser un nouveau test de CON lorsque la victime est la cible d'une attaque de la momie. (DRS, momie auguste ; la momie de base inflige 1d6.)
 ### Injonction mortelle (Capacité)
 
 Une cible située à une distance maximum de 30 m doit réussir un test de CON difficulté 15 ou tomber à 0 PV (et mourir immédiatement s'il s'agit d'un PNJ). En cas de succès, la cible subit tout de même 2d8+10 DM. Ce pouvoir ne peut prendre une même créature pour cible qu'une seule fois par combat.
@@ -53,6 +53,11 @@ Usage en jeu : le joueur clique sur l'action "activation du sort" pour dépenser
 Une fois par jour, le magicien disparaît et réapparaît à un autre endroit situé à moins de (niveau × INT) kilomètres. Le lieu d'arrivée doit être soit en vue, soit parfaitement connu par le magicien. Le magicien peut emmener avec lui un allié à partir du niveau 10, un deuxième au niveau 13, un troisième au niveau 16 et enfin un quatrième au niveau 19.
 
 Usage en jeu : le joueur clique sur l'action "activation du sort" pour dépenser ses PM. Les effets sont gérés à la main.
+
+
+### Voie de la magie universelle rang 5 (Capacité)
+
+La momie auguste peut lancer tous les sorts de cette voie à volonté. (DRS)
 
 ## Images
 

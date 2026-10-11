@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 0.5
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-0-5-Strige-2efd3d06b0988069b256d6a7b3e22b3b
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : absente du DRS en ligne (11/10/2026).
 - Mentions Notion : VOL : 20 mètres par action de mouvement ; Sucer le sang.
 
 ## Profil — Strige (bloc ancienne édition, tel qu'affiché)

@@ -16,7 +16,8 @@
 - Initiative 0 — Défense 12 — RD 0
 - Vigueur 4 — DM Temp. 0 — Déplacement 10 m — États : —
 - Attaques : Loup - contact 1, DM 1d4+2 (Attaque 1, Dommages 1d4+2) — Morsure ou griffes.
-- Propriétés : Défense = [12 + rang] ; Points de vigueur = [Niveau × 4] ; Initiative = [initiative] ; Attaque au contact = [attaque magique] - DM 1d4 +2.
+- Propriétés : Défense = [12 + rang dans la voie] (+1 par rang 5 en voie avec Tactiques) ; Points de vigueur = [niveau du rôdeur × 4] ; Initiative = [initiative du rôdeur] ; Attaque au contact = [attaque magique du rôdeur] - DM 1d4 +2.
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/profils/rodeur (Voie du compagnon animal, rang 1).
 
 ## Images
 

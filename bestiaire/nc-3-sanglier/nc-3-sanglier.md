@@ -3,6 +3,9 @@
 - Catégorie : Animaux
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-3-Sanglier-2eed3d06b09880f99325fb9091779871
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Tape dur CON 13 (DRS) ; bonus +6 et Charge FOR 13 (VTT).
+  - Défenses +6 (VTT) ; DRS en ligne : +8.
 
 ## Profil — Sanglier
 
@@ -11,7 +14,7 @@
 - Initiative 11 — Défense 16 — RD 0
 - Vigueur 20 — DM Temp. 0 — Déplacement 10 m — États : —
 - Attaques : Défenses +6, DM 2d4+3 (Attaque +6, Dommages 2d4+3)
-- Actions : Charge (L) ; Enragé ; Soutenir (L)
+- Actions : Charge (L) ; Enragé ; Soutenir (L) ; Tape dur
 
 ## Capacités
 
@@ -22,6 +25,11 @@ La créature parcourt une distance maximale de 20 m et réalise une attaque avec
 ### Enragé (Capacité)
 
 Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore les pénalités de douleur ou la peur, augmente de +3 sa valeur d'attaque au contact et ses DM de +1d4. Elle peut encore agir un tour complet après avoir atteint 0 PV.
+
+
+### Tape dur (Capacité)
+
+Si la créature obtient 15 à 20 au dé du test d'attaque, l'attaque est automatiquement réussie. De surcroît, la victime doit réussir un test de CON difficulté 13 ou être étourdie pendant 1 round. (DRS)
 
 ## Images
 

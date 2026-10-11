@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 6
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-6-G-ant-des-collines-2efd3d06b098802395ffc6053226d36f
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : absent du DRS en ligne (11/10/2026).
 
 ## Profil — Géant des collines (bloc ancienne édition, tel qu'affiché)
 

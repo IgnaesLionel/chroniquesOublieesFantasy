@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 5
 - Source Notion : https://silver-pen-32f.notion.site/NC-5-Hydre-5-t-tes-2eed3d06b0988146bd77c84ccf581381
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Ajouter/Attaques multiples/Couper (DRS).
 - Description : L'hydre est une grande créature reptilienne de presque 2 tonnes pourvue de multiples têtes. Imaginez un petit diplodocus doté de 5 à 12 têtes de dragon et vous aurez une idée de l'apparence de cet épouvantable monstre.
 
 ## Profil — Hydre à 5 têtes
@@ -25,6 +27,21 @@
 L'hydre régénère 5 PV par round sauf contre les DM de feu.
 
 Usage en jeu : la guérison n'est pas automatique, il faut cliquer sur l'action chaque round pour soigner l'hydre.
+
+
+### Ajouter des têtes (Capacité)
+
+Pour chaque tête supplémentaire, ajoutez 20 PV, +1 en attaque et en DEF et une attaque supplémentaire. Le NC augmente de +1. (DRS)
+
+
+### Attaques multiples (Capacité)
+
+L'hydre peut effectuer un total de 5 attaques, mais pas plus de 4 attaques sur la même cible chaque round. Utilisez la règle des attaques groupées pour gagner du temps (par exemple, +5 pour l'attaque de deux têtes à la fois). (DRS)
+
+
+### Couper une tête (Capacité)
+
+Pour réduire le nombre de têtes, un personnage peut tenter de la décapiter. L'attaque souffre d'une pénalité de -5 et doit infliger au moins 10 DM en une seule fois. En cas de réussite, la tête est coupée et les PV du monstre baissent de 10. La guérison accélérée fait repousser la tête en 2 rounds (sauf DM de feu). En cas d'échec, l'hydre ne subit aucun DM. (DRS)
 
 ## Images
 

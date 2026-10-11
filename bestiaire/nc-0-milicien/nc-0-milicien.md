@@ -3,6 +3,9 @@
 - Catégorie : Humains
 - NC : 0
 - Source Notion : https://silver-pen-32f.notion.site/NC-0-Milicien-2eed3d06b09881679cacffd58906b94c
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Pique + Soutenir).
+  - NC 0 (VTT) conservé ; DRS en ligne : NC 1/2.
 
 ## Profil — Milicien
 

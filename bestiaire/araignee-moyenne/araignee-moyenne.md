@@ -2,6 +2,9 @@
 
 - Catégorie : Monstres/Créatures
 - Source Notion : https://silver-pen-32f.notion.site/p/Araign-e-Moyenne-2efd3d06b0988067a87af1058847a1ae
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : bloc d'édition antérieure, distinct de l'Araignée géante du DRS (NC 3).
+  - Toile solide (L) : paralysie + FOR 15 (ancienne édition).
 - Description : Pas de poison.
 
 ## Profil — Araignée géante (bloc ancienne édition, tel qu'affiché)

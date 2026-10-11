@@ -3,6 +3,9 @@
 - Catégorie : Humains
 - NC : 4
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-4-Assassin-2eed3d06b09880bfb07dc535959c88ec
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (NC/DEF/PV/INIT/attaques + Assassinat/Attaque mortelle +4d6/Disparition 20 m).
+  - RD 15 de la fiche VTT : DRS en ligne sans RD indiquée.
 
 ## Profil — Assassin
 

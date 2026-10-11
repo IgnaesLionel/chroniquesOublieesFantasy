@@ -3,6 +3,9 @@
 - Catégorie : Humains
 - NC : 2
 - Source Notion : https://silver-pen-32f.notion.site/NC-2-V-t-ran-2eed3d06b09881079b7ad18ba159673e
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (template : 1 capacité parmi Brise-genou/Imparable/Sergent).
+  - NC 2 (VTT) conservé ; DRS en ligne : NC 1 (variante « garde du palais »).
 
 ## Profil — Vétéran
 

@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 0
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-0-Animal-Petit-chien-2eed3d06b0988053bd7cc8e43d6e0902
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 
 ## Profil — Animal petit
 

@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 7
 - Source Notion : https://silver-pen-32f.notion.site/NC-7-Golem-de-chair-2eed3d06b0988181ad15f081f37caa44
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Absorber l'électricité (DRS).
+  - Enragé : la fiche VTT inclut « ignore douleur/peur », absent du DRS en ligne.
 - Description : Un golem de chair ressemble approximativement au monstre de Frankenstein. Il fait preuve d'une force inhumaine. Créature à la fois pitoyable et effrayante, le golem est une créature imposante mesurant presque 2,50 m constituée de l'assemblage grossier de divers cadavres.
 
 ## Profil — Golem de chair
@@ -12,7 +15,7 @@
 - Initiative 10 — Défense 20 — RD 0
 - Vigueur 90 — DM Temp. 0 — Déplacement 10 m — États : —
 - Attaques : Poings (2 attaques) +11, DM 1d10+6 (Attaque +11, Dommages 1d10+6)
-- Actions : Enragé ; Résistance (Golem) - RD vs DM élémentaires (1) ; Soutenir (L)
+- Actions : Enragé ; Résistance (Golem) - RD vs DM élémentaires (1) ; Soutenir (L) ; Absorber l'électricité
 - Propriétés : Absorber l'électricité — non seulement le golem de chair est immunisé à l'électricité, mais en plus les DM de ce type lui permettent de guérir de ses blessures. Il régénère 1 PV pour 3 points de DM d'électricité qui lui sont infligés.
 
 ## Capacités
@@ -32,6 +35,11 @@ Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore
 ### Résistance (Golem) (Capacité)
 
 Le golem divise par 2 tous les DM élémentaires (feu, froid, acide) ainsi que les DM contondants. Il est immunisé au poison.
+
+
+### Absorber l'électricité (Capacité)
+
+Non seulement le golem de chair est immunisé à l'électricité, mais en plus les DM de ce type lui permettent de guérir de ses blessures. Il régénère 1 PV pour 3 points de DM d'électricité qui lui sont infligés. (DRS)
 
 ## Images
 

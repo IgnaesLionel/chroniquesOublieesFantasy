@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/NC-1-Orc-noir-2eed3d06b098817b81d2f31bb93b2d15
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Les orcs noirs sont une race d'orcs d'élite obtenue par sélection et reproduction par de puissants maîtres maléfiques souhaitant construire l'armée ultime. Leur peau est plus sombre et leur musculature plus imposante. Ils manient des armes à deux mains, mais surtout, ils ne sont plus sensibles à la lumière du jour.
 
 ## Profil — Orc noir

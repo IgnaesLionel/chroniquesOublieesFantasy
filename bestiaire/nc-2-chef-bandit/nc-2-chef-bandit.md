@@ -3,6 +3,8 @@
 - Catégorie : Humains
 - NC : 2
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-2-Chef-Bandit-2eed3d06b09880e6b388e0c2ec071ec9
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 
 ## Profil — Chef bandit
 

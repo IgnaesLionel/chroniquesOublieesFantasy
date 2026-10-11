@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/NC-3-Basilic-2eed3d06b09881819847efefc54c5721
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Détourner/Fermer (DRS).
+  - Vision dans le noir : bonus Notion, hors DRS en ligne.
 - Description : Le basilic est un reptile à 8 pattes d'environ 150 kg particulièrement hideux. Toutefois, peu de personnes peuvent se vanter de connaître son apparence exacte, car son regard pétrifiant rend son observation directe particulièrement mortelle. Le basilic vit dans une grande variété de milieux naturels, mais il est très commun dans les déserts ou les montagnes. Un basilic voit dans le noir.
 
 ## Profil — Basilic
@@ -13,7 +16,7 @@
 - Vigueur 30 — DM Temp. 0 — Déplacement 10 m
 - États : Vision dans le noir
 - Attaques : Morsures +6, DM 2d6+4 (Attaque +6, Dommages 2d6+4)
-- Actions : Soutenir (L)
+- Actions : Soutenir (L) ; Détourner le regard ; Fermer les yeux
 - Propriétés :
   - DÉTOURNER LE REGARD : un personnage qui combat le basilic sans tactique particulière, si ce n'est éviter de croiser son regard, doit réussir un test de CON difficulté 10 au début de son tour ou être pétrifié. Il subit un dé malus en attaque.
   - FERMER LES YEUX : le personnage est aveuglé (-5 en DEF et en attaque, pas d'attaque à distance ni de sorts ciblés), mais il ne risque pas d'être pétrifié, sauf échec critique en attaque (dans ce cas test de CON difficulté 10).
@@ -27,6 +30,16 @@ Celui qui regarde le basilic et croise son regard est pétrifié. Un personnage 
 ### Vision dans le noir (Capacité)
 
 La créature voit dans le noir.
+
+
+### Détourner le regard (Capacité)
+
+Un personnage qui combat le basilic sans tactique particulière, si ce n'est éviter de croiser son regard, doit réussir un test de CON difficulté 10 au début de son tour ou être pétrifié. Il subit un dé malus en attaque. (DRS)
+
+
+### Fermer les yeux (Capacité)
+
+Le personnage est aveuglé (-5 en DEF et en attaque, pas d'attaque à distance ni de sorts ciblés), mais il ne risque pas d'être pétrifié, sauf échec critique en attaque (dans ce cas test de CON difficulté 10). (DRS)
 
 ## Images
 

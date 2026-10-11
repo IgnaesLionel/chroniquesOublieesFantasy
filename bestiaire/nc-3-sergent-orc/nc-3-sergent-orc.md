@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/NC-3-Sergent-Orc-2eed3d06b09881e3a733fa89938e5719
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (attaque renommée « Épée à deux mains » comme le DRS).
 - Description : Les orcs sont des créatures robustes (…) et les orcs noirs une race d'élite (…), cf. `nc-0-orc` et `nc-1-orc-noir`.
 
 ## Profil — Sergent orc
@@ -11,7 +13,7 @@
 - Caractéristiques : AGI +0 / CON +3 / FOR +4 (*) / PER +0 / CHA -1 / INT -1 / VOL +1
 - Initiative 10 — Défense 18 — RD 0
 - Vigueur 40 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Arme à deux mains +7, DM 2d6+6 (Attaque +7, Dommages 2d6+6)
+- Attaques : Épée à deux mains +7, DM 2d6+6 (Attaque +7, Dommages 2d6+6)
 - Actions : Imparable - Si 15-20 à l'attaque ; Soutenir (L)
 
 ## Capacités

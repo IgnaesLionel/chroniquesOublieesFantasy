@@ -24,7 +24,7 @@ export interface CapaciteUsable {
   /** Purge les états non permanents de la cible (ex: Increvable). */
   nettoie?: boolean;
   /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort). */
-  actionSpeciale?: "renvoi" | "compagnon";
+  actionSpeciale?: "renvoi";
   /** Écart éventuel avec le texte DRS (approximation moteur). */
   note?: string;
 }
@@ -43,7 +43,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     dureeTours: null,
     cibles: "tous",
     coutPV: "1d4°",
-    note: "Sorcier (G) : +INT à un d20 ou en DEF (avant résolution) + VOL aux DR — à appliquer par le MJ (DR via la fiche).",
+    note: "Sorcier (G) : +INT à un d20 ou en DEF (avant résolution, MJ) + VOL aux DR auto (max).",
   },
   {
     talent: "Siphon des âmes",
@@ -57,7 +57,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     effetCle: null,
     dureeTours: null,
     cibles: "allies",
-    note: "Sorcier, passif : +3 DEF automatiques à l'apprentissage (retirés au désapprentissage), +1 par rang 4 en voie sorcier (MJ). 10 min d'entretien/jour, sans malus AGI.",
+    note: "Sorcier, passif : +3 DEF auto (+1 par rang 4 en voie sorcier, auto), 10 min d'entretien/jour, sans malus AGI.",
   },
   {
     talent: "Exsangue",
@@ -104,14 +104,6 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     cibles: "soi",
     mods: { seuilCrit: 19 },
     note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer sur soi quand l'arme convient.",
-  },
-  {
-    talent: "Le loup",
-    effetCle: null,
-    dureeTours: null,
-    cibles: "allies",
-    actionSpeciale: "compagnon",
-    note: "Rôdeur : appelle le loup (ou alpha si connu) au camp du lanceur. Travail d'équipe, Lien (1 PV pour 1), Tactiques : MJ.",
   },
   {
     talent: "Increvable",

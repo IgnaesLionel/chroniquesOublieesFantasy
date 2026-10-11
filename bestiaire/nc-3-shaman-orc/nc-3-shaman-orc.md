@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/NC-3-Shaman-Orc-2eed3d06b09881a68f17f82d106abd77
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Les orcs sont des créatures robustes (…) et les orcs noirs une race d'élite (…), cf. `nc-0-orc` et `nc-1-orc-noir`.
 
 ## Profil — Shaman orc
@@ -11,7 +13,7 @@
 - Caractéristiques : AGI +0 / CON +3 / FOR +1 / PER +3 / CHA -1 / INT +0 / VOL +3
 - Initiative 13 — Défense 17 — RD 0
 - Vigueur 40 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Dague (2 attaques) +6, DM 1d4+1 (Attaque +6, Dommages 1d4+1) ; Attaque magique +6, DM (Attaque +6)
+- Attaques : Dague (2 attaques) +6, DM 1d4+1 (Attaque +6, Dommages 1d4+1) ; Attaque magique +6, DM spécial (Attaque +6, spécial)
 - Actions : Soutenir (L) ; Vampirisation (L)
 - Propriétés : Attaque magique +6.
 

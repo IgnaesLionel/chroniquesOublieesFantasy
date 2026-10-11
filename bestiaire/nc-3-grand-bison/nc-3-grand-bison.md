@@ -3,6 +3,9 @@
 - Catégorie : Animaux
 - NC : 3
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-3-Grand-Bison-2eed3d06b098805e8ce7eb2d8f427380
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme ; Charge : texte VTT (FOR 13).
+  - Cornes 2d6+6 (VTT) ; DRS en ligne : 2d6+8. Charge DRS : FOR 14.
 - Description :
   - Ce profil correspond à tous les grands herbivores à cornes (taureau, etc.). Les femelles fuient généralement à moins de défendre un petit.
   - Un grand mâle, environ 1,80 m au garrot pour une tonne.
@@ -18,10 +21,9 @@
 
 ## Capacités
 
-### Charge (Capacité, image commune avec Bison)
+### Charge (Capacité)
 
-Même capacité que `nc-2-bison` (même attachment) : 20 m max + attaque avec dé bonus, test FOR diff. 13 ou renversée, DM doublés.
-
+La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 13 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (VTT, même image que le bison ; DRS en ligne : FOR difficulté 14).
 ## Images
 
 - `./images/img-1.webp` (profil)

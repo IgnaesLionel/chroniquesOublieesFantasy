@@ -198,7 +198,7 @@ export const CAPACITES_MAGE: Record<string, VoieDetail[]> = {
         { nom: "Saignements", rang: 1, resume: "Sort d'attaque : test magique diff 10+CON (10 m, moteur : vs DEF), 1d4°/round pendant INT rounds (MJ).", sortId: "sort-saignements" },
         { nom: "Sang mordant", rang: 2, resume: "Sort (mouvement) : sang acide (INT minutes), 1d4° à qui le blesse au contact (MJ : dés manuels).", sortId: "sort-sang-mordant" },
         { nom: "Exsangue", rang: 3, resume: "Passif : corps cadavérique +2 DEF (+3 rang 5, -1 si autre armure qu'os, MJ : Éditer) ; à 0 PV agit avec dé malus (1 DM = inconscience)." },
-        { nom: "Rituel de sang", rang: 4, resume: "Sort d'attaque : sacrifie 1d4° PV (20 m, vivant, sans test), +1d4° aux DM tranchants/perçants subis pendant INT rounds (MJ).", sortId: "sort-rituel-sang" },
+        { nom: "Rituel du sang", rang: 4, resume: "Sort d'attaque : sacrifie 1d4° PV (20 m, vivant, sans test), +1d4° aux DM tranchants/perçants subis pendant INT rounds (MJ).", sortId: "sort-rituel-sang" },
         { nom: "Lien de sang", rang: 5, resume: "Sort d'attaque : test opposé (20 m), pendant INT minutes la moitié de ses DM est aussi subie par la cible (MJ : moitié, sorts sans vue).", sortId: "sort-lien-sang" },
       ],
     },

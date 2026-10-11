@@ -63,7 +63,7 @@ export const CAPACITES_MYSTIQUE: Record<string, VoieDetail[]> = {
       capacites: [
         { nom: "Prédicateur", rang: 1, resume: "Rang+2 pour convaincre ou convertir + 1 PC/jour si conversion réussie." },
         { nom: "Miracle mineur", rang: 2, resume: "Sort d'attaque : petit miracle (purifie, apaise, soigne bénin) ou 1d4 PV à 0 PV.", sortId: "sort-miracle-mineur" },
-        { nom: "Arme de lumière", rang: 3, resume: "Sort (limitée) : arme enchantée (CHA minutes), lumière 5 m, dé bonus et +1d4 DM contre démons et morts-vivants.", sortId: "sort-arme-lumiere" },
+        { nom: "Arme de lumière", rang: 3, resume: "Sort (mouvement ; limitée sur allié au rang 5) : arme enchantée (CHA minutes), lumière 5 m, dé bonus et +1d4 DM contre démons et morts-vivants (+2d4 au rang 5 sur soi). Fin si l'arme quitte les mains.", sortId: "sort-arme-lumiere" },
         { nom: "Ailes célestes", rang: 4, resume: "Sort d'attaque : vol à vitesse normale pendant CHA minutes.", sortId: "sort-ailes-celestes" },
         { nom: "Foudres divines", rang: 5, resume: "Sort d'attaque : foudre sur cibles désignées dans 10 m (2d4+CHA, sans test). Coût +1 PM par utilisation avant récup rapide.", sortId: "sort-foudres-divines" },
       ],
@@ -81,8 +81,8 @@ export const CAPACITES_MYSTIQUE: Record<string, VoieDetail[]> = {
     {
       voie: "Voie de la prière",
       capacites: [
-        { nom: "Bénédiction", rang: 1, resume: "Sort (limitée) : chant, alliés en vue +1 aux tests et attaques pendant CHA minutes (+2 au rang 5).", sortId: "sort-benediction" },
-        { nom: "Sanctuaire", rang: 2, resume: "Sort (limitée) : 10 rounds, attaquer le prêtre exige INT 10+CHA. Fin sur action offensive.", sortId: "sort-sanctuaire" },
+        { nom: "Bénédiction", rang: 1, resume: "Sort (limitée) : chant, alliés en vue +1 aux tests et attaques pendant CHA minutes (+2 au rang 5). Rang+2 en théologie et cosmologie (MJ).", sortId: "sort-benediction" },
+        { nom: "Sanctuaire", rang: 2, resume: "Sort (limitée) : 10 rounds, attaquer le prêtre exige INT 10+CHA (auto si niveau < moitié). Fin sur action offensive, relançable après récup rapide (MJ).", sortId: "sort-sanctuaire" },
         { nom: "Destruction du mal", rang: 3, resume: "Sort d'attaque : morts-vivants et démons dans 10 m subissent 2d4+CHA automatiques (3d4 au rang 5).", sortId: "sort-destruction-mal" },
         { nom: "Volonté héroïque", rang: 4, resume: "VOL +1 et dé bonus aux tests de VOL." },
         { nom: "Intervention divine", rang: 5, resume: "Action gratuite, 1/combat : impose réussite ou échec d'un test (même après les dés), pas NC > niveau." },
@@ -91,7 +91,7 @@ export const CAPACITES_MYSTIQUE: Record<string, VoieDetail[]> = {
     {
       voie: "Voie des soins",
       capacites: [
-        { nom: "Récupération mineure", rang: 1, resume: "Sort d'attaque : mains au contact (ou soi), 1d4+CHA PV. 1/jour par rang (+1 par rang 3 atteint dans une autre voie).", sortId: "sort-recuperation-mineure" },
+        { nom: "Récupération mineure", rang: 1, resume: "Sort d'attaque : mains au contact (ou soi), 1d4+CHA PV. 1/jour par rang (+1 par rang 3 atteint dans une autre voie). Rang+2 en médecine et premiers soins (MJ).", sortId: "sort-recuperation-mineure" },
         { nom: "Vigueur divine", rang: 2, resume: "Guérit poison ou maladie au contact (+ test magique si surnaturel), rang+2 contre maladies et poisons." },
         { nom: "Récupération majeure", rang: 3, resume: "Sort (limitée) : soigne à 20 m (ou soi), 3d4+CHA PV (+1d4 par rang 5 atteint dans une voie).", sortId: "sort-recuperation-majeure" },
         { nom: "Phénix", rang: 4, resume: "1/jour : à 0 PV se relève + onde de 2d4+CHA aux alliés dans 20 m, lui le double." },

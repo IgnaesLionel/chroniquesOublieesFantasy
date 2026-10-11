@@ -136,6 +136,11 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           </label>
         );
       })()}
+      {attacker && attacker.attaques.length === 0 && (
+        <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
+          {attacker.nom} n'a aucune attaque : équipez une arme ci-dessous (Équipement du sac) ou sur sa fiche, puis ↻ sur sa ligne.
+        </div>
+      )}
       {bloque && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
           {attacker?.nom} ne peut pas agir (Étourdi/Immobilisé) — retirez l&apos;effet ou passez son tour.

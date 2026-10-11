@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 8
 - Source Notion : https://silver-pen-32f.notion.site/NC-8-Vampire-2eed3d06b09881249170ebd8973b1288
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme + Pattes d'araignée (DRS).
+  - NC 8 (7 sans équipement, DRS).
 - Description : Le vampire est un humanoïde mort-vivant qui se nourrit du sang des vivants, il peut aisément passer pour un être humain lorsqu'il vient de se gaver de sang frais. Toutefois, il peut aussi prendre une apparence plus ou moins cadavérique ou encore la forme d'une chauve-souris.
 
 ## Profil — Vampire
@@ -11,8 +14,8 @@
 - Caractéristiques : AGI +4 (*) / CON +5 (*) / FOR +5 / PER +4 (*) / CHA +4 / INT +4 / VOL +4
 - Initiative 17 — Défense 20 — RD 0
 - Vigueur 70 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Griffes et morsures (2 attaques) +11, DM 1d8+5 (Attaque +11, Dommages 1d8+5) ; Épée longue (2 attaques) +11, DM 1d8+7 (Attaque +11, Dommages 1d8+7)
-- Actions : Absorption d'énergie (1) ; Résistance impie - RD sauf feu et argent (1) ; Soutenir (L) ; Transformation en chauve-souris (L) ; Vulnérabilité au soleil - Jet de DM (1)
+- Attaques : Griffes et morsures (2 attaques) +11, DM 1d8+5 + absorption (Attaque +11, Dommages 1d8+5 + absorption) ; Épée longue (2 attaques) +11, DM 1d8+7 (Attaque +11, Dommages 1d8+7)
+- Actions : Absorption d'énergie (1) ; Résistance impie - RD sauf feu et argent (1) ; Soutenir (L) ; Transformation en chauve-souris (L) ; Vulnérabilité au soleil - Jet de DM (1) ; Pattes d'araignée
 - Propriétés : peut faire 2 attaques. Soit à l'épée longue, soit avec les morsures auquel cas il bénéficie de "absorption d'énergie". PATTES D'ARAIGNÉE : le vampire peut se déplacer de 10 m par action de mouvement sur les murs et les plafonds.
 
 ## Capacités
@@ -52,6 +55,11 @@ Sous cette forme, le vampire ne peut plus attaquer, mais il se déplace de 20 m 
 Un vampire exposé au soleil subit 2d10 DM par tour sur son maximum de PV (il ne peut pas le régénérer tant qu'il reste à la lumière). Si son maximum de PV est réduit à 0 de cette façon, il est réduit en cendre et définitivement détruit.
 
 Usage en jeu : l'action permet de réaliser un jet de DM dans un message du tchat. Le résultat doit être retiré des PV maximum du vampire et pas seulement aux PV actuels.
+
+
+### Pattes d'araignée (Capacité)
+
+Le vampire peut se déplacer de 10 m par action de mouvement sur les murs et les plafonds. (DRS)
 
 ## Images
 

@@ -123,7 +123,7 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
     {
       voie: "Voie du combat",
       capacites: [
-        { nom: "Vivacité", rang: 1, resume: "+3 Init auto et rang+2 pour éviter immobilisé/renversé (MJ), +1 mouvement/combat (MJ, réel)." },
+        { nom: "Vivacité", rang: 1, resume: "Passif : +3 Init auto et +3 pour éviter immobilisé/renversé (MJ), +1 mouvement/combat (MJ, réel)." },
         { nom: "Manœuvre", rang: 2, resume: "Dé bonus aux manœuvres en combat (MJ : jets manuels)." },
         { nom: "Attaque puissante", rang: 3, resume: "Avec une attaque (A) : dé malus + +2d4° DM (cumulable Double, Circulaire, Parfaite). En limitée (L) : +3d4°. Cocher dans le panneau Attaque." },
         { nom: "Double attaque", rang: 4, resume: "Action limitée (L) : deux attaques au contact à -2 (saisir -2 en Mod. attaque, 2 lancers)." },
@@ -143,7 +143,7 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
     {
       voie: "Voie de la résistance",
       capacites: [
-        { nom: "Robustesse", rang: 1, resume: "Livre : PV max +rang+2 — NON appliqué (contredit la fiche de Dorain : manuel via Éditer, voir Règles). Rang+2 contre efforts, chaleur, froid (MJ)." },
+        { nom: "Robustesse", rang: 1, resume: "Passif : PV max +rang+2 auto (+3 au rang 1) ; rang+2 contre efforts, chaleur, froid (MJ)." },
         { nom: "Résilient", rang: 2, resume: "Récupération rapide en 10 min (5 au rang 4, MJ : narratif), +rang contre étourdi et affaibli (MJ)." },
         { nom: "Armure lourde", rang: 3, resume: "Au choix (MJ) : +1 DEF (Éditer) OU maîtrise de la plaque (+6) utilisable avec ses voies (hybride : catégorie au-dessus)." },
         { nom: "Constitution héroïque", rang: 4, resume: "CON +1 (Éditer) et dé bonus aux tests de CON (MJ)." },

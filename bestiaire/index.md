@@ -1,7 +1,7 @@
 # Bestiaire — Index
 
 Source : https://silver-pen-32f.notion.site/Bestiaire-2edd3d06b0988074a972ce20c150046d
-Fiches : 115 — Images : 313
+Fiches : 119 — Images : 313
 
 ## Animaux (25)
 
@@ -48,7 +48,7 @@ Fiches : 115 — Images : 313
 | NC 4 Capitaine | `nc-4-capitaine/` | 2 | [nc-4-capitaine.md](./nc-4-capitaine/nc-4-capitaine.md) |
 | NC 5 Sorcier | `nc-5-sorcier/` | 5 | [nc-5-sorcier.md](./nc-5-sorcier/nc-5-sorcier.md) |
 
-## Monstres/Créatures (58)
+## Monstres/Créatures (60)
 
 | Nom | Slug / dossier | Images | Fiche |
 |---|---|---|---|
@@ -109,9 +109,11 @@ Fiches : 115 — Images : 313
 | NC 13 Vampire Ancien | `nc-13-vampire-ancien/` | 11 | [nc-13-vampire-ancien.md](./nc-13-vampire-ancien/nc-13-vampire-ancien.md) |
 | Araignée Moyenne | `araignee-moyenne/` | 1 | [araignee-moyenne.md](./araignee-moyenne/araignee-moyenne.md) |
 | Sigméus, Le Nécromant | `sigmeus-le-necromant/` | 1 | [sigmeus-le-necromant.md](./sigmeus-le-necromant/sigmeus-le-necromant.md) |
+| Chasseur ailé (DRS) | `chasseur-aile/` | 0 | [chasseur-aile.md](./chasseur-aile/chasseur-aile.md) |
+| Zombie ourhible (DRS) | `zombie-ourhible/` | 0 | [zombie-ourhible.md](./zombie-ourhible/zombie-ourhible.md) |
 | Zombie Coriasse | `zombie-coriasse/` | 1 | [zombie-coriasse.md](./zombie-coriasse/zombie-coriasse.md) |
 
-## Compagnions (22)
+## Compagnions (24)
 
 | Nom | Slug / dossier | Images | Fiche |
 |---|---|---|---|
@@ -126,6 +128,8 @@ Fiches : 115 — Images : 313
 | Voie du chevalier dragon - Rang 7 - Monture puissante | `voie-du-chevalier-dragon-rang-7-monture-puissante/` | 2 | [voie-du-chevalier-dragon-rang-7-monture-puissante.md](./voie-du-chevalier-dragon-rang-7-monture-puissante/voie-du-chevalier-dragon-rang-7-monture-puissante.md) |
 | Voie du compagnon animal - Rang 1 - Le loup | `voie-du-compagnon-animal-rang-1-le-loup/` | 1 | [voie-du-compagnon-animal-rang-1-le-loup.md](./voie-du-compagnon-animal-rang-1-le-loup/voie-du-compagnon-animal-rang-1-le-loup.md) |
 | Voie du compagnon animal - Rang 4 - Loup alpha | `voie-du-compagnon-animal-rang-4-loup-alpha/` | 1 | [voie-du-compagnon-animal-rang-4-loup-alpha.md](./voie-du-compagnon-animal-rang-4-loup-alpha/voie-du-compagnon-animal-rang-4-loup-alpha.md) |
+| Compagnon Loup (Rôdeur, DRS) | `compagnon-loup/` | 0 | [compagnon-loup.md](./compagnon-loup/compagnon-loup.md) |
+| Compagnon Loup alpha (Rôdeur, DRS) | `compagnon-loup-alpha/` | 0 | [compagnon-loup-alpha.md](./compagnon-loup-alpha/compagnon-loup-alpha.md) |
 | Voie du démon - Rang 5 - Invocation d’un démon | `voie-du-demon-rang-5-invocation-d-un-demon/` | 1 | [voie-du-demon-rang-5-invocation-d-un-demon.md](./voie-du-demon-rang-5-invocation-d-un-demon/voie-du-demon-rang-5-invocation-d-un-demon.md) |
 | Voie du familier fantastique - Rang 3 - Familier fantastique | `voie-du-familier-fantastique-rang-3-familier-fantastique/` | 1 | [voie-du-familier-fantastique-rang-3-familier-fantastique.md](./voie-du-familier-fantastique-rang-3-familier-fantastique/voie-du-familier-fantastique-rang-3-familier-fantastique.md) |
 | Voie du fauve - Rang 2 - Panthère | `voie-du-fauve-rang-2-panthere/` | 1 | [voie-du-fauve-rang-2-panthere.md](./voie-du-fauve-rang-2-panthere/voie-du-fauve-rang-2-panthere.md) |

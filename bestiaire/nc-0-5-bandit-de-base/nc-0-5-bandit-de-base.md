@@ -3,6 +3,8 @@
 - Catégorie : Humains
 - NC : 0.5
 - Source Notion : https://silver-pen-32f.notion.site/NC-0-5-Bandit-de-base-2eed3d06b09881808317c2f08794da01
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 
 ## Profil — Bandit de base
 

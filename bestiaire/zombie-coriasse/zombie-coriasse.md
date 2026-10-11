@@ -2,6 +2,8 @@
 
 - Catégorie : Monstres/Créatures
 - Source Notion : https://silver-pen-32f.notion.site/p/Zombie-Coriasse-2efd3d06b098801995daea9c1e8bb4ca
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : variante maison, hors DRS en ligne.
 
 ## Profil — Zombies coriaces (bloc ancienne édition, tel qu'affiché)
 

@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 0
 - Source Notion : https://silver-pen-32f.notion.site/NC-0-Gobelin-de-base-2eed3d06b0988197b28aed76daf3fe89
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Gobelin en armure avec bouclier.
 
 ## Profil — Gobelin de base

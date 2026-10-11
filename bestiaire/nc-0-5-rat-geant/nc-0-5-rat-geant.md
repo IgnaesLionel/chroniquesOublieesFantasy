@@ -3,6 +3,9 @@
 - Catégorie : Monstres/Créatures
 - NC : 0.5
 - Source Notion : https://silver-pen-32f.notion.site/NC-0-5-Rat-G-ant-2eed3d06b09881b49a9df4548a7b1c54
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Morsure + Maladie CON 10/15).
+  - INIT 15 (VTT) conservée ; DRS en ligne : INIT 5 (coquille probable).
 - Description : Ce rongeur de la taille d'un chien est beaucoup plus agressif qu'un rat ordinaire. Il pue autant qu'il est laid. Et il est particulièrement laid.
 
 ## Profil — Rat géant

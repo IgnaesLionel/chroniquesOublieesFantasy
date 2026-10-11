@@ -18,7 +18,7 @@ interface Props {
       dureeTours: number | null;
       mods: Record<string, number> | undefined;
       coutPV: string | undefined;
-      actionSpeciale: "renvoi" | "compagnon" | undefined;
+      actionSpeciale: "renvoi" | undefined;
       soin: string | undefined;
       nettoie: boolean | undefined;
     }
@@ -124,7 +124,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
         disabled={bloque || !cible}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
-        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}{defaut?.actionSpeciale === "compagnon" ? " 🐺" : ""}
+        Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}
       </button>
     </div>
   );

@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 5
 - Source Notion : https://silver-pen-32f.notion.site/NC-5-Momie-2eed3d06b09881efa5ffebd629f2b59e
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : La momie est un mort-vivant couvert de bandelettes, un cadavre animé par une magie antique qui permet à un humanoïde une parodie de vie après la mort. La momie doit rester éternellement immobile au fond de son sarcophage et elle ne peut que rarement trouver l'énergie de s'en extraire. Toutefois, lorsque cela arrive, elle fait preuve d'une haine des vivants qui dérangent son sommeil et d'une force impie qui défie les lois de la physique.
 
 ## Profil — Momie
@@ -11,7 +13,7 @@
 - Caractéristiques : AGI +1 / CON +3 (*) / FOR +5 (*) / PER +1 / CHA -2 / INT -2 / VOL +4
 - Initiative 11 — Défense 20 — RD 0
 - Vigueur 70 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Coup (2 attaques) +10, DM 1d8+5 (Attaque +10, Dommages 1d8+5)
+- Attaques : Coup (2 attaques) +10, DM 1d8+5 + putréfaction (Attaque +10, Dommages 1d8+5 + putréfaction)
 - Actions : Putréfaction ; Résistance aux DM - RD sauf DM feu ; Soutenir (L)
 
 ## Capacités

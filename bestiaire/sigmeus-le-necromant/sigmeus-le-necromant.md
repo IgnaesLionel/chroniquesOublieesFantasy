@@ -2,6 +2,8 @@
 
 - Catégorie : Monstres/Créatures
 - Source Notion : https://silver-pen-32f.notion.site/p/Sigm-us-Le-N-cromant-2efd3d06b09880efa226d4f520746cfd
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : PNJ maison, hors DRS.
 
 ## Profil — Sigméus, le nécromant (bloc ancienne édition, tel qu'affiché)
 

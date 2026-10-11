@@ -1,0 +1,312 @@
+json notion-nc-7-chimere.pv -> 100
+json notion-nc-7-chimere.pvMax -> 100
+SKIP sub (déjà) (nc-7-chimere): 'Vigueur 100'...
+SKIP sub (déjà) (nc-7-chimere): '- Vigueur : 100 (DRS ; la capture VTT affichait 0,'...
+json notion-nc-3-gorille.pv -> 30
+json notion-nc-3-gorille.pvMax -> 30
+SKIP sub (déjà) (nc-3-gorille): 'Vigueur 30'...
+SKIP sub (déjà) (nc-3-gorille): '- Vigueur : 30 (DRS ; la capture VTT affichait 0, '...
+json notion-nc-2-ours-brun.niveau -> 4.0
+SKIP sub (déjà) (nc-2-ours-brun): '- NC : 4 (titre Notion : NC 2 ; image VTT et DRS :'...
+SKIP sub (déjà) (nc-2-ours-brun): '# NC 4 Ours Brun (titre Notion : NC 2)'...
+json notion-nc-2-demonet.rd -> 5
+json notion-nc-5-elementaire-d-eau-grand.rd -> 3
+json notion-nc-6-elephant.rd -> 3
+json notion-nc-9-geant-de-feu.rd -> 6
+json notion-nc-5-troll.rd -> 3
+json notion-nc-4-vampirien.rd -> 5
+json notion-nc-4-assassin.rd -> 15
+json atk Morsure de serpent.affiche -> 1d4+3 + poison (notion-nc-7-chimere-draconique)
+json atk Morsures et griffes.affiche -> 1d6+2 + paralysie (notion-nc-2-goule)
+json atk Morsures.affiche -> 1d6+4 + paralysie (notion-nc-4-ghoule-abomination)
+json atk Coup (2 attaques).affiche -> 1d8+5 + putréfaction (notion-nc-5-momie)
+json atk Coup (2 attaques).affiche -> 2d6+8 + putréfaction (notion-nc-10-momie-auguste)
+json atk Morsure.affiche -> 1d6+4 + étreinte (notion-nc-3-serpent-constricteur)
+json atk Morsure.affiche -> 1 + venin (notion-nc-1-serpent-venimeux-crotale-vipere)
+json atk Queue fourchue.affiche -> 1 + venin (notion-nc-2-demonet)
+json atk Morsure et griffes (2 attaques).affiche -> 1d6+3 + absorption d'énergie (notion-nc-4-vampirien)
+json atk Griffes et morsures (2 attaques).affiche -> 1d8+5 + absorption d'énergie (notion-nc-8-vampire)
+json atk Griffes et morsures (2 attaques).affiche -> 1d8+8 + 1d8 de froid + absorption d'énergie (notion-nc-13-vampire-ancien)
+json atk Épée longue (2 attaques).affiche -> 1d8+8 + 1d8 de froid (notion-nc-13-vampire-ancien)
+json atk Arme.affiche -> 1d6+3 (ou arme +3) (notion-nc-1-zombie-humain)
+json atk Attaque magique.affiche -> 2d6 (30 m) (notion-nc-1-shaman-gobelin)
+json atk Attaque magique (élémentaire).affiche -> 3d6 (élémentaires) (notion-nc-2-pretre-kobold)
+json atk Attaque magique.affiche -> spécial (voir pouvoirs) (notion-nc-3-shaman-orc)
+json atk Attaque magique.affiche -> spécial (voir pouvoirs) (notion-nc-5-sorcier)
+json atk Attaque magique.affiche -> spécial (voir pouvoirs) (notion-nc-10-dragon-des-forets)
+json atk Dague.affiche -> 1d4+2 +2d6 poison (notion-nc-5-sorcier)
+json atk rename 'Arme à deux mains' -> 'Épée à deux mains' (notion-nc-3-sergent-orc)
+SKIP sub (déjà) (nc-3-sergent-orc): 'Attaques : Épée à deux mains +7, DM 2d6+6'...
+SKIP sub (déjà) (nc-5-sorcier): 'DM 1d4+2 +2d6 poison (Attaque +6, Dommages 1d4+2 +'...
+SKIP sub (déjà) (nc-5-sorcier): 'Attaque magique +10, DM spécial (Attaque +10, spéc'...
+SKIP sub (déjà) (nc-1-shaman-gobelin): 'Attaque magique 4, DM 2d6 (30 m) (Attaque 4, Domma'...
+SKIP sub (déjà) (nc-2-pretre-kobold): 'DM 3d6 (élémentaires) (Attaque +6, Dommages 3d6 (é'...
+SKIP sub (déjà) (nc-3-shaman-orc): 'Attaque magique +6, DM spécial (Attaque +6, spécia'...
+SKIP sub (déjà) (nc-10-dragon-des-forets): 'Attaque magique +15, DM spécial (Attaque +15, spéc'...
+SKIP sub (déjà) (nc-2-goule): 'DM 1d6+2 + paralysie (Attaque +5, Dommages 1d6+2 +'...
+SKIP sub (déjà) (nc-4-ghoule-abomination): 'Morsures +9, DM 1d6+4 + paralysie (Attaque +9, Dom'...
+SKIP sub (déjà) (nc-5-momie): 'DM 1d8+5 + putréfaction (Attaque +10, Dommages 1d8'...
+SKIP sub (déjà) (nc-10-momie-auguste): 'DM 2d6+8 + putréfaction (Attaque +16, Dommages 2d6'...
+SKIP sub (déjà) (nc-3-serpent-constricteur): 'DM 1d6+4 + étreinte (Attaque +4, Dommages 1d6+4 + '...
+SKIP sub (déjà) (nc-1-serpent-venimeux-crotale-vipere): 'DM 1 + venin (Attaque +3, Dommages 1 + venin)'...
+SKIP sub (déjà) (nc-2-demonet): 'Queue fourchue +4, DM 1 + venin (Attaque +4, Domma'...
+SKIP sub (déjà) (nc-4-vampirien): 'DM 1d6+3 + absorption (Attaque +6, Dommages 1d6+3 '...
+SKIP sub (déjà) (nc-8-vampire): 'Griffes et morsures (2 attaques) +11, DM 1d8+5 + a'...
+SKIP sub (déjà) (nc-13-vampire-ancien): 'Griffes et morsures (2 attaques) +14, DM 1d8+8 + 1'...
+SKIP sub (déjà) (nc-13-vampire-ancien): 'Épée longue (2 attaques) +14, DM 1d8+8 + 1d8 de fr'...
+SKIP sub (déjà) (nc-1-zombie-humain): 'Arme +4, DM 1d6+3 (ou arme +3) (Attaque +4, Dommag'...
+json cap +Attaques ridicules (notion-nc-0-animal-minuscule)
+json detail +Attaques ridicules (notion-nc-0-animal-minuscule)
+SKIP section Attaques ridicules (Capacité) (nc-0-animal-minuscule)
+json cap +Minuscule (notion-nc-0-animal-minuscule)
+json detail +Minuscule (notion-nc-0-animal-minuscule)
+SKIP section Minuscule (Capacité) (nc-0-animal-minuscule)
+json cap +Vermine (notion-nc-3-araignee-geante)
+json detail +Vermine (notion-nc-3-araignee-geante)
+SKIP section Vermine (Capacité) (nc-3-araignee-geante)
+json cap +Variantes (notion-nc-3-araignee-geante)
+json detail +Variantes (notion-nc-3-araignee-geante)
+SKIP section Variantes (Capacité) (nc-3-araignee-geante)
+json cap +Détourner le regard (notion-nc-3-basilic)
+json detail +Détourner le regard (notion-nc-3-basilic)
+SKIP section Détourner le regard (Capacité) (nc-3-basilic)
+json cap +Fermer les yeux (notion-nc-3-basilic)
+json detail +Fermer les yeux (notion-nc-3-basilic)
+SKIP section Fermer les yeux (Capacité) (nc-3-basilic)
+json cap +Riposte (notion-nc-4-capitaine)
+json detail +Riposte (notion-nc-4-capitaine)
+SKIP section Riposte (Capacité) (nc-4-capitaine)
+json cap +Monture (notion-nc-1-cheval-de-guerre)
+json detail +Monture (notion-nc-1-cheval-de-guerre)
+SKIP section Monture (Capacité) (nc-1-cheval-de-guerre)
+json cap +Monture (notion-nc-1-cheval-de-selle)
+json detail +Monture (notion-nc-1-cheval-de-selle)
+SKIP section Monture (Capacité) (nc-1-cheval-de-selle)
+json cap +Immunités (notion-nc-10-dragon-des-forets)
+json detail +Immunités (notion-nc-10-dragon-des-forets)
+SKIP section Immunités (Capacité) (nc-10-dragon-des-forets)
+json cap +Grand mâle (notion-nc-6-elephant)
+json detail +Grand mâle (notion-nc-6-elephant)
+SKIP section Grand mâle (Capacité) (nc-6-elephant)
+json cap +Immunisé au feu (notion-nc-9-geant-de-feu)
+json detail +Immunisé au feu (notion-nc-9-geant-de-feu)
+SKIP section Immunisé au feu (Capacité) (nc-9-geant-de-feu)
+json cap +Déplacement sous terre (notion-nc-7-geoselachis)
+json detail +Déplacement sous terre (notion-nc-7-geoselachis)
+SKIP section Déplacement sous terre (Capacité) (nc-7-geoselachis)
+json cap +Absorber l'électricité (notion-nc-7-golem-de-chair)
+json detail +Absorber l'électricité (notion-nc-7-golem-de-chair)
+SKIP section Absorber l'électricité (Capacité) (nc-7-golem-de-chair)
+json cap +Ajouter des têtes (notion-nc-5-hydre-a-5-tetes)
+json detail +Ajouter des têtes (notion-nc-5-hydre-a-5-tetes)
+SKIP section Ajouter des têtes (Capacité) (nc-5-hydre-a-5-tetes)
+json cap +Attaques multiples (notion-nc-5-hydre-a-5-tetes)
+json detail +Attaques multiples (notion-nc-5-hydre-a-5-tetes)
+SKIP section Attaques multiples (Capacité) (nc-5-hydre-a-5-tetes)
+json cap +Couper une tête (notion-nc-5-hydre-a-5-tetes)
+json detail +Couper une tête (notion-nc-5-hydre-a-5-tetes)
+SKIP section Couper une tête (Capacité) (nc-5-hydre-a-5-tetes)
+json cap +Chien (notion-nc-1-loup)
+json detail +Chien (notion-nc-1-loup)
+SKIP section Chien (Capacité) (nc-1-loup)
+json cap +Voie de la magie universelle rang 5 (notion-nc-10-momie-auguste)
+json detail +Voie de la magie universelle rang 5 (notion-nc-10-momie-auguste)
+SKIP section Voie de la magie universelle rang 5 (Capacité) (nc-10-momie-auguste)
+json cap +Devenir une goule (notion-nc-2-goule)
+json detail +Devenir une goule (notion-nc-2-goule)
+SKIP section Devenir une goule (Capacité) (nc-2-goule)
+json cap +Devenir une goule (notion-nc-4-ghoule-abomination)
+json detail +Devenir une goule (notion-nc-4-ghoule-abomination)
+SKIP section Devenir une goule (Capacité) (nc-4-ghoule-abomination)
+json cap +Démon (notion-nc-2-demonet)
+json detail +Démon (notion-nc-2-demonet)
+SKIP section Démon (Capacité) (nc-2-demonet)
+json cap +Tentation du mal (notion-nc-2-demonet)
+json detail +Tentation du mal (notion-nc-2-demonet)
+SKIP section Tentation du mal (Capacité) (nc-2-demonet)
+json cap +Télépathie (notion-nc-2-demonet)
+json detail +Télépathie (notion-nc-2-demonet)
+SKIP section Télépathie (Capacité) (nc-2-demonet)
+json cap +Téléportation (notion-nc-2-demonet)
+json detail +Téléportation (notion-nc-2-demonet)
+SKIP section Téléportation (Capacité) (nc-2-demonet)
+json cap +Ténèbres (notion-nc-2-demonet)
+json detail +Ténèbres (notion-nc-2-demonet)
+SKIP section Ténèbres (Capacité) (nc-2-demonet)
+json cap +Venin (notion-nc-2-demonet)
+json detail +Venin (notion-nc-2-demonet)
+SKIP section Venin (Capacité) (nc-2-demonet)
+json cap +Vision dans le noir (notion-nc-2-demonet)
+json detail +Vision dans le noir (notion-nc-2-demonet)
+SKIP section Vision dans le noir (Capacité) (nc-2-demonet)
+json cap +Vol (notion-nc-2-demonet)
+json detail +Vol (notion-nc-2-demonet)
+SKIP section Vol (Capacité) (nc-2-demonet)
+json cap +Sans esprit (notion-nc-1-squelette)
+json detail +Sans esprit (notion-nc-1-squelette)
+json shared +sans-esprit (notion-nc-1-squelette)
+SKIP section Sans esprit (Capacité) (nc-1-squelette)
+json cap +Sans esprit (notion-nc-4-squelette-geant)
+json detail +Sans esprit (notion-nc-4-squelette-geant)
+json shared +sans-esprit (notion-nc-4-squelette-geant)
+SKIP section Sans esprit (Capacité) (nc-4-squelette-geant)
+json cap +Dévorer (notion-nc-6-ours-polaire)
+json detail +Dévorer (notion-nc-6-ours-polaire)
+json shared +devorer (notion-nc-6-ours-polaire)
+SKIP section Dévorer (Capacité) (nc-6-ours-polaire)
+json cap +Dévorer (notion-nc-2-panthere)
+json detail +Dévorer (notion-nc-2-panthere)
+json shared +devorer (notion-nc-2-panthere)
+SKIP section Dévorer (Capacité) (nc-2-panthere)
+json cap +Ambuscade (notion-nc-2-panthere)
+json detail +Ambuscade (notion-nc-2-panthere)
+SKIP section Ambuscade (Capacité) (nc-2-panthere)
+json cap +Creuser (notion-nc-3-skrambler)
+json detail +Creuser (notion-nc-3-skrambler)
+SKIP section Creuser (Capacité) (nc-3-skrambler)
+json cap +Pattes d'araignée (notion-nc-8-vampire)
+json detail +Pattes d'araignée (notion-nc-8-vampire)
+SKIP section Pattes d'araignée (Capacité) (nc-8-vampire)
+json cap +Pattes d'araignée (notion-nc-13-vampire-ancien)
+json detail +Pattes d'araignée (notion-nc-13-vampire-ancien)
+SKIP section Pattes d'araignée (Capacité) (nc-13-vampire-ancien)
+json cap +Regard envoûtant (ancien) (notion-nc-13-vampire-ancien)
+json detail +Regard envoûtant (ancien) (notion-nc-13-vampire-ancien)
+SKIP section Regard envoûtant (ancien) (Capacité) (nc-13-vampire-ancien)
+json cap +Pattes d'araignée (notion-nc-4-vampirien)
+json detail +Pattes d'araignée (notion-nc-4-vampirien)
+SKIP section Pattes d'araignée (Capacité) (nc-4-vampirien)
+json cap +Regard envoûtant (vampirien) (notion-nc-4-vampirien)
+json detail +Regard envoûtant (vampirien) (notion-nc-4-vampirien)
+SKIP section Regard envoûtant (vampirien) (Capacité) (nc-4-vampirien)
+json cap +Forme gazeuse (vampirien) (notion-nc-4-vampirien)
+json detail +Forme gazeuse (vampirien) (notion-nc-4-vampirien)
+SKIP section Forme gazeuse (vampirien) (Capacité) (nc-4-vampirien)
+json cap +Résistances (vampirien) (notion-nc-4-vampirien)
+json detail +Résistances (vampirien) (notion-nc-4-vampirien)
+SKIP section Résistances (vampirien) (Capacité) (nc-4-vampirien)
+json cap +Vulnérabilité au soleil (vampirien) (notion-nc-4-vampirien)
+json detail +Vulnérabilité au soleil (vampirien) (notion-nc-4-vampirien)
+SKIP section Vulnérabilité au soleil (vampirien) (Capacité) (nc-4-vampirien)
+json cap +Tape dur (notion-nc-3-sanglier)
+json detail +Tape dur (notion-nc-3-sanglier)
+SKIP section Tape dur (Capacité) (nc-3-sanglier)
+SKIP section remplacée (déjà) Charge (nc-2-ours-brun)
+json detail upd Charge (Capacité) (notion-nc-2-ours-brun)
+SKIP section remplacée (déjà) Charge, Enragé (nc-4-rhinoceros)
+json detail +Charge (Capacité) (notion-nc-4-rhinoceros)
+SKIP section remplacée (déjà) Charge, Enragé (nc-6-ours-polaire)
+json detail +Charge (Capacité) (notion-nc-6-ours-polaire)
+SKIP section remplacée (déjà) Charge (nc-6-elephant)
+json detail upd Charge (Capacité) (notion-nc-6-elephant)
+SKIP section remplacée (déjà) Charge (nc-3-grand-bison)
+json detail +Charge (Capacité) (notion-nc-3-grand-bison)
+SKIP section remplacée (déjà) Fauchage (nc-5-elementaire-d-eau-grand)
+json detail upd Fauchage (Capacité) (notion-nc-5-elementaire-d-eau-grand)
+SKIP section remplacée (déjà) Vision dans le noir (nc-5-elementaire-d-eau-grand)
+json detail upd Vision dans le noir (Capacité) (notion-nc-5-elementaire-d-eau-grand)
+SKIP section remplacée (déjà) Embuscade (nc-3-skrambler)
+json detail upd Embuscade (Capacité) (notion-nc-3-skrambler)
+SKIP section remplacée (déjà) Dévorer (nc-4-requin)
+json detail upd Dévorer (Capacité) (notion-nc-4-requin)
+SKIP section remplacée (déjà) Putréfaction (nc-10-momie-auguste)
+json detail upd Putréfaction (Capacité) (notion-nc-10-momie-auguste)
+verif nc-0-5-aigle : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-0-animal-petit-chien : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-0-animal-tres-petit-chat : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-4-assassin : conforme (NC/DEF/PV/INIT/attaques + Assassinat/Attaque morte
+verif nc-0-5-bandit-de-base : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-bandit-veteran : conforme (le DRS écrit « vétaran », coquille).
+verif nc-2-chef-bandit : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-garde-de-la-ville : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-3-garde-du-corps : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-4-chef-gnoll : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-gnoll : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-2-sergent-gnoll : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-0-gobelin-de-base : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-0-5-gobelin-d-elite : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-4-griffon : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-chef-kobold : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-0-kobold : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-3-licorne : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-3-lion : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-4-grand-lion : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-2-loup-alpha : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-2-berserk-orc : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-orc-noir : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-5-ourhible : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-2-ours-noir : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-4-rhinoceros : conforme ; Charge : texte propre FOR 18.
+verif nc-5-troll : conforme (Fauchage 17-20/FOR-AGI 16/RD 3 + Vitalité).
+verif nc-2-chef-goblin : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-shaman-gobelin : conforme (Arme + Attaque magique 2d6/30 m + Meute).
+verif nc-3-sergent-orc : conforme (attaque renommée « Épée à deux mains » comme le DR
+verif nc-3-shaman-orc : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-6-chef-orc : conforme (Capitaine/Commandant/Imparable/Brise-genou).
+verif nc-0-orc : conforme (Hache/masse + Sensible à la lumière).
+verif nc-7-golem-de-chair : conforme + Absorber l'électricité (DRS).
+verif nc-10-dragon-des-forets : conforme + Immunités (DRS).
+verif nc-5-elementaire-d-eau-grand : conforme ; Fauchage corrigé FOR-AGI 16 + Vision DRS.
+verif nc-6-elephant : conforme + Grand mâle (DRS) ; Charge : texte propre FOR 20.
+verif nc-9-geant-de-feu : conforme + Immunisé au feu (DRS).
+verif nc-7-geoselachis : conforme + Déplacement sous terre (DRS).
+verif nc-5-hydre-a-5-tetes : conforme + Ajouter/Attaques multiples/Couper (DRS).
+verif nc-1-loup : conforme + Chien (DRS).
+verif nc-10-momie-auguste : conforme + Voie de la magie universelle (DRS) ; Putréfaction
+verif nc-5-momie : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-3-ogre : conforme (Hachoir + Imparable/Tape dur).
+verif nc-6-chef-ogre : conforme (Hachoir(2) + Enragé/Imparable/Tape dur/Teigneuse).
+verif nc-2-goule : conforme + Devenir une goule (DRS).
+verif nc-4-ghoule-abomination : conforme (Griffe(2)/Morsure + Miasmes + Devenir).
+verif nc-2-pretre-kobold : conforme (Dague + Attaque magique 3d6).
+verif nc-2-ours-brun : NC corrigé 4 (VTT + DRS) ; Charge : texte propre FOR 16 (DRS
+verif nc-6-ours-polaire : conforme + Dévorer (DRS) ; Charge : texte VTT (FOR 13).
+verif nc-2-panthere : conforme + Ambuscade (PER 19) + Dévorer (DRS).
+verif nc-0-5-rat-geant : conforme (Morsure + Maladie CON 10/15).
+verif nc-4-requin : conforme ; Dévorer corrigé (immobilisation FOR 15, DRS).
+verif nc-3-sanglier : conforme + Tape dur CON 13 (DRS) ; bonus +6 et Charge FOR 13
+verif nc-3-serpent-constricteur : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-1-serpent-venimeux-crotale-vipere : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-3-skrambler : conforme + Creuser (DRS) ; Embuscade complétée (+Init, DRS).
+verif nc-5-sorcier : conforme (Dague poison + Attaque magique + 4 pouvoirs L).
+verif nc-1-squelette : conforme + Sans esprit (DRS).
+verif nc-4-squelette-geant : conforme + Sans esprit (DRS).
+verif nc-4-vampirien : conforme + versions DRS (Regard VOL 10, Forme 1/jour, RD -5,
+verif nc-8-vampire : conforme + Pattes d'araignée (DRS).
+verif nc-13-vampire-ancien : conforme + Pattes + Regard ancien VOL 20 (DRS).
+verif nc-2-veteran : conforme (template : 1 capacité parmi Brise-genou/Imparable/
+verif nc-3-worg : conforme (Morsure + Embuscade PER 16 + Brise-genou).
+verif nc-1-zombie-humain : conforme (cycle zombie + gabarit).
+verif nc-3-araignee-geante : conforme + Vermine/Variantes (DRS).
+verif nc-3-basilic : conforme + Détourner/Fermer (DRS).
+verif nc-3-grand-bison : conforme ; Charge : texte VTT (FOR 13).
+verif nc-2-bison : conforme ; Charge : texte VTT (FOR 13).
+verif nc-4-capitaine : conforme + Riposte (G, DRS).
+verif nc-1-cheval-de-guerre : conforme + Monture (DRS).
+verif nc-1-cheval-de-selle : conforme + Monture (DRS).
+verif nc-7-chimere : PV corrigés 100 (DRS ; la capture VTT affichait 0).
+verif nc-7-chimere-draconique : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaqu
+verif nc-2-crocodile : conforme (Morsure + Embuscade + Dévorer).
+verif nc-2-demonet : conforme + 8 capacités DRS (Démon/Tentation/Télépathie/Télép
+verif nc-3-gorille : PV corrigés 30 (DRS ; la capture VTT affichait 0) ; Charge :
+verif nc-11-cryohydre-a-10-tetes : créature distincte du « Cryohydre à dix têtes » du DRS (NC 5
+verif nc-0-5-strige : absente du DRS en ligne (11/10/2026).
+verif nc-1-homme-lezard : absent du DRS en ligne (11/10/2026).
+verif nc-2-elfe-noir : absent du DRS en ligne (11/10/2026).
+verif nc-4-minotaure : absent du DRS en ligne (11/10/2026).
+verif nc-4-ombre : absente du DRS en ligne (11/10/2026).
+verif nc-6-geant-des-collines : absent du DRS en ligne (11/10/2026).
+verif nc-12-dragon-rouge : absent du DRS en ligne (11/10/2026, ancienne édition).
+verif sigmeus-le-necromant : PNJ maison, hors DRS.
+verif zombie-coriasse : variante maison, hors DRS en ligne.
+verif druid-arbre-anime : compagnon druidique, hors liste DRS en ligne.
+verif voir-elementaire-d-air-rang-8-forme-elementaire-d-air : forme de voie, hors liste DRS en ligne.
+verif nc-4-zombie-choursette : variante locale ; le DRS en ligne ne liste que le zombie hum
+verif compagnon-loup : compagnon du rôdeur (voie du compagnon animal, rang 1), DRS.
+verif compagnon-loup-alpha : compagnon du rôdeur (rang 4), DRS : DEF 12+rang, PV niv×4.
+new md chasseur-aile
+new md zombie-ourhible
+new json notion-chasseur-aile
+new json notion-zombie-ourhible
+import_notion.py : regex RD élargie (— RD X)
+index.md : +2 créatures

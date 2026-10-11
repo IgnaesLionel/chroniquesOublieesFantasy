@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 4
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-4-Minotaure-2efd3d06b09880779208f28c6f650771
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : absent du DRS en ligne (11/10/2026).
 
 ## Profil — Minotaure (bloc ancienne édition, tel qu'affiché)
 

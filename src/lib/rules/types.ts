@@ -2,6 +2,7 @@
 // Toute règle COF V2 incertaine doit rester configurable, jamais devinée.
 
 import type { Caracteristiques as CaracteristiquesCOF, DeRecupType, FamilleCOF } from "@/src/lib/rules/personnage";
+import type { ArmeFamille } from "@/src/lib/rules/world/types";
 
 export type { CaracteristiquesCOF, DeRecupType, FamilleCOF };
 
@@ -68,6 +69,8 @@ export interface AttackDef {
     /** Jet de sauvegarde (ex: CON 10 du Pied) : réussi = pas d'effet. */
     sauvegarde?: { carac: string; difficulte: number };
   };
+  /** Familles d'arme (ex: ["arcs"]) : talents liés (Archer émérite). */
+  familles?: ArmeFamille[];
 }
 
 /** Une entrée d'inventaire : référence un objet global + quantité + arme équipée ou non. */

@@ -3,6 +3,8 @@
 - Catégorie : Humains
 - NC : 5
 - Source Notion : https://silver-pen-32f.notion.site/NC-5-Sorcier-2eed3d06b0988119a127e483f238491c
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme (Dague poison + Attaque magique + 4 pouvoirs L).
 
 ## Profil — Sorcier
 
@@ -10,7 +12,7 @@
 - Caractéristiques : AGI +1 / CON +1 / FOR -1 / PER +0 / CHA +1 / INT +3 / VOL +3
 - Initiative 10 — Défense 18 — RD 0
 - Vigueur 45 — DM Temp. 0 — Déplacement 10 m — États : —
-- Attaques : Dague +6, DM 1d4+2+2d6 (Attaque +6, Dommages 1d4+2+2d6) ; Attaque magique +10, DM (Attaque +10)
+- Attaques : Dague +6, DM 1d4+2 +2d6 poison (Attaque +6, Dommages 1d4+2 +2d6 poison) ; Attaque magique +10, DM spécial (Attaque +10, spécial)
 - Actions : Injonction mortelle - Si injonction mortelle ratée (L) ; Soutenir (L) ; Vampirisation (L)
 
 ## Capacités

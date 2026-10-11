@@ -191,7 +191,7 @@ export default function ReglesPage() {
           <li>Riposte (G) : un raté au contact est signalé (1/round, MJ : attaque manuelle). Coups spéciaux (panneau Attaque) : Puissante (dé malus +2d4°, L +3d4°), Parfaite (dé bonus +1d4°, prédilection MJ), mod. ±N, +DM (Double/Circulaire −2, prédilection +1, spécialisation +1).<Src de="Règle" /></li>
           <li>Science du critique : 19-20 avec prédilection (effet à appliquer via Capacités, MJ).<Src de="Règle" /></li>
           <li>Rôdeur archer : Dans le mille (dé malus +2d4°, L +3d4°), Flèche de mort (dé bonus +1d4° ou état 1 round : aveuglé/affaibli/ralenti/immobilisé, NC inférieur, 1/combat chacun, MJ), Éclair (bonus et DM à l&apos;AGI) — à cocher dans le panneau Attaque ; Double (L) et Tir rapide (L) : mod. −2, 2 lancers.<Src de="Règle" /></li>
-          <li>Compagnon : Le loup via Capacités 🐺 (DEF 12+rang, PV niv×4, alpha auto : DEF 18, PV niv×5) ; Double peine +1d4° auto à la 2e touche ; À-suivre et Riposte signalés au raté (MJ) ; Increvable via Capacités (+4d4°+CON, +5 DEF, purge, 1/combat MJ) ; Éclaireur : +1 DR au lieu du +1 PC.<Src de="Règle" /></li>
+          <li>Compagnon : le loup est ajouté auto en préparation (DEF 12+rang, PV niv×4, alpha auto) ; Double peine +1d4° auto à la 2e touche ; À-suivre et Riposte signalés au raté (MJ) ; Increvable via Capacités (+4d4°+CON, +5 DEF, purge, 1/combat MJ) ; Éclaireur : +1 DR au lieu du +1 PC.<Src de="Règle" /></li>
           <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
           <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Supposition" /></li>
           <li>Armure d&apos;os : +3 DEF automatiques à l&apos;apprentissage (retirés au désapprentissage). Passifs restants (Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>
@@ -202,6 +202,7 @@ export default function ReglesPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle" /></li>
           <li>0 PV = KO. Initiative 1d20+mod, tri décroissant, tours + manches, KO sautés.<Src de="Supposition" /></li>
+          <li>Objet équipé en cours de route : le staging se resynchronise au lancement (bouton Actualiser) et chaque PJ peut être resynchronisé depuis sa fiche en combat (↻).</li>
           <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle" /></li>
           <li>Sorts à effet sans dégâts (Malédiction, Peur…), dégâts par tour lancés au toucher (Saignements, Ensevelissement…). Les lettres A/M/L des attaques et sorts sont indicatives (économie gérée en réel).</li>
           <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM (+ PV) déduits avant le jet. Soutien : invocations, attaques accordées (griffes, contact). Zone (Armée) : tous les ennemis.</li>

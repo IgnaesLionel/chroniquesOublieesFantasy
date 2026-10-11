@@ -260,7 +260,7 @@ def parse_fiche(path: Path, warnings: list) -> dict | None:
     nom = re.sub(r"^NC\s*[\d.,]+\s*", "", title).strip() or nom_profil
 
     type_taille = bmap.get("Type", "")
-    m = re.search(r"Initiative\s*(\d+)\s*[—-]\s*(?:Défense|DEF)\s*(\d+)(?:\s*\(RD\s*(\d+)\))?", block)
+    m = re.search(r"Initiative\s*(\d+)\s*[—-]\s*(?:Défense|DEF)\s*(\d+)(?:\s*(?:\(|—)\s*RD\s*(\d+)\s*\)?)?", block)
     initiative = int(m.group(1)) if m else 0
     defense = int(m.group(2)) if m else 10
     rd = int(m.group(3)) if m and m.group(3) else 0

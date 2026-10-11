@@ -1,8 +1,11 @@
-# NC 2 Ours Brun
+# NC 4 Ours Brun (titre Notion : NC 2)
 
 - Catégorie : Animaux
-- NC : 2 (titre Notion ; le profil image affiche NC 4)
+- NC : 4 (titre Notion : NC 2 ; image VTT et DRS : NC 4)
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-2-Ours-Brun-2eed3d06b098808aa01fca64d60cef71
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : NC corrigé 4 (VTT + DRS) ; Charge : texte propre FOR 16 (DRS).
+  - NC 2 du titre Notion corrigé en NC 4 (image VTT + DRS).
 
 ## Profil — Ours brun (tel qu'affiché : NC 4)
 
@@ -21,8 +24,7 @@ Lorsqu'elle reçoit un coup critique, la créature devient enragée. Elle ignore
 
 ### Charge (Capacité)
 
-Voir transcription dans `nc-2-bison` (capacité commune, même image) : 20 m max + attaque avec dé bonus, test FOR diff. 13 ou renversée, DM doublés (piétine/embroche).
-
+La créature parcourt une distance maximale de 20 m et réalise une attaque avec un dé bonus. Si l'attaque est réussie, en plus des DM normaux, une victime de taille inférieure ou égale à la créature doit faire un test de FOR difficulté 16 ou être renversée. Dans ce cas, la créature piétine (ou embroche) sa victime et les DM sont doublés. (DRS ; la fiche reprenait le texte du bison, FOR 13).
 ## Images
 
 - `./images/img-1.webp` (profil)

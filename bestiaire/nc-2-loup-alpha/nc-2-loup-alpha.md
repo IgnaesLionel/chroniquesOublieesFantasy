@@ -3,6 +3,8 @@
 - Catégorie : Animaux
 - NC : 2
 - Source Notion : https://silver-pen-32f.notion.site/p/NC-2-Loup-Alpha-2eed3d06b09880dbb32de5d57b4a1cdc
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Un chef de meute accompagné de sa bande de 6 loups est une rencontre ordinaire de niveau 5.
 
 ## Profil — Loup (Mâle alpha)

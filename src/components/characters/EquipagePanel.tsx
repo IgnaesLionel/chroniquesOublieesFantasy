@@ -91,6 +91,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
     <div className="space-y-3 rounded border border-zinc-800 bg-zinc-950 p-3">
       <div>
         <div className="text-xs uppercase text-zinc-400 font-bold mb-1.5">Inventaire ({inv.length})</div>
+        <p className="text-xs text-zinc-500 mb-1">Seules les armes « Équipée » partent en combat.</p>
         {inv.length === 0 && <p className="text-xs text-zinc-500">Vide — ajoutez depuis le stock d'objets.</p>}
         <div className="space-y-1">
           {inv.map((e) => {
@@ -105,9 +106,10 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
                 {item?.estArme && (
                   <button
                     onClick={() => onUpdate({ ...character, inventaire: inv.map((x) => (x.itemId === e.itemId ? { ...x, equipe: !x.equipe } : x)) })}
-                    className={`text-xs px-2 py-0.5 rounded ${e.equipe ? "bg-green-800" : "bg-zinc-800"}`}
+                    title={e.equipe ? "Équipée : utilisable en combat — cliquer pour déséquiper" : "Équiper : l'arme apparaîtra en combat"}
+                    className={`text-xs px-2 py-0.5 rounded font-semibold ${e.equipe ? "bg-green-700" : "bg-zinc-800"}`}
                   >
-                    {e.equipe ? "Équipée" : "Équiper"}
+                    {e.equipe ? "✓ Équipée" : "Équiper"}
                   </button>
                 )}
                 <button

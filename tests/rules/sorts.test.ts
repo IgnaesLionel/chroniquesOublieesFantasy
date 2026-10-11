@@ -45,9 +45,9 @@ describe("grimoire des sorts (DRS)", () => {
     expect(parNom["Saignements"].effetDegats).toBe("1d4°");
     expect(parNom["Saignements"].degats).toBeUndefined();
     expect(parNom["Strangulation"].effetDegats).toBe("1d4°+INT");
-    expect(parNom["Rituel de sang"]).toBeTruthy();
-    expect(parNom["Rituel de sang"].toucheAuto).toBe(true);
-    expect(parNom["Rituel de sang"].coutPV).toBe("1d4°");
+    expect(parNom["Rituel du sang"]).toBeTruthy();
+    expect(parNom["Rituel du sang"].toucheAuto).toBe(true);
+    expect(parNom["Rituel du sang"].coutPV).toBe("1d4°");
     expect(parNom["Armée des morts"].zone).toBe(true);
     expect(parNom["Armée des morts"].limiteCombat).toBe(1);
     expect(parNom["Animation des morts"].invocation?.nom).toBe("Zombie");

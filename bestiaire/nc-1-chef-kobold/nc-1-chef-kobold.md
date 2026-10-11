@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 1
 - Source Notion : https://silver-pen-32f.notion.site/NC-1-Chef-Kobold-2eed3d06b09881158f02cd45f79d0be1
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Les kobolds sont de petits humanoïdes reptiliens dont le faciès fait penser au crocodile. Vicieux et malins, ils sont passés maîtres dans l'art de tendre pièges et embuscades. Ils mesurent moins d'un mètre pour une vingtaine de kilos.
 
 ## Profil — Chef Kobold

@@ -2,6 +2,8 @@
 
 - Catégorie : Compagnions
 - Source Notion : https://silver-pen-32f.notion.site/Voir-lementaire-d-air-Rang-8-Forme-l-mentaire-d-air-2efd3d06b09881ee97a4c3c6161ebf53
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : forme de voie, hors liste DRS en ligne.
 - Description (voie) : Une fois par jour, le personnage peut se transformer en élémentaire d'air (taille grand), pendant un maximum de CHA minutes. Sous cette forme, il ne peut pas employer d'autres capacités que celles de la voie élémentaire de l'air et il ne peut pas parler. S'il est réduit à 0 PV sous cette forme, il reprend sa forme initiale avec les PV qu'il avait au moment de la transformation.
 
 ## Profil — Élémentaire d'air (Forme de)

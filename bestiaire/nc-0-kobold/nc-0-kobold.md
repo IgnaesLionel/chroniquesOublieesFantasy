@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 0
 - Source Notion : https://silver-pen-32f.notion.site/NC-0-Kobold-2eed3d06b0988168b24cc33bb74800aa
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : conforme au livre des règles en ligne (NC/DEF/PV/INIT/attaques/capacités).
 - Description : Les kobolds sont de petits humanoïdes reptiliens dont le faciès fait penser au crocodile. Vicieux et malins, ils sont passés maîtres dans l'art de tendre pièges et embuscades. Ils mesurent moins d'un mètre pour une vingtaine de kilos.
 
 ## Profil — Kobold

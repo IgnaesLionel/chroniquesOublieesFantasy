@@ -3,6 +3,7 @@ import type { Character } from "@/src/lib/rules/types";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
+import { ARME_FAMILLES, ARME_FAMILLE_KEYS, DEGAT_LABEL, labelFamilleArme } from "@/src/lib/rules/world/types";
 import { characterSchema, itemSchema } from "@/src/lib/data/validation";
 import { attaqueFromItem, attaqueFromSort, participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { applySpellCost, castSoutien, resolveAttack } from "@/src/lib/rules/combat/attack";
@@ -186,5 +187,49 @@ describe("inventaire, armes et sorts", () => {
   it("sort offensif via castSoutien = erreur", () => {
     const s = createCombat([guerrier(), gobelin()]);
     expect(() => castSoutien(s, "pj", "m", { id: "f", nom: "Feu", type: "offensif", degats: "2d6" })).toThrow(/offensif/);
+  });
+});
+
+describe("familles d'armes", () => {
+  it("taxonomie coherente : cles uniques, libelles et degats renseignes", () => {
+    const keys = ARME_FAMILLES.map((f) => f.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect([...keys].sort()).toEqual([...ARME_FAMILLE_KEYS].sort());
+    for (const f of ARME_FAMILLES) {
+      expect(f.label.length).toBeGreaterThan(0);
+      expect(Object.keys(DEGAT_LABEL)).toContain(f.degat);
+      expect(f.verbes.length).toBeGreaterThan(0);
+      expect(f.exemples.length).toBeGreaterThan(0);
+    }
+    expect(labelFamilleArme("haches")).toBe("Haches");
+  });
+
+  it("seeds d'armes taguees avec des familles connues", () => {
+    const connues = new Set<string>(ARME_FAMILLE_KEYS);
+    for (const o of SEED_ITEMS) {
+      for (const f of o.familles ?? []) expect(connues.has(f)).toBe(true);
+    }
+    const fam = (id: string) => SEED_ITEMS.find((o) => o.id === id)?.familles ?? [];
+    expect(fam("item-epee")).toEqual(["epees"]);
+    expect(fam("item-hache-1main")).toEqual(["haches"]);
+    expect(fam("item-dague")).toEqual(["dagues"]);
+    expect(fam("item-arc-court")).toEqual(["arcs"]);
+    expect(fam("item-baton-ferre")).toEqual(["batons"]);
+    expect(fam("item-masse")).toEqual(["masses"]);
+  });
+
+  it("itemSchema accepte familles, refuse une famille inconnue", () => {
+    const base = { id: "x", nom: "Hachette de lancer", categorie: "arme", quantite: 1, exemple: false };
+    expect(() => itemSchema.parse({ ...base, familles: ["haches", "jet"] })).not.toThrow();
+    expect(() => itemSchema.parse({ ...base })).not.toThrow();
+    expect(() => itemSchema.parse({ ...base, familles: ["nimporte"] })).toThrow();
+  });
+  it("arme equipee apres coup : snapshot fige, reconstruction depuis la fiche l'ajoute", () => {
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!;
+    const avant = participantFromCharacter(base, SEED_ITEMS);
+    expect(avant.attaques.map((a) => a.id)).not.toContain("item:item-hache-1main");
+    const modifiee = { ...base, inventaire: [...(base.inventaire ?? []), { itemId: "item-hache-1main", quantite: 1, equipe: true }] };
+    const apres = participantFromCharacter(modifiee, SEED_ITEMS);
+    expect(apres.attaques.map((a) => a.id)).toContain("item:item-hache-1main");
   });
 });

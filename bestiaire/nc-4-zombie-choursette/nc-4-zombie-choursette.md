@@ -3,6 +3,8 @@
 - Catégorie : Monstres/Créatures
 - NC : 4
 - Source Notion : https://silver-pen-32f.notion.site/NC-4-Zombie-Choursette-2eed3d06b09881e49360fb81a90e525d
+- Source DRS : https://drs.chroniques-oubliees.fr/fantasy/creatures
+- Vérification DRS (11/10/2026) : variante locale ; le DRS en ligne ne liste que le zombie humain (+ ourhible).
 - Description : Le zombie choursette voit son NC réduit par rapport à la créature originale, car il a perdu les capacités Charge et Enragé.
 
 ## Profil — Zombie choursette
