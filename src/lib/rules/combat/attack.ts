@@ -1,8 +1,9 @@
 import { parseDiceExpression, rollDiceExpression, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
 import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
+import { niveauAttaque } from "@/src/lib/rules/personnage";
 import { CAPACITES } from "@/src/lib/data/capacites";
-import type { ActiveEffect, AttackDef, Sort } from "@/src/lib/rules/types";
+import type { ActiveEffect, AttackDef, Character, Sort } from "@/src/lib/rules/types";
 import type {
   AttackResolution,
   Camp,
@@ -1113,6 +1114,164 @@ export function castSoutien(
       lanceurNom: lanceur.nom, cibleNom: cible.nom, sortNom: sort.nom,
       soinDetails, soinTotal, pvAvant, pvApres, effetNom: effet?.nom ?? null,
       invoque: accordee,
+    },
+  };
+}
+
+/**
+ * Un sort est-il lançable hors combat ?
+ * Règle : hors combat il n'y a pas d'économie d'action (A/M/L ignorée).
+ * Sont lançables les sorts défensifs et utilitaires, sauf les frappes de
+ * zone et les invocations (elles ajoutent un participant : combat requis).
+ * Les sorts offensifs passent par un jet d'attaque : combat uniquement.
+ */
+export function sortLancableHorsCombat(sort: Sort): { ok: boolean; raison?: string } {
+  if (sort.type === "offensif") {
+    return { ok: false, raison: `${sort.nom} est offensif : à lancer en combat (attaque).` };
+  }
+  if (sort.zone) {
+    return { ok: false, raison: `${sort.nom} est une frappe de zone : en combat uniquement.` };
+  }
+  if (sort.invocation) {
+    return { ok: false, raison: `${sort.nom} invoque ${sort.invocation.nom} : en combat uniquement (MJ).` };
+  }
+  return { ok: true };
+}
+
+export interface HorsCombatResolution {
+  lanceurNom: string;
+  cibleNom: string;
+  sortNom: string;
+  soinDetails: number[];
+  soinTotal: number;
+  pvAvant: number;
+  pvApres: number;
+  pvLanceurAvant: number;
+  pvLanceurApres: number;
+  effetNom: string | null;
+  attaqueAccordee: string | null;
+  manaPaye: number;
+  pvSacrifie: number;
+}
+
+/**
+ * Lance un sort de soutien hors combat (défensif/utilitaire non-zone,
+ * non-invocation) : vérifie le niveau et le mana, paie les coûts
+ * (mana + PV), applique le soin, l'effet et l'attaque accordée éventuels.
+ * L'action DRS (attaque/mouvement/limitée) est ignorée : hors combat il
+ * n'y a pas de limite d'action ni de mouvement. Les limites par combat
+ * (tentatives, par-cible) ne s'appliquent pas hors combat (pas de compteur).
+ * Sorts purement narratifs (Augure...) : coût payé, effet au MJ.
+ */
+export function lancerSortHorsCombat(
+  lanceur: Character,
+  cible: Character,
+  sort: Sort,
+  rng: Rng = Math.random
+): { lanceur: Character; cible: Character; resolution: HorsCombatResolution } {
+  const lancable = sortLancableHorsCombat(sort);
+  if (!lancable.ok) throw new Error(lancable.raison);
+  const niveau = sortUtilisable(lanceur.niveau, sort);
+  if (!niveau.ok) throw new Error(`${sort.nom} : ${niveau.raison}.`);
+
+  const cout = sort.cout?.montant ?? 0;
+  if (cout > 0) {
+    const res = lanceur.ressources?.[sort.cout!.ressource];
+    const actuel = res?.actuel ?? 0;
+    if (!res || actuel < cout) {
+      throw new Error(`${lanceur.nom} : ${sort.cout!.ressource} insuffisant (${actuel}/${cout}) pour ${sort.nom}.`);
+    }
+  }
+
+  let lanceurApres: Character = cout > 0
+    ? {
+        ...lanceur,
+        ressources: {
+          ...lanceur.ressources,
+          [sort.cout!.ressource]: { ...lanceur.ressources[sort.cout!.ressource], actuel: lanceur.ressources[sort.cout!.ressource].actuel - cout },
+        },
+      }
+    : { ...lanceur };
+
+  let pvSacrifie = 0;
+  if (sort.coutPV) {
+    const roll = rollDiceExpression(parseDiceExpression(sort.coutPV), rng);
+    pvSacrifie = Math.max(0, roll.total);
+    lanceurApres = { ...lanceurApres, pv: Math.max(0, lanceurApres.pv - pvSacrifie) };
+  }
+  const pvLanceurAvant = lanceur.pv;
+  const pvLanceurApresCouts = lanceurApres.pv;
+
+  let soinDetails: number[] = [];
+  let soinTotal = 0;
+  if (sort.soin) {
+    const roll = rollDiceExpression(parseDiceExpression(sort.soin), rng);
+    soinDetails = roll.rolls;
+    soinTotal = Math.max(0, roll.total);
+  }
+  const pvAvant = cible.pv;
+  const pvApres = Math.min(cible.pvMax, pvAvant + soinTotal);
+
+  const effetBase = sort.effetCle
+    ? createEffect(sort.effetCle, { dureeTours: sort.effetDuree ?? null, source: lanceur.nom })
+    : null;
+  const effet = effetBase
+    ? { ...effetBase, modificateurs: { ...effetBase.modificateurs, ...(sort.effetMods ?? {}) } }
+    : null;
+
+  const bonusMagique = niveauAttaque(lanceurApres.niveau) + (lanceurApres.caracteristiques?.VOL ?? 0);
+  const attaqueTmp = sort.attaqueAccordee
+    ? {
+        id: `sort-tmp:${sort.id}`,
+        nom: `✦ ${sort.attaqueAccordee.nom}`,
+        bonus: sort.attaqueAccordee.bonus ?? bonusMagique,
+        degats: substituerStats(sort.attaqueAccordee.degats, lanceurApres.caracteristiques ?? {}),
+        volDeVie: sort.attaqueAccordee.volDeVie,
+      } satisfies AttackDef
+    : null;
+
+  const memePersonnage = lanceur.id === cible.id;
+  if (memePersonnage) {
+    // Soin appliqué après le sacrifice (même fiche).
+    const pvFinal = Math.min(lanceurApres.pvMax, lanceurApres.pv + soinTotal);
+    lanceurApres = {
+      ...lanceurApres,
+      pv: pvFinal,
+      effets: effet ? [...(lanceurApres.effets ?? []), effet] : (lanceurApres.effets ?? []),
+      attaques: attaqueTmp
+        ? [...(lanceurApres.attaques ?? []).filter((x) => x.id !== attaqueTmp.id), attaqueTmp]
+        : (lanceurApres.attaques ?? []),
+    };
+    const resolution: HorsCombatResolution = {
+      lanceurNom: lanceur.nom, cibleNom: cible.nom, sortNom: sort.nom,
+      soinDetails, soinTotal, pvAvant, pvApres: pvFinal,
+      pvLanceurAvant, pvLanceurApres: pvFinal,
+      effetNom: effet?.nom ?? null,
+      attaqueAccordee: attaqueTmp ? sort.attaqueAccordee!.nom : null,
+      manaPaye: cout, pvSacrifie,
+    };
+    return { lanceur: lanceurApres, cible: lanceurApres, resolution };
+  }
+
+  const cibleApres: Character = {
+    ...cible,
+    pv: pvApres,
+    effets: effet ? [...(cible.effets ?? []), effet] : (cible.effets ?? []),
+    attaques: attaqueTmp
+      ? [...(cible.attaques ?? []).filter((x) => x.id !== attaqueTmp.id), attaqueTmp]
+      : (cible.attaques ?? []),
+  };
+
+  return {
+    lanceur: lanceurApres,
+    cible: cibleApres,
+    resolution: {
+      lanceurNom: lanceur.nom, cibleNom: cible.nom, sortNom: sort.nom,
+      soinDetails, soinTotal, pvAvant, pvApres,
+      pvLanceurAvant, pvLanceurApres: pvLanceurApresCouts,
+      effetNom: effet?.nom ?? null,
+      attaqueAccordee: attaqueTmp ? sort.attaqueAccordee!.nom : null,
+      manaPaye: cout, pvSacrifie,
     },
   };
 }

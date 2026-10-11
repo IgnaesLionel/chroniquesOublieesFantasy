@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { characterSchema } from "@/src/lib/data/validation";
+import { fixedRng } from "@/src/lib/rules/dice/roller";
 import {
   ajouterCapacite,
   attaquesBase,
   chanceMax,
   changerFamille,
   deEvolutif,
+  depenserDeRecuperation,
   deriverPersonnage,
   descendreNiveau,
   drInitial,
@@ -353,5 +355,43 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const ko = descendreNiveau({ ...n2, pvMax: 3, pv: 0 });
     expect(ko.pvMax).toBe(1);
     expect(ko.pv).toBe(0);
+  });
+
+  it("depenserDeRecuperation : 1 DR = dé + moitié niveau, réserve décrémentée", () => {
+    const guerrier = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const blesse = { ...guerrier, pv: 6 };
+    // d10 : 6 (rng 0.5) + moitié niv. 1 = +0 → 6 PV.
+    const { personnage, resolution } = depenserDeRecuperation(blesse, fixedRng([0.5]));
+    expect(resolution.details).toEqual([6]);
+    expect(resolution.bonusNiveau).toBe(0);
+    expect(resolution.soinTotal).toBe(6);
+    expect(personnage.pv).toBe(12);
+    expect(personnage.desRecuperation?.actuel).toBe((blesse.desRecuperation?.actuel ?? 1) - 1);
+    expect(blesse.desRecuperation?.actuel).toBe(2); // non muté
+  });
+
+  it("depenserDeRecuperation : bonus de niveau et plafond pvMax", () => {
+    const guerrier = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const niv5 = { ...guerrier, niveau: 5, pv: 4, pvMax: 16 };
+    // d10 : 10 (rng 0.99) + moitié niv. 5 = +2 → 12, plafonné à 16 (4 → 16 = +12 effectifs).
+    const { personnage, resolution } = depenserDeRecuperation(niv5, fixedRng([0.99]));
+    expect(resolution.details).toEqual([10]);
+    expect(resolution.bonusNiveau).toBe(2);
+    expect(resolution.pvAvant).toBe(4);
+    expect(resolution.pvApres).toBe(16);
+    expect(resolution.soinTotal).toBe(12);
+    expect(personnage.pv).toBe(16);
+    // KO à 0 PV : le DR réveille (pas de statut sur la fiche, PV > 0).
+    const ko = { ...guerrier, pv: 0 };
+    const r2 = depenserDeRecuperation(ko, fixedRng([0.5]));
+    expect(r2.personnage.pv).toBeGreaterThan(0);
+  });
+
+  it("depenserDeRecuperation : refusé sans DR ou à PV pleins", () => {
+    const guerrier = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    expect(() =>
+      depenserDeRecuperation({ ...guerrier, pv: 6, desRecuperation: { type: "d10", max: 5, actuel: 0 } })
+    ).toThrow(/plus de dé de récupération/);
+    expect(() => depenserDeRecuperation({ ...guerrier })).toThrow(/au maximum/);
   });
 });

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { SEED_SCENARIOS } from "@/src/lib/data/scenarioSeeds";
 import { SEED_ITEMS, SEED_NPCS } from "@/src/lib/data/worldSeeds";
-import type { Item, Npc } from "@/src/lib/rules/world/types";
+import type { Npc } from "@/src/lib/rules/world/types";
 import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
 import { exportJson } from "@/src/lib/store/repository";
 import type { PlayState, Scenario } from "@/src/lib/rules/scenario/types";
@@ -13,7 +13,7 @@ import { SceneEditor } from "@/src/components/scenario/SceneEditor";
 export default function ScenariosPage() {
   const { items, setItems } = useLocalCollection<Scenario>("cof.scenarios.v3", SEED_SCENARIOS);
   const { items: npcs } = useLocalCollection<Npc>("cof.npcs", SEED_NPCS);
-  const { items: stock } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
+  const stock = SEED_ITEMS;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "play">("play");
   const [sceneId, setSceneId] = useState<string | null>(null);

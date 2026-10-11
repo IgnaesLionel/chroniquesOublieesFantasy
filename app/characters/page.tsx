@@ -5,13 +5,14 @@ import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
 import { exportJson } from "@/src/lib/store/repository";
 import type { Character } from "@/src/lib/rules/types";
-import type { Item } from "@/src/lib/rules/world/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
+import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
 import {
   FAMILLES,
   PROFILS_PAR_FAMILLE,
   changerFamille,
   deriverPersonnage,
+  depenserDeRecuperation,
   descendreNiveau,
   drInitial,
   monterNiveau,
@@ -40,9 +41,10 @@ const PEUPLES = ["Humain", "Demi-Elfe", "Elfe haut", "Nain"];
 
 export default function CharactersPage() {
   const { items: raw, setItems } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
-  const { items: stock } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
+  const stock = SEED_ITEMS;
   const [editing, setEditing] = useState<Character | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [drMessage, setDrMessage] = useState<Record<string, string>>({});
 
   // Normalise les vieilles sauvegardes v2 (stats -> caracteristiques) pour l'affichage.
   const items = useMemo(() => raw.map((c) => normaliserPersonnage(c as unknown as Record<string, unknown>)), [raw]);
@@ -81,12 +83,22 @@ export default function CharactersPage() {
       if (!cur) return c;
       return { ...c, ressources: { ...c.ressources, mana: { ...cur, actuel: Math.min(cur.max, cur.actuel + 1) } } };
     });
-  const utiliserDR = (id: string) =>
-    patch(id, (c) => {
-      const dr = c.desRecuperation;
-      if (!dr || dr.actuel <= 0) return c;
-      return { ...c, desRecuperation: { ...dr, actuel: dr.actuel - 1 } };
-    });
+  /** Dépense 1 DR : soin = dé (d6/d8/d10) + moitié du niveau, PV plafonnés. */
+  const utiliserDR = (id: string) => {
+    const cible = items.find((x) => x.id === id);
+    if (!cible) return;
+    try {
+      const { personnage, resolution } = depenserDeRecuperation(cible);
+      patch(id, () => personnage);
+      const bonus = resolution.bonusNiveau > 0 ? `+${resolution.bonusNiveau}` : "";
+      setDrMessage((m) => ({
+        ...m,
+        [id]: `+${resolution.soinTotal} PV (${cible.desRecuperation?.type ?? "d?"}${bonus} [${resolution.details.join(", ")}]) : ${resolution.pvAvant} → ${resolution.pvApres}`,
+      }));
+    } catch (e) {
+      setDrMessage((m) => ({ ...m, [id]: e instanceof Error ? e.message : "Récupération impossible." }));
+    }
+  };
   const rendreDR = (id: string) =>
     patch(id, (c) => {
       const dr = c.desRecuperation;
@@ -174,6 +186,8 @@ export default function CharactersPage() {
         Niveau : PV +gain+CON (rétroactif), attaques +1 (max niv. 10), +2 pts à dépenser, mana via nouveaux sorts, dé évolutif d4→d6 (6)→d8 (9)→…
       </p>
 
+      <HorsCombatPanel characters={items} onUpdate={(next) => setItems(next)} />
+
       <div className="grid md:grid-cols-2 gap-3">
         {items.map((c) => {
           const d = deriverPersonnage(c);
@@ -230,11 +244,21 @@ export default function CharactersPage() {
                   </div>
                 </div>
                 <div className="rounded bg-zinc-950 border border-zinc-800 p-2">
-                  <div className="text-[11px] uppercase text-zinc-500">Récup {dr.type} {dr.actuel}/{dr.max}</div>
-                  <div className="flex gap-1 justify-center mt-1">
-                    <button onClick={() => utiliserDR(c.id)} className="px-2 py-0.5 rounded bg-zinc-800 text-xs">−1</button>
-                    <button onClick={() => rendreDR(c.id)} className="px-2 py-0.5 rounded bg-zinc-800 text-xs">+1</button>
+                  <div className="text-[11px] uppercase text-zinc-500" title="Soin d'un DR : 1 dé + moitié du niveau (arrondie à l'inférieur)">
+                    Récup {dr.type}{Math.floor(c.niveau / 2) > 0 ? `+${Math.floor(c.niveau / 2)}` : ""} {dr.actuel}/{dr.max}
                   </div>
+                  <div className="flex gap-1 justify-center mt-1">
+                    <button
+                      onClick={() => utiliserDR(c.id)}
+                      disabled={dr.actuel <= 0 || c.pv >= c.pvMax}
+                      title={dr.actuel <= 0 ? "Plus de dé de récupération (repos : +1)" : c.pv >= c.pvMax ? "Vigueur au maximum" : `Dépenser 1 DR : soin ${dr.type}${Math.floor(c.niveau / 2) > 0 ? `+${Math.floor(c.niveau / 2)}` : ""} PV`}
+                      className="px-2 py-0.5 rounded bg-green-900 hover:bg-green-800 text-xs font-semibold disabled:opacity-40"
+                    >
+                      +PV
+                    </button>
+                    <button onClick={() => rendreDR(c.id)} title="Repos : rend 1 DR (manuel, max inclus)" className="px-2 py-0.5 rounded bg-zinc-800 text-xs">+1</button>
+                  </div>
+                  {drMessage[c.id] && <div className="text-[11px] text-green-300/90 mt-1">{drMessage[c.id]}</div>}
                 </div>
                 <div className="rounded bg-zinc-950 border border-zinc-800 p-2">
                   <div className="text-[11px] uppercase text-zinc-500">Mana {mana.actuel}/{mana.max}</div>

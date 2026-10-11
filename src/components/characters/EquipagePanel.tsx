@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
-import type { Character, Sort, SortType } from "@/src/lib/rules/types";
+import type { Character } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
-import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { manaMax } from "@/src/lib/rules/personnage";
 import { apprendreTalentComplet, compterCapacites, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
 import { ACTION_LABEL, infererAction, voiesDe } from "@/src/lib/data/capacites";
@@ -14,14 +13,8 @@ interface Props {
   onUpdate: (c: Character) => void;
 }
 
-const EMPTY_SORT: Sort = {
-  id: "", nom: "", type: "offensif", ecole: "",
-  bonus: 0, degats: "1d6", soin: "", effetCle: undefined, effetDuree: undefined,
-};
-
 export function EquipagePanel({ character, stock, onUpdate }: Props) {
   const [addId, setAddId] = useState("");
-  const [sortDraft, setSortDraft] = useState<Sort>({ ...EMPTY_SORT });
   const [voieOuverte, setVoieOuverte] = useState<string | null>(null);
   const inv = character.inventaire ?? [];
   const sorts = character.sorts ?? [];
@@ -41,30 +34,6 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
       : [...inv, { itemId: addId, quantite: 1, equipe: !!item?.estArme }];
     onUpdate({ ...character, inventaire: updated });
     setAddId("");
-  };
-
-  const addSort = () => {
-    if (!sortDraft.nom.trim()) return;
-    const sort: Sort = {
-      ...sortDraft,
-      id: `sort-${Date.now().toString(36)}`,
-      nom: sortDraft.nom.trim(),
-      degats: sortDraft.type === "offensif" ? sortDraft.degats || "1d6" : undefined,
-      soin: sortDraft.type === "defensif" ? sortDraft.soin || undefined : undefined,
-      effetCle: sortDraft.effetCle || undefined,
-      cout: sortDraft.cout && sortDraft.cout.montant > 0 ? sortDraft.cout : undefined,
-    };
-    const sorts = [...(character.sorts ?? []), sort];
-    // Mana COF = VOL + sorts connus : le max suit automatiquement, montée de
-    // niveau = mana à fond + PV au max.
-    const max = manaMax(character.caracteristiques.VOL, sorts.length);
-    onUpdate({
-      ...character,
-      sorts,
-      pv: character.pvMax,
-      ressources: { ...(character.ressources ?? {}), mana: { max, actuel: max } },
-    });
-    setSortDraft({ ...EMPTY_SORT });
   };
 
   const removeSort = (id: string) => {
@@ -137,6 +106,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
 
       <div>
         <div className="text-xs uppercase text-zinc-400 font-bold mb-1.5">Sorts ({sorts.length})</div>
+        <p className="text-xs text-zinc-500 mb-1.5">Créer un sort : onglet Sorts & Capacités (avec coûts et attribution).</p>
         <div className="space-y-1">
           {sorts.map((s) => (
             <div key={s.id} className="flex items-center gap-2 text-sm">
@@ -170,43 +140,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
             </div>
           ))}
         </div>
-        <div className="mt-2 rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
-          <div className="flex gap-2">
-            <input value={sortDraft.nom} onChange={(e) => setSortDraft({ ...sortDraft, nom: e.target.value })} placeholder="Nom du sort" className="flex-1 bg-zinc-800 rounded px-2 py-1.5" />
-            <select value={sortDraft.type} onChange={(e) => setSortDraft({ ...sortDraft, type: e.target.value as SortType })} className="bg-zinc-800 rounded px-2 py-1.5">
-              <option value="offensif">Offensif</option>
-              <option value="defensif">Défensif</option>
-              <option value="utilitaire">Utilitaire</option>
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <input value={sortDraft.ecole ?? ""} onChange={(e) => setSortDraft({ ...sortDraft, ecole: e.target.value })} placeholder="École (Feu, Glace…)" className="flex-1 bg-zinc-800 rounded px-2 py-1.5" />
-            <input value={sortDraft.voie ?? ""} onChange={(e) => setSortDraft({ ...sortDraft, voie: e.target.value || undefined })} placeholder="Voie (ex : Voie de la foi)" className="flex-1 bg-zinc-800 rounded px-2 py-1.5" />
-            <input type="number" min={1} max={5} value={sortDraft.rang ?? ""} onChange={(e) => setSortDraft({ ...sortDraft, rang: e.target.value ? Number(e.target.value) : undefined })} placeholder="Rang" title="Rang dans la voie (= coût PM)" className="w-16 bg-zinc-800 rounded px-2 py-1.5" />
-          </div>
-          <div className="flex gap-2">
-            {sortDraft.type === "offensif" ? (
-              <>
-                <input value={sortDraft.degats ?? ""} onChange={(e) => setSortDraft({ ...sortDraft, degats: e.target.value })} placeholder="2d6" className="w-20 bg-zinc-800 rounded px-2 py-1.5 font-mono" />
-                <input type="number" value={sortDraft.bonus ?? 0} onChange={(e) => setSortDraft({ ...sortDraft, bonus: Number(e.target.value) })} placeholder="+bonus" title="Bonus d'attaque" className="w-16 bg-zinc-800 rounded px-2 py-1.5" />
-              </>
-            ) : (
-              <input value={sortDraft.soin ?? ""} onChange={(e) => setSortDraft({ ...sortDraft, soin: e.target.value })} placeholder="Soin 1d8+2 (défensif)" className="flex-1 bg-zinc-800 rounded px-2 py-1.5 font-mono" />
-            )}
-          </div>
-          <div className="flex gap-2">
-            <select value={sortDraft.effetCle ?? ""} onChange={(e) => setSortDraft({ ...sortDraft, effetCle: e.target.value || undefined })} className="flex-1 bg-zinc-800 rounded px-2 py-1.5">
-              <option value="">Effet : aucun</option>
-              {EFFECT_CATALOG.map((t) => <option key={t.key} value={t.key}>{t.nom}</option>)}
-            </select>
-            <input
-              type="number" min={0} value={sortDraft.cout?.montant ?? ""} placeholder="Coût mana"
-              onChange={(e) => setSortDraft({ ...sortDraft, cout: e.target.value ? { ressource: "mana", montant: Number(e.target.value) } : undefined })}
-              className="w-24 bg-zinc-800 rounded px-2 py-1.5"
-            />
-            <button onClick={addSort} disabled={!sortDraft.nom.trim()} className="px-3 py-1.5 rounded bg-violet-700 text-sm font-semibold disabled:opacity-40">+ Sort</button>
-          </div>
-        </div>
+        
       </div>
 
       <div>

@@ -216,6 +216,10 @@ describe("familles d'armes", () => {
     expect(fam("item-arc-court")).toEqual(["arcs"]);
     expect(fam("item-baton-ferre")).toEqual(["batons"]);
     expect(fam("item-masse")).toEqual(["masses"]);
+    expect(fam("item-grimoire")).toEqual(["gourdins"]); // contondant (improvise)
+    for (const o of SEED_ITEMS.filter((x) => x.estArme)) {
+      expect((o.familles ?? []).length).toBeGreaterThan(0);
+    }
   });
 
   it("itemSchema accepte familles, refuse une famille inconnue", () => {

@@ -4,7 +4,6 @@ import { SEED_CHARACTERS, SEED_MONSTERS } from "@/src/lib/data/seeds";
 import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
 import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
-import type { Item } from "@/src/lib/rules/world/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
@@ -23,7 +22,7 @@ import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 export default function CombatPage() {
   const { items: characters, setItems: setCharacters } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
   const { items: monsters } = useLocalCollection<MonsterTemplate>("cof.monsters.v2", SEED_MONSTERS);
-  const { items: catalogue } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
+  const catalogue = SEED_ITEMS;
 
   const [staging, setStaging] = useState<CombatParticipant[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});

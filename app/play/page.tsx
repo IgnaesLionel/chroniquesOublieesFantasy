@@ -6,10 +6,11 @@ import { SEED_SCENARIOS } from "@/src/lib/data/scenarioSeeds";
 import { SEED_ITEMS, SEED_NPCS } from "@/src/lib/data/worldSeeds";
 import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
 import type { Character } from "@/src/lib/rules/types";
-import type { Item, Npc } from "@/src/lib/rules/world/types";
+import type { Npc } from "@/src/lib/rules/world/types";
 import type { PlayState, Scenario } from "@/src/lib/rules/scenario/types";
 import { startPlay } from "@/src/lib/rules/scenario/engine";
 import { ScenarioPlay } from "@/src/components/scenario/ScenarioPlay";
+import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
 import { DiceRoller } from "@/src/components/dice/DiceRoller";
 
 function pvColor(pv: number, max: number) {
@@ -24,7 +25,7 @@ export default function PlayPage() {
   const { items: characters, setItems: setCharacters } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
   const { items: scenarios } = useLocalCollection<Scenario>("cof.scenarios.v3", SEED_SCENARIOS);
   const { items: npcs } = useLocalCollection<Npc>("cof.npcs", SEED_NPCS);
-  const { items: stock } = useLocalCollection<Item>("cof.items.v2", SEED_ITEMS);
+  const stock = SEED_ITEMS;
 
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [play, setPlay] = useState<PlayState | null>(null);
@@ -85,6 +86,7 @@ export default function PlayPage() {
               </div>
             ))}
           </div>
+          <HorsCombatPanel characters={characters} onUpdate={(next) => setCharacters(next)} />
           <DiceRoller compact />
         </div>
       </div>

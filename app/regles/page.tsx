@@ -85,7 +85,7 @@ export default function ReglesPage() {
       <Section id="aconfirmer" titre="⚠ Points à confirmer">
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>Points de chance : +10 à un test, utilisables sur tout test (détection, crochetage…) — en combat c&apos;est appliqué, hors combat au jugement MJ <Src de="Règle" /></li>
-          <li>Dés de récupération : soin (d + 1/2 niveau) PV (lu sur fiche) — boutons ±1 manuels pour l&apos;instant <Src de="Fiches" /></li>
+          <li>Dés de récupération : soin (d + 1/2 niveau) PV — bouton +PV de la fiche (réserve décrémentée, repos : +1 manuel) <Src de="Fiches" /></li>
           <li>Dé évolutif au-delà de d8 (d10 au 12, d12 au 15, d20 au 18+) : extrapolé du « etc. » <Src de="Supposition" /></li>
           <li>Note « 2* » du tableau des rangs : lue comme l&apos;exception R2 gratuit des Mages <Src de="Supposition" /></li>
           <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Supposition" /></li>

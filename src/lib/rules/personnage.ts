@@ -5,6 +5,7 @@ import type { Character, Sort } from "@/src/lib/rules/types";
 import { CAPACITES, slug } from "@/src/lib/data/capacites";
 import { VOIES_PEUPLE, VOIE_MAGE, adopterVoieMage, traitsInitiaux } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
+import { parseDiceExpression, rollDiceExpression, type Rng } from "@/src/lib/rules/dice/roller";
 
 export interface Caracteristiques {
   AGI: number;
@@ -648,4 +649,58 @@ export function descendreNiveau(c: Character): Character {
   const perte = (PV_GAIN_PAR_FAMILLE[c.famille] ?? 4) + c.caracteristiques.CON;
   const pvMax = Math.max(1, c.pvMax - perte);
   return { ...c, niveau: c.niveau - 1, pvMax, pv: Math.min(c.pv, pvMax) };
+}
+
+export interface RecuperationResolution {
+  /** PV soignés (dé + moitié de niveau, plafonnés par le max manquant). */
+  soinTotal: number;
+  /** Tirage du dé (ex. [5] pour 1d8). */
+  details: number[];
+  /** Bonus ajouté au dé : moitié du niveau arrondie à l'inférieur. */
+  bonusNiveau: number;
+  pvAvant: number;
+  pvApres: number;
+  drAvant: number;
+  drApres: number;
+}
+
+/**
+ * Dépense 1 dé de récupération pour regagner de la vigueur :
+ * soin = 1 dé (d6/d8/d10 selon famille, non explosif) + moitié du niveau
+ * arrondie à l'inférieur, plafonné aux PV max. Décrémente la réserve.
+ * Refusé sans dé disponible ou à PV pleins (évite le gaspillage).
+ */
+export function depenserDeRecuperation<T extends Character>(
+  c: T,
+  rng: Rng = Math.random
+): { personnage: T; resolution: RecuperationResolution } {
+  const dr = c.desRecuperation;
+  if (!dr || dr.actuel <= 0) {
+    throw new Error(`${c.nom} : plus de dé de récupération (${dr?.actuel ?? 0}/${dr?.max ?? 0}).`);
+  }
+  if (c.pv >= c.pvMax) {
+    throw new Error(`${c.nom} : vigueur au maximum (${c.pv}/${c.pvMax}), dé non dépensé.`);
+  }
+  const roll = rollDiceExpression(parseDiceExpression(dr.type), rng);
+  const bonusNiveau = Math.max(0, Math.floor(Math.max(1, Math.floor(c.niveau)) / 2));
+  const soinTotal = Math.max(0, roll.total + bonusNiveau);
+  const pvAvant = c.pv;
+  const pvApres = Math.min(c.pvMax, pvAvant + soinTotal);
+  const personnage: T = {
+    ...c,
+    pv: pvApres,
+    desRecuperation: { ...dr, actuel: dr.actuel - 1 },
+  };
+  return {
+    personnage,
+    resolution: {
+      soinTotal: pvApres - pvAvant,
+      details: roll.rolls,
+      bonusNiveau,
+      pvAvant,
+      pvApres,
+      drAvant: dr.actuel,
+      drApres: dr.actuel - 1,
+    },
+  };
 }
