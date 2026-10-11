@@ -4,7 +4,7 @@
 // Seuls les cas mécaniquement directs y figurent ; le reste se gère au cas
 // par cas (durées variables, dés bonus non modélisés, etc.).
 
-export type CibleCapacite = "allies" | "ennemis" | "tous";
+export type CibleCapacite = "allies" | "ennemis" | "tous" | "soi";
 
 export interface CapaciteUsable {
   /** Nom exact du talent (comparaison insensible à la casse, suffixes (L)/(A)... ignorés). */
@@ -77,15 +77,15 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     talent: "Parer un coup",
     effetCle: "Parade",
     dureeTours: 1,
-    cibles: "allies",
+    cibles: "soi",
     mods: { parade: 1 },
-    note: "Guerrier (M, bouclier requis) : la prochaine attaque réussie est bloquée sur test opposé (niv+FOR/AGI). Rang 5 : (G) 1/round avec dé malus (MJ). Énorme/colossale : moitié DM (MJ).",
+    note: "Guerrier (M, bouclier requis) : posture sur soi — la prochaine attaque réussie est bloquée sur test opposé (niv+FOR/AGI). Rang 5 : (G) 1/round avec dé malus (MJ). Énorme/colossale : moitié DM (MJ).",
   },
   {
     talent: "Absorber un sort",
     effetCle: "Absorption",
     dureeTours: 1,
-    cibles: "allies",
+    cibles: "soi",
     mods: { absorption: 1 },
     note: "Guerrier (après parade préparée) : le prochain sort réussi est annulé sur test opposé (zones : autres affectés, MJ). Stocké pour Renvoi.",
   },
@@ -101,9 +101,9 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     talent: "Science du critique",
     effetCle: "Critique 19-20",
     dureeTours: null,
-    cibles: "allies",
+    cibles: "soi",
     mods: { seuilCrit: 19 },
-    note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer quand l'arme convient.",
+    note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer sur soi quand l'arme convient.",
   },
   {
     talent: "Le loup",
@@ -117,7 +117,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     talent: "Increvable",
     effetCle: "Increvable",
     dureeTours: 1,
-    cibles: "allies",
+    cibles: "soi",
     mods: { defense: 5 },
     soin: "4d4°+CON",
     nettoie: true,

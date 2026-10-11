@@ -42,11 +42,22 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
   const defaut = defautPour(talent);
   const effetActif = effetCle || defaut?.effetCle || "";
   const dureeActive = duree !== "" ? Number(duree) : defaut?.dureeTours ?? null;
-  const cibles = participants.filter((p) => p.statut === "actif");
-  const allies = cibles.filter((p) => p.camp === lanceur.camp && p.instanceId !== lanceur.instanceId);
+  const actifs = participants.filter((p) => p.statut === "actif");
+  // Cibles proposées selon le type de capacité : "soi" = posture sur soi
+  // (Parer, Absorber...), "allies" = alliés hors soi (Protéger...),
+  // "ennemis" = camp adverse, "tous" = tout le monde.
+  const ciblesPossibles =
+    defaut?.cibles === "soi"
+      ? actifs.filter((p) => p.instanceId === lanceur.instanceId)
+      : defaut?.cibles === "allies"
+        ? actifs.filter((p) => p.camp === lanceur.camp && p.instanceId !== lanceur.instanceId)
+        : defaut?.cibles === "ennemis"
+          ? actifs.filter((p) => p.camp !== lanceur.camp)
+          : actifs;
+  // Strict : pas de repli vers soi ou vers un ennemi. Si la liste est vide
+  // (ex. Protéger sans allié actif), le bouton reste désactivé.
+  const cibles = ciblesPossibles;
   const cible = cibles.find((p) => p.instanceId === cibleId)
-    ?? allies[0]
-    ?? cibles.find((p) => p.instanceId !== lanceurId)
     ?? cibles[0] ?? null;
   const bloque = !canAct(lanceur.effets);
 
@@ -56,7 +67,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       <label className="block text-sm">Talent
         <select
           value={talent}
-          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); }}
+          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setCibleId(null); }}
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
         >
           {lanceur.capacites.map((t) => (
@@ -67,7 +78,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       {defaut && (
         <p className="text-xs text-zinc-500">
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
-          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : "tous"}.
+          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
         </p>
       )}
@@ -93,6 +104,9 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
         /></label>
       </div>
+      {cibles.length === 0 && (
+        <p className="text-xs text-red-400">Aucune cible valide pour ce talent (aucun allié actif).</p>
+      )}
       <button
         onClick={() => {
           if (cible) {
