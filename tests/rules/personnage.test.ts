@@ -9,8 +9,11 @@ import {
   changerFamille,
   deEvolutif,
   depenserDeRecuperation,
+  depenserDeRecuperationMax,
   deriverPersonnage,
+  recuperationComplete,
   descendreNiveau,
+  completerSortsDepuisGrimoire,
   drInitial,
   drNombre,
   drType,
@@ -41,9 +44,9 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(pvMaxBase("Combattant", 2, 1)).toBe(12);
     expect(pvMaxBase("Combattant", 2, 2)).toBe(19);
     expect(pvMaxBase("Mage", 1, 3)).toBe(6 + 3 + 3 * 2);
-    // Dé évolutif : d4, d6 au 6, d8 au 9, d10 au 12, d12 au 15, d20 au 18+.
+    // Dé évolutif COF V2 : d4 (1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+).
     expect([1, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 25].map(deEvolutif))
-      .toEqual([4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 20, 20]);
+      .toEqual([4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 12, 12]);
     expect(manaMax(4, 0)).toBe(4);
     expect(manaMax(-1, 0)).toBe(0);
     // Chance : 2+CHA sauf Aventurier 3+CHA
@@ -393,5 +396,71 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
       depenserDeRecuperation({ ...guerrier, pv: 6, desRecuperation: { type: "d10", max: 5, actuel: 0 } })
     ).toThrow(/plus de dé de récupération/);
     expect(() => depenserDeRecuperation({ ...guerrier })).toThrow(/au maximum/);
+  });
+
+  it("depenserDeRecuperationMax : valeur max du dé + moitié niveau, sans lancer", () => {
+    const guerrier = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const blesse = { ...guerrier, niveau: 4, pv: 2, pvMax: 16 };
+    // d10 max = 10 + moitié niv. 4 = +2 → 12 (2 → 14).
+    const { personnage, resolution } = depenserDeRecuperationMax(blesse);
+    expect(resolution.valeurMax).toBe(true);
+    expect(resolution.details).toEqual([10]);
+    expect(resolution.bonusNiveau).toBe(2);
+    expect(resolution.soinTotal).toBe(12);
+    expect(personnage.pv).toBe(14);
+    expect(personnage.desRecuperation?.actuel).toBe((blesse.desRecuperation?.actuel ?? 1) - 1);
+    expect(() => depenserDeRecuperationMax({ ...guerrier })).toThrow(/au maximum/);
+    expect(() =>
+      depenserDeRecuperationMax({ ...guerrier, pv: 6, desRecuperation: { type: "d10", max: 5, actuel: 0 } })
+    ).toThrow(/plus de dé de récupération/);
+  });
+
+  it("recuperationComplete : +1 DR (plafond max) et mana à fond", () => {
+    const guerrier = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const fatigue = {
+      ...guerrier,
+      pv: 6,
+      desRecuperation: { type: "d10" as const, max: 5, actuel: 2 },
+      ressources: { ...guerrier.ressources, mana: { max: 4, actuel: 1 } },
+    };
+    const { personnage, resolution } = recuperationComplete(fatigue);
+    expect(resolution).toEqual({ drAvant: 2, drApres: 3, manaAvant: 1, manaApres: 4 });
+    expect(personnage.desRecuperation?.actuel).toBe(3);
+    expect(personnage.ressources.mana).toEqual({ max: 4, actuel: 4 });
+    expect(personnage.pv).toBe(6); // la complète ne soigne pas elle-même
+    // Plafond DR respecté, mana complété quand même.
+    const plein = recuperationComplete({ ...fatigue, desRecuperation: { type: "d10" as const, max: 5, actuel: 5 } });
+    expect(plein.resolution).toEqual({ drAvant: 5, drApres: 5, manaAvant: 1, manaApres: 4 });
+    // Rien à récupérer (DR et mana pleins) : refusé.
+    expect(() =>
+      recuperationComplete({ ...guerrier, desRecuperation: { type: "d10" as const, max: 5, actuel: 5 } })
+    ).toThrow(/déjà au complet/);
+  });
+});
+
+describe("complétion des sorts depuis le grimoire", () => {
+  const stale = {
+    id: "sort-ancien", nom: "Destruction du mal", type: "offensif" as const,
+    degats: "2d4", cout: { ressource: "mana", montant: 3 },
+  };
+  it("remplit les champs absents depuis le grimoire (toucheAuto, cibleEspeces)", () => {
+    const [complete] = completerSortsDepuisGrimoire([stale]);
+    expect(complete.toucheAuto).toBe(true);
+    expect(complete.cibleEspeces).toEqual(["Mort-vivant", "Démon"]);
+    // Copie, pas de mutation.
+    expect(stale).not.toHaveProperty("cibleEspeces");
+  });
+  it("ne touche ni aux valeurs définies (homebrew MJ) ni aux sorts inconnus", () => {
+    const maison = { ...stale, id: "x", toucheAuto: false as const, cibleEspeces: ["Végétal"] };
+    const inconnu = { id: "y", nom: "Sort inventé", type: "offensif" as const };
+    const [m, i] = completerSortsDepuisGrimoire([maison, inconnu]);
+    expect(m).toBe(maison); // même référence : rien à compléter
+    expect(m.toucheAuto).toBe(false);
+    expect(m.cibleEspeces).toEqual(["Végétal"]);
+    expect(i).toBe(inconnu);
+  });
+  it("sort déjà complet : référence inchangée", () => {
+    const sorts = [{ ...stale, toucheAuto: true as const, cibleEspeces: ["Mort-vivant"] }];
+    expect(completerSortsDepuisGrimoire(sorts)).toBe(sorts);
   });
 });

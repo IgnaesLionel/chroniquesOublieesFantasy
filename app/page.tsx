@@ -14,6 +14,7 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
   { href: "/scenarios", t: "Scénarios", d: "Scènes, choix, conditions", key: "scenarios" },
   { href: "/npcs", t: "PNJ", d: "Dialogues et secrets MJ", key: "npcs" },
   { href: "/items", t: "Objets", d: "Inventaire et quête", key: "items" },
+  { href: "/tresors", t: "Trésors", d: "Trésors & objets magiques", key: null },
   { href: "/settings", t: "Sauvegarde", d: "Export / import JSON", key: null },
 ];
 
@@ -36,7 +37,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Campagne — Tableau de bord</h1>
       <p className="text-zinc-400 text-sm">
-        Assistant MJ : personnages, monstres, dés, combat, scénarios à embranchements, PNJ et objets.
+        Assistant MJ : personnages, monstres, dés, combat, scénarios à embranchements, PNJ, objets et trésors.
       </p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {CARDS.map((c) => (

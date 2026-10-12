@@ -3,10 +3,9 @@ import { useMemo, useState } from "react";
 import { SEED_SORTS, VOIES_SORTS } from "@/src/lib/data/sorts";
 import { CLASSES } from "@/src/lib/data/classes";
 import { ACTION_LABEL, catalogueCapacites, type CapaciteCatalogue } from "@/src/lib/data/capacites";
-import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
-import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
+import { useCharacters, useSorts } from "@/src/lib/store/collections";
 import { exportJson } from "@/src/lib/store/repository";
-import type { ActionDRS, Character, Sort, SortType } from "@/src/lib/rules/types";
+import type { ActionDRS, Sort, SortType } from "@/src/lib/rules/types";
 import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
 import { ajouterCapacite, apprendreSort, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { apprendreTalentComplet, peutApprendre } from "@/src/lib/rules/creation";
@@ -54,8 +53,8 @@ function resumeEffet(s: Sort): string {
 }
 
 export default function SortsPage() {
-  const { items, setItems } = useLocalCollection<Sort>("cof.sorts", SEED_SORTS);
-  const { items: persos, setItems: setPersos } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
+  const { items, setItems } = useSorts();
+  const { items: persos, setItems: setPersos } = useCharacters();
   const [editing, setEditing] = useState<Sort | null>(null);
   const [recherche, setRecherche] = useState("");
   const [categorie, setCategorie] = useState<"tous" | "sorts" | "capacites">("tous");

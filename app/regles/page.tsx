@@ -5,6 +5,7 @@ import { VOIES_PEUPLE } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
+import { ECHELLE_ARMURES, LIMITES_ARMURE, nomArmureLimite } from "@/src/lib/rules/limitesArmures";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 
 type Source = "DRS" | "Fiches" | "Tableau" | "Règle" | "Supposition";
@@ -56,8 +57,13 @@ const SOMMAIRE: { id: string; t: string }[] = [
   { id: "creation", t: "Création niveau 1" },
   { id: "progression", t: "Progression (niveaux, points, rangs, dé évolutif)" },
   { id: "peuples-classes", t: "Peuples, classes et voies" },
+  { id: "armures", t: "Armures (échelle et limites par profil)" },
   { id: "sorts", t: "Sorts et grimoire" },
-  { id: "des", t: "Dés (explosifs, dE, caracs)" },
+  { id: "lancement", t: "Lancement des sorts (3 options)" },
+  { id: "consommables", t: "Potions et parchemins (usage)" },
+  { id: "defense-magique", t: "Objets magiques défensifs (cumul)" },
+  { id: "pouvoir-puissance", t: "Objets de pouvoir et de puissance" },
+  { id: "des", t: "Dés (évolutifs, caracs)" },
   { id: "actions", t: "Actions (A+M ou L) et coûts des sorts" },
   { id: "combat", t: "Combat" },
   { id: "effets", t: "Effets (buffs, debuffs, dots)" },
@@ -85,11 +91,15 @@ export default function ReglesPage() {
       <Section id="aconfirmer" titre="⚠ Points à confirmer">
         <ul className="list-disc pl-5 space-y-1 text-sm">
           <li>Points de chance : +10 à un test, utilisables sur tout test (détection, crochetage…) — en combat c&apos;est appliqué, hors combat au jugement MJ <Src de="Règle" /></li>
-          <li>Dés de récupération : soin (d + 1/2 niveau) PV — bouton +PV de la fiche (réserve décrémentée, repos : +1 manuel) <Src de="Fiches" /></li>
-          <li>Dé évolutif au-delà de d8 (d10 au 12, d12 au 15, d20 au 18+) : extrapolé du « etc. » <Src de="Supposition" /></li>
-          <li>Note « 2* » du tableau des rangs : lue comme l&apos;exception R2 gratuit des Mages <Src de="Supposition" /></li>
+          <li>Dés de récupération : <b>rapide</b> = 1 DR dépensé, soin (d + 1/2 niveau) PV au dé ; <b>complète</b> = +1 DR et mana à fond, avec proposition de dépenser aussitôt 1 DR en valeur max (d max + 1/2 niveau, sans lancer) <Src de="Fiches" /></li>
+          <li>Dé évolutif (°) : d4 (niv. 1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+) — pas de relance au max <Src de="DRS" /></li>
+          <li>Mages : la capacité de rang 2 gratuite (une voie du profil, ou Maîtrise de la magie) exige la Voie du mage adoptée — abandon de la voie du peuple (rang 1 conservé, rangs 2-5 bloqués) <Src de="Règle" /></li>
           <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Supposition" /></li>
-          <li>Robustesse (Guerrier) : « PV max +rang+2 » contredit la fiche de Dorain (13 = 10+CON sans bonus) — non appliqué, manuel via Éditer <Src de="Supposition" /></li>
+          <li>Robustesse (Guerrier) : PV max +rang+2 appliqué automatiquement par le moteur (ex. Dorain : 10+CON 3+3 = 16) ; +rang+2 aux tests pour résister aux efforts physiques, à la chaleur et au froid = manuel, au jugement du MJ <Src de="Règle" /></li>
+          <li>Armes magiques : bonus +N = niveau N de l&apos;objet (ex. Arme niv. 2 → +2 ; niv. 1 → +1 sans propriété) <Src de="Règle" /></li>
+          <li>Armes magiques 11-12 : deux tirages 1-10 (pas de récursion), fusionnés en propriété doublée si identiques <Src de="Règle" /></li>
+          <li>Parade : +N DEF (= bonus de l&apos;arme), simple et cumulable (bouclier, armure), niveau += N ; tirée en plus à 10 % (d100) <Src de="Règle" /><Src de="Supposition" /></li>
+          <li>Armes à distance : mêmes propriétés qu&apos;au contact, Affûtée → de précision (crit +1, +1d4°, niveau +1) <Src de="Supposition" /></li>
         </ul>
       </Section>
 
@@ -121,8 +131,8 @@ export default function ReglesPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li><b>2 points</b> → 2 capacités de rang 1 parmi les voies du profil (1 pt chacune).<Src de="Règle" /></li>
           <li><b>+ gratuit</b> : le rang 1 de la voie du peuple (ni point, ni remplacement des 2 choix). Standard : 3 capacités (2 profil + 1 peuple).<Src de="Règle" /></li>
-          <li><b>Mages</b> (Ensorceleur, Forgesort, Magicien, Sorcier) : +1 capacité de rang 2 gratuite + option Voie du mage.<Src de="Tableau" /></li>
-          <li>Voie du mage : remplace la voie du peuple (garde son rang 1, bloque ses rangs 2-5), définitif, avant le rang 2.<Src de="Règle" /></li>
+          <li><b>Mages</b> (Ensorceleur, Forgesort, Magicien, Sorcier) : +1 capacité de rang 2 gratuite (voie du profil ou Maîtrise de la magie) <b>avec</b> la Voie du mage adoptée — sans elle, création standard sans R2 gratuit.<Src de="Règle" /></li>
+          <li>Voie du mage : remplace la voie du peuple (garde son rang 1, bloque ses rangs 2-5), définitif, avant le rang 2 — et débloque le R2 gratuit.<Src de="Règle" /></li>
         </ul>
         <p className="text-xs text-zinc-500">Exceptions configurables par profil, jamais codées en dur (CREATION_PROFILS).</p>
       </Section>
@@ -133,7 +143,7 @@ export default function ReglesPage() {
           <li><b>Niveau −1</b> (erreur) : inverse le gain (plancher PV 1, niv. 1 min), alertes à corriger.</li>
           <li>Coûts : R1-2 = 1 pt, R3-5 = 2 pts. Rangs précédents requis, pas de saut, pas de mise de côté, désapprentissage du haut vers le bas.<Src de="Règle" /></li>
           <li>Niveaux min par rang : R1→1, R2→2, R3→3, R4→5, R5→7 (puis 9/11/13).<Src de="Tableau" /></li>
-          <li>Dé évolutif (d4°) : d4, d6 au niv. 6, d8 au 9, d10 au 12, d12 au 15, d20 au 18+.<Src de="Règle" /></li>
+          <li>Dé évolutif (d4°) : d4 (niv. 1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+).<Src de="DRS" /></li>
         </ul>
       </Section>
 
@@ -161,6 +171,39 @@ export default function ReglesPage() {
         <p className="text-xs text-zinc-500">Voie du mage : option spéciale (pas un peuple), famille Mage uniquement.<Src de="Règle" /></p>
       </Section>
 
+      <Section id="armures" titre="Armures (échelle et limites par profil)">
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Armure</th><th className="text-left px-2 py-1">DEF</th><th className="text-left px-2 py-1">Note</th></tr></thead>
+            <tbody>
+              {ECHELLE_ARMURES.map((e) => (
+                <tr key={e.def} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-semibold">{e.nom}</td>
+                  <td className="px-2 py-1 font-mono">+{e.def}</td>
+                  <td className="px-2 py-1 text-zinc-400">{e.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Profil</th><th className="text-left px-2 py-1">Max torse</th><th className="text-left px-2 py-1">Bouclier</th><th className="text-left px-2 py-1">Extension (talent)</th></tr></thead>
+            <tbody>
+              {Object.entries(LIMITES_ARMURE).map(([profil, l]) => (
+                <tr key={profil} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-semibold">{profil}</td>
+                  <td className="px-2 py-1 font-mono">{nomArmureLimite(l.limite)} +{l.limite}</td>
+                  <td className="px-2 py-1">{l.bouclier ? "Oui" : "Non"}</td>
+                  <td className="px-2 py-1 text-zinc-400">{l.extensions.length > 0 ? l.extensions.map((e) => `${e.talent} → +${e.limite}`).join(" · ") : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">Druide et Prêtre : petit bouclier. Dépassement signalé en avertissement (jamais bloqué) dans Inventaire et sur la fiche.<Src de="Règle" /></p>
+      </Section>
+
       <Section id="sorts" titre="Sorts et grimoire">
         <ul className="list-disc pl-5 space-y-1">
           <li>{NB_SORTS} sorts transcrits du DRS (Prêtre, Sorcier, Barde, Druide, Ensorceleur, Forgesort, Magicien + voie du mage). Guerrier, Rôdeur, Voleur, Moine : aucun sort à PM.<Src de="DRS" /></li>
@@ -170,9 +213,55 @@ export default function ReglesPage() {
         </ul>
       </Section>
 
+      <Section id="lancement" titre="Lancement des sorts (3 options)">
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>Incantation classique</b> : paie le coût du sort en mana (coût = rang), avant le jet. Sans mana suffisante, le sort ne part pas.<Src de="Règle" /></li>
+          <li><b>Brûlure de mana</b> : à 0 PM, le lanceur peut sacrifier son énergie vitale pour continuer à lancer — <b>1 DR par PM</b> du sort en PV perdus (ex. 2 PM au d6 = 2d6 PV), <b>sans RD</b>, KO possible. <b>Impossible pour lancer un sort de soins.</b> En combat (panneaux Attaque/Soutien) comme hors combat.<Src de="Règle" /></li>
+          <li><b>Concentration accrue</b> : un sort qui nécessite une action d&apos;attaque (A) peut être lancé en action <b>limitée (L) pour −2 PM</b> (plancher 0) — le lanceur se prive de déplacement. Les sorts (L/M/G) et ceux sans action d&apos;attaque gardent le coût de leur rang, non réductible. En combat uniquement (pas d&apos;économie d&apos;action hors combat).<Src de="Règle" /></li>
+        </ul>
+      </Section>
+
+      <Section id="consommables" titre="Potions et parchemins (usage)">
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>Potion</b> : boire une potion est une action de mouvement (M), utilisable par tout le monde.<Src de="Règle" /></li>
+          <li><b>Parchemin</b> : usage limité (L), consommable unique (le sort est effacé après usage).<Src de="Règle" /></li>
+          <li>Un parchemin est <b>illisible</b> pour un lanceur d&apos;une autre famille de profil (ex. un Magicien ne lit pas un parchemin de Prêtre).<Src de="Règle" /></li>
+          <li><b>Sans test</b> si le sort est issu du profil du PJ et d&apos;un rang qu&apos;il maîtrise (au moins un sort connu de même rang ou supérieur), même sans connaître ce sort précis.<Src de="Règle" /></li>
+          <li>Rang supérieur au maîtrisé : test d&apos;attaque magique, difficulté 5 × rang du sort (ex. maîtrise rang 1 + parchemin rang 4 → difficulté 20).<Src de="Règle" /></li>
+          <li>Autre profil mais <b>même famille</b> (ex. moine ou druide + sort de prêtre) : difficulté +5 (ex. sort de prêtre rang 3 → 15 + 5 = 20).<Src de="Règle" /></li>
+          <li><b>Échec</b> : le sort n&apos;est pas lancé ; échec d&apos;au moins 10 points → le sort est effacé et le parchemin devient inutilisable.<Src de="Règle" /></li>
+          <li><b>Baguette</b> : lanceurs de sorts uniquement (bardes, druides et prêtres inclus), de niveau au moins égal au rang du sort. Activer une baguette = action d&apos;attaque, un sort par charge (2d20 charges au départ).<Src de="Règle" /></li>
+          <li>Niveau de magie d&apos;une baguette : moitié du rang (arrondi inf.) sous 30 charges, rang du sort à 30 charges et plus.<Src de="Règle" /></li>
+        </ul>
+        <Formule>Difficulté = 5 × rang du sort (+5 si autre profil de même famille)<Src de="Règle" /></Formule>
+      </Section>
+
+      <Section id="defense-magique" titre="Objets magiques défensifs (cumul)">
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Un objet magique défensif ajoute son bonus à la DEF, mais un PJ ne retient qu&apos;<b>un seul bonus de DEF magique : le plus haut</b> (pas de cumul).<Src de="Règle" /></li>
+          <li>Objets mundanes (bouclier, mailles…) : cumulés normalement. Talents, Mod et buffs : cumulés.<Src de="Règle" /></li>
+          <li>Bouclier et armure magiques non cumulés en DEF ; si le MJ l&apos;autorise, le bonus inutilisé devient une RD contre les critiques (ex. armure +3 et bouclier +2 → DEF +3, −2 DM aux critiques).<Src de="Règle" /></li>
+          <li>Anneau +2 : +2 DEF, non cumulé à une armure magique, mais cumulé au sort Armure de mage (considéré comme une armure).<Src de="Règle" /></li>
+          <li>Une armure retranche son bonus aux pénalités qu&apos;elle inflige (tests d&apos;AGI), sans changer l&apos;AGI max (ex. cotte +2 : DEF +7, pénalité AGI −3).<Src de="Règle" /></li>
+          <li>Niveau de magie = bonus + propriétés (1 chacune, Défense supérieure +2).<Src de="Règle" /></li>
+          <li>Bonus +N = niveau N de l&apos;objet (comme les armes).<Src de="Règle" /></li>
+        </ul>
+        <Formule>DEF magique retenue = max des bonus (bouclier et armure non cumulés)<Src de="Règle" /></Formule>
+      </Section>
+
+      <Section id="pouvoir-puissance" titre="Objets de pouvoir et de puissance">
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>Pouvoir</b> : pouvoirs calqués sur des capacités de lanceur, utilisables 1/jour en général, parfois permanents (ex. sac sans fond = rang 3 des artefacts du forgesort) ; forme en rapport avec son pouvoir.<Src de="Règle" /></li>
+          <li><b>Puissance</b> : +caractéristique (ceinture FOR, bandeau INT/VOL, gantelets AGI, masque PER, robe CHA, amulette CON) ; mineurs : +DR/PC/PM/PV.<Src de="Règle" /></li>
+          <li>Niveau de magie = bonus × 3 (+2 conseillé en classique, +3 en high fantasy ; ex. cape de charisme +2 → 6). Mineurs : DR/PC 1 par point, PM 1 par tranche de 3, PV 1 par tranche de 5.<Src de="Règle" /></li>
+          <li>Bonus 1-2 au d2, sans lien avec le niveau (mineures : DR/PC 1-2, PM 3/6, PV 5/10).<Src de="Règle" /></li>
+        </ul>
+        <Formule>Niveau puissance = bonus × 3 (d12 : 1-7 majeures, 8-11 mineures, 12 relancer)<Src de="Règle" /></Formule>
+      </Section>
+
       <Section id="des" titre="Dés">
         <ul className="list-disc pl-5 space-y-1">
-          <li><b>Explosifs (°)</b> : tout dé au max est relancé <b>une seule fois</b> et ajouté — ex. 1d4° : 4 puis 3 = 7, max 8.<Src de="Règle" /></li>
+          <li><b>Évolutifs (°)</b> : le dé grandit avec le niveau — ex. 1d4°+INT vaut 1d4+INT au niv. 3, 1d6+INT au niv. 7, 1d10+INT au niv. 12. Table : d4 (1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+). Aucune relance.<Src de="DRS" /></li>
           <li><b>dE</b> : dé évolutif selon le niveau (attaque et grimoire le substituent).<Src de="Règle" /></li>
           <li><b>Caracs</b> : <span className="font-mono">1d4°+INT</span> devient <span className="font-mono">1d4°+2</span> avec INT+2 (Un pied dans la tombe).<Src de="Règle" /></li>
           <li>Convention moteur : 0 DM = <span className="font-mono">1d1-1</span> (sorts à effet sans dégâts).</li>

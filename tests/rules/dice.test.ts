@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerDeEvolutif, substituerStats } from "@/src/lib/rules/dice/roller";
+import { deEvolutif, fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerDeEvolutif, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 
 describe("moteur de dés", () => {
   it("parse les expressions de base", () => {
@@ -22,24 +22,30 @@ describe("moteur de dés", () => {
     expect(rollDiceExpression("1d1-1", fixedRng([0])).total).toBe(0);
   });
 
-  it("dés explosifs (°) : relance unique au max", () => {
-    expect(parseDiceExpression("1d4°")).toMatchObject({ count: 1, sides: 4, modifier: 0, explosif: true, normalized: "1d4°" });
-    expect(parseDiceExpression("2d6").explosif).toBe(false);
+  it("dé évolutif (°) : marqueur conservé au parse, lancer simple (faces substituées en jeu)", () => {
+    expect(parseDiceExpression("1d4°")).toMatchObject({ count: 1, sides: 4, modifier: 0, evolutif: true, normalized: "1d4°" });
+    expect(parseDiceExpression("2d6").evolutif).toBe(false);
     expect(parseDiceExpression("1d4°+2").normalized).toBe("1d4°+2");
-    // Exemple livre : 4 puis 3 = 7.
-    const r = rollDiceExpression("1d4°", fixedRng([0.99, 0.5]));
-    expect(r.rolls).toEqual([4, 3]);
-    expect(r.total).toBe(7);
-    // Relance unique : 4 puis 4 = 8, pas de 3e jet.
-    const r2 = rollDiceExpression("1d4°", fixedRng([0.99, 0.99, 0.5]));
-    expect(r2.rolls).toEqual([4, 4]);
-    expect(r2.total).toBe(8);
-    // Pas de max : pas de relance.
+    // Sans substitution : dé de base, aucune relance.
+    expect(rollDiceExpression("1d4°", fixedRng([0.99])).rolls).toEqual([4]);
     expect(rollDiceExpression("1d4°", fixedRng([0.5])).total).toBe(3);
-    // 2d4° : chaque dé au max explose une fois.
-    const r3 = rollDiceExpression("2d4°", fixedRng([0.99, 0.1, 0.99, 0.1]));
-    expect(r3.rolls).toEqual([4, 1, 4, 1]);
-    expect(r3.total).toBe(10);
+    expect(rollDiceExpression("2d4°", fixedRng([0.99, 0.1])).rolls).toEqual([4, 1]);
+  });
+
+  it("deEvolutif : table officielle (d4 1-5, d6 6-8, d8 9-11, d10 12-14, d12 15+)", () => {
+    expect([1, 5, 6, 8, 9, 11, 12, 14, 15, 17, 20].map(deEvolutif))
+      .toEqual([4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 12]);
+    expect(deEvolutif(0)).toBe(4); // plancher niv. 1
+  });
+
+  it("substituerDesEvolutifs : faces selon le niveau, idempotent", () => {
+    expect(substituerDesEvolutifs("1d4°+INT", 3)).toBe("1d4+INT");
+    expect(substituerDesEvolutifs("1d4°+INT", 7)).toBe("1d6+INT");
+    expect(substituerDesEvolutifs("1d4°+INT", 12)).toBe("1d10+INT");
+    expect(substituerDesEvolutifs("2d4°+5", 16)).toBe("2d12+5");
+    expect(substituerDesEvolutifs("d4°", 9)).toBe("1d8");
+    expect(substituerDesEvolutifs("1d6+2", 12)).toBe("1d6+2");
+    expect(substituerDesEvolutifs("1d6+2", 7)).toBe("1d6+2");
   });
 
   it("substituerStats remplace les caracs (INT ajouté à la fin)", () => {

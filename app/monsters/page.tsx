@@ -1,8 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
-import { SEED_MONSTERS } from "@/src/lib/data/seeds";
+import { SEED_MONSTERS, avecSousCategoriesGraines } from "@/src/lib/data/seeds";
 import { CAPACITES_PARTAGEES } from "@/src/lib/data/capacites-partagees";
-import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
+import { useMonsters } from "@/src/lib/store/collections";
 import { exportJson } from "@/src/lib/store/repository";
 import type { MonsterTemplate } from "@/src/lib/rules/types";
 import { MonsterEditor } from "@/src/components/monsters/MonsterEditor";
@@ -11,15 +11,20 @@ const EMPTY: MonsterTemplate = {
   id: "", kind: "monstre", nom: "", type: "Créature", niveau: 1,
   pv: 5, pvMax: 5, defense: 12, initMod: 0,
   attaques: [], capacites: [], capacitesPartagees: [], capacitesDetails: [],
+  sousCategories: [],
   description: "", notes: "", exemple: false,
 };
 
 const PARTAGEES = new Map(CAPACITES_PARTAGEES.map((c) => [c.cle, c]));
 
 export default function MonstersPage() {
-  const { items, setItems } = useLocalCollection<MonsterTemplate>("cof.monsters.v2", SEED_MONSTERS);
+  const { items, setItems } = useMonsters();
+  // Migration douce : les sauvegardes locales antérieures aux sous-catégories
+  // n'ont pas le champ — on reporte les tags des graines (sans rien écraser).
+  const monstres = useMemo(() => avecSousCategoriesGraines(items), [items]);
   const [recherche, setRecherche] = useState("");
   const [categorie, setCategorie] = useState("toutes");
+  const [espece, setEspece] = useState("toutes");
   const [capacite, setCapacite] = useState("toutes");
   const [ficheId, setFicheId] = useState<string | null>(null);
   const [editing, setEditing] = useState<MonsterTemplate | null>(null);
@@ -34,28 +39,34 @@ export default function MonstersPage() {
   };
 
   const categories = useMemo(
-    () => ["toutes", ...Array.from(new Set(items.map((m) => m.categorie ?? m.type))).sort()],
-    [items]
+    () => ["toutes", ...Array.from(new Set(monstres.map((m) => m.categorie ?? m.type))).sort()],
+    [monstres]
+  );
+
+  const especes = useMemo(
+    () => ["toutes", ...Array.from(new Set(monstres.flatMap((m) => m.sousCategories ?? []))).sort()],
+    [monstres]
   );
 
   const filtres = useMemo(() => {
     const q = recherche.trim().toLowerCase();
-    return items.filter((m) => {
+    return monstres.filter((m) => {
       if (categorie !== "toutes" && (m.categorie ?? m.type) !== categorie) return false;
+      if (espece !== "toutes" && !(m.sousCategories ?? []).includes(espece)) return false;
       if (capacite !== "toutes" && !(m.capacitesPartagees ?? []).includes(capacite)) return false;
       if (q && !(m.nom.toLowerCase().includes(q) || m.attaques.some((a) => a.nom.toLowerCase().includes(q)))) return false;
       return true;
     });
-  }, [items, recherche, categorie, capacite]);
+  }, [monstres, recherche, categorie, espece, capacite]);
 
-  const fiche = items.find((m) => m.id === ficheId) ?? null;
+  const fiche = monstres.find((m) => m.id === ficheId) ?? null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">Bestiaire ({filtres.length}/{items.length})</h1>
+        <h1 className="text-2xl font-bold">Bestiaire ({filtres.length}/{monstres.length})</h1>
         <div className="flex gap-2">
-          <button onClick={() => exportJson("monstres.json", items)} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Export JSON</button>
+          <button onClick={() => exportJson("monstres.json", monstres)} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Export JSON</button>
           <button onClick={() => setEditing({ ...EMPTY, capacitesPartagees: [], capacitesDetails: [] })} className="px-3 py-1.5 rounded bg-amber-400 text-black text-sm font-bold">+ Nouveau</button>
         </div>
       </div>
@@ -67,6 +78,10 @@ export default function MonstersPage() {
         />
         <select value={categorie} onChange={(e) => setCategorie(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-2 text-sm">
           {categories.map((c) => <option key={c} value={c}>{c === "toutes" ? "Toutes catégories" : c}</option>)}
+        </select>
+        <select value={espece} onChange={(e) => setEspece(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-2 text-sm max-w-52">
+          <option value="toutes">Toutes espèces</option>
+          {especes.filter((e) => e !== "toutes").map((e) => <option key={e} value={e}>💀 {e}</option>)}
         </select>
         <select value={capacite} onChange={(e) => setCapacite(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-2 text-sm max-w-52">
           <option value="toutes">Toutes capacités</option>
@@ -84,6 +99,15 @@ export default function MonstersPage() {
             <div className="text-xs text-zinc-400">
               {m.categorie ?? m.type}{m.taille ? ` · ${m.taille}` : ""}
             </div>
+            {(m.sousCategories ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {(m.sousCategories ?? []).map((s) => (
+                  <span key={s} className="text-[11px] px-1.5 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-200">
+                    💀 {s}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="font-mono text-green-400 text-sm">{m.pv}/{m.pvMax} PV · Déf {m.defense} · Init +{m.initMod}</div>
             {(m.capacitesPartagees ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1">
@@ -99,7 +123,7 @@ export default function MonstersPage() {
             )}
             <div className="flex gap-2 pt-1">
               <button onClick={() => setFicheId(m.id)} className="flex-1 py-2 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Fiche</button>
-              <button onClick={() => setEditing({ ...m, attaques: m.attaques.map((a) => ({ ...a })), capacites: [...m.capacites], capacitesPartagees: [...(m.capacitesPartagees ?? [])] })} className="flex-1 py-2 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Éditer</button>
+              <button onClick={() => setEditing({ ...m, attaques: m.attaques.map((a) => ({ ...a })), capacites: [...m.capacites], capacitesPartagees: [...(m.capacitesPartagees ?? [])], sousCategories: [...(m.sousCategories ?? [])] })} className="flex-1 py-2 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Éditer</button>
               <button onClick={() => { if (confirm(`Supprimer ${m.nom} ?`)) setItems((prev) => prev.filter((x) => x.id !== m.id)); }} title="Supprimer" className="px-3 py-2 rounded bg-zinc-800 text-sm hover:bg-red-900">✕</button>
               <a href="/combat" className="flex-1 text-center py-2 rounded bg-amber-400/10 border border-amber-400/40 text-amber-300 text-sm font-semibold hover:bg-amber-400/20">
                 + Combat
@@ -116,7 +140,7 @@ export default function MonstersPage() {
             <div className="flex justify-between items-start">
               <div>
                 <div className="font-bold text-xl">{fiche.nom} <span className="text-sm font-mono text-zinc-400">NC {fiche.niveau}</span></div>
-                <div className="text-xs text-zinc-400">{fiche.type}{fiche.taille ? ` · ${fiche.taille}` : ""}{fiche.categorie ? ` · ${fiche.categorie}` : ""}</div>
+                <div className="text-xs text-zinc-400">{fiche.type}{fiche.taille ? ` · ${fiche.taille}` : ""}{fiche.categorie ? ` · ${fiche.categorie}` : ""}{(fiche.sousCategories ?? []).length > 0 ? ` · 💀 ${(fiche.sousCategories ?? []).join(", ")}` : ""}</div>
               </div>
               <button onClick={() => setFicheId(null)} className="px-2.5 py-1 rounded bg-zinc-800">✕</button>
             </div>

@@ -2,10 +2,12 @@
 // Pur TypeScript, sans React. Source de vérité pour les dérivations.
 
 import type { Character, Sort } from "@/src/lib/rules/types";
+import type { Item } from "@/src/lib/rules/world/types";
+import { normaliserBourse } from "@/src/lib/rules/bourse";
 import { CAPACITES, slug } from "@/src/lib/data/capacites";
 import { VOIES_PEUPLE, VOIE_MAGE, adopterVoieMage, traitsInitiaux } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
-import { parseDiceExpression, rollDiceExpression, type Rng } from "@/src/lib/rules/dice/roller";
+import { deEvolutif, parseDiceExpression, rollDiceExpression, type Rng } from "@/src/lib/rules/dice/roller";
 
 export interface Caracteristiques {
   AGI: number;
@@ -48,13 +50,8 @@ export const PV_GAIN_PAR_FAMILLE: Record<FamilleCOF, number> = {
   Mage: 3,
 };
 
-/** Dé évolutif (d4°) selon le niveau : d4 puis d6 au niv. 6, d8 au 9, etc. */
-export const DE_EVOLUTIF: number[] = [4, 6, 8, 10, 12, 20];
-
-export function deEvolutif(niveau: number): number {
-  if (niveau < 6) return 4;
-  return DE_EVOLUTIF[Math.min(5, Math.floor((niveau - 6) / 3) + 1)];
-}
+/** Dé évolutif COF V2 (notation °) : d4 (1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+). */
+export { deEvolutif };
 
 /** Niveau effectif des attaques : +1/niveau jusqu'au niveau 10. */
 export function niveauAttaque(niveau: number): number {
@@ -206,7 +203,7 @@ export interface DerivePersonnage {
   manaMax: number;
   attaques: AttaquesBase;
   famille: FamilleCOF;
-  /** Dé évolutif (d4° de base, +1 cran tous les 3 niveaux dès le niv. 6). */
+  /** Dé évolutif courant (d4 1-5, d6 6-8, d8 9-11, d10 12-14, d12 15+). */
   de: number;
 }
 
@@ -221,9 +218,42 @@ function familleEffective(c: Pick<Character, "profil" | "classe" | "famille">): 
   return familleDe(profilEffectif(c), undefined);
 }
 
-function equipementEffectif(c: Character): number {
-  if (typeof c.defenseEquipement === "number") return c.defenseEquipement;
-  return c.armure?.def ?? 0;
+function equipementEffectif(c: Character, catalogue: Item[] = []): number {
+  const base = typeof c.defenseEquipement === "number" ? c.defenseEquipement : (c.armure?.def ?? 0);
+  return base + bonusDefenseInventaire(c, catalogue);
+}
+
+/** Bonus DEF des armures / boucliers ÉQUIPÉS de l'inventaire.
+ * Objets mundanes cumulés + meilleur bonus magique (pas de cumul magique :
+ * anneau +2 et armure +2 → +2). Talents, mods et buffs se cumulent, eux. */
+export function bonusDefenseInventaire(c: Pick<Character, "inventaire">, catalogue: Item[] = []): number {
+  return bonusDefenseMundane(c, catalogue) + bonusDefenseMagique(c, catalogue);
+}
+
+/** Somme des bonus DEF des objets NON magiques équipés (bouclier + mailles : +6). */
+export function bonusDefenseMundane(c: Pick<Character, "inventaire">, catalogue: Item[] = []): number {
+  if (!c.inventaire || c.inventaire.length === 0 || catalogue.length === 0) return 0;
+  let total = 0;
+  for (const e of c.inventaire) {
+    if (!e.equipe) continue;
+    const item = catalogue.find((o) => o.id === e.itemId);
+    if (!item || item.magique) continue;
+    total += item.bonusDefense ?? 0;
+  }
+  return total;
+}
+
+/** Meilleur bonus DEF des objets MAGIQUES équipés (0 si aucun). */
+export function bonusDefenseMagique(c: Pick<Character, "inventaire">, catalogue: Item[] = []): number {
+  if (!c.inventaire || c.inventaire.length === 0 || catalogue.length === 0) return 0;
+  let meilleur = 0;
+  for (const e of c.inventaire) {
+    if (!e.equipe) continue;
+    const item = catalogue.find((o) => o.id === e.itemId);
+    if (!item || !item.magique) continue;
+    meilleur = Math.max(meilleur, item.bonusDefense ?? 0);
+  }
+  return meilleur;
 }
 
 function modEffectif(c: Character): number {
@@ -326,7 +356,7 @@ export function bonusInitiativeTalents(c: Pick<Character, "capacites" | "sorts" 
 }
 
 /** Calcule toutes les valeurs dérivées d'un personnage COF. */
-export function deriverPersonnage(c: Character): DerivePersonnage {
+export function deriverPersonnage(c: Character, catalogue: Item[] = []): DerivePersonnage {
   const profil = profilEffectif(c);
   const famille = familleEffective(c);
   const car = c.caracteristiques;
@@ -334,7 +364,7 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
   return {
     famille,
     initiative: initiativeBase(car) + bonusInitiativeTalents(c),
-    defense: defenseBase(car, equipementEffectif(c) + bonusDefenseTalents(c), modEffectif(c)),
+    defense: defenseBase(car, equipementEffectif(c, catalogue) + bonusDefenseTalents(c), modEffectif(c)),
     pvMax: pvMaxBase(famille, car.CON, c.niveau) + bonusPvTalents(c),
     chanceMax: chanceMax(car.CHA, profil, famille, c.capacites ?? []),
     drType: drType(profil, famille),
@@ -353,8 +383,8 @@ export function deriverPersonnage(c: Character): DerivePersonnage {
  * (3 si Mystique), pas le max.
  * Idéal héroïque / travers : narratifs, aucun bonus (non touchés).
  */
-export function recalculerPersonnage<T extends Character>(c: T): T {
-  const d = deriverPersonnage(c);
+export function recalculerPersonnage<T extends Character>(c: T, catalogue: Item[] = []): T {
+  const d = deriverPersonnage(c, catalogue);
   const prevMana = c.ressources?.mana;
   const prevChance = c.ressources?.chance;
   const prevDR = c.desRecuperation;
@@ -420,8 +450,8 @@ export function remettreAZeroPersonnage<T extends Character>(
 }
 
 /** Garde-fou : vérifie qu'un personnage stocké respecte les formules (tolère les bonus MJ). */
-export function verifierPersonnage(c: Character): string[] {
-  const d = deriverPersonnage(c);
+export function verifierPersonnage(c: Character, catalogue: Item[] = []): string[] {
+  const d = deriverPersonnage(c, catalogue);
   const ecarts: string[] = [];
   const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
   if (!(PROFILS_PAR_FAMILLE[c.famille] ?? []).includes(profil)) {
@@ -563,6 +593,7 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     },
     effets: Array.isArray(o.effets) ? (o.effets as Character["effets"]) : [],
     inventaire: Array.isArray(o.inventaire) ? (o.inventaire as Character["inventaire"]) : [],
+    bourse: normaliserBourse((o.bourse ?? undefined) as Character["bourse"]),
     sorts,
     notes: typeof o.notes === "string" ? o.notes : undefined,
     exemple: o.exemple === true,
@@ -585,6 +616,36 @@ export function apprendreSort<T extends Character>(c: T, modele: Sort): T {
     pv: c.pvMax,
     ressources: { ...(c.ressources ?? {}), mana: { max, actuel: max } },
   };
+}
+
+/**
+ * Champs mécaniques de sort complétés depuis le grimoire quand la fiche ne
+ * les connaît pas (sort appris avant leur introduction : champ undefined).
+ * Seuls les champs ABSENTS sont remplis, jamais les valeurs définies
+ * (personnalisation MJ préservée : un `toucheAuto: false` ou des
+ * `cibleEspeces` maison restent intacts). Appariement par nom (les copies
+ * de fiche ont un id unique), sans muter l'entrée.
+ */
+const CHAMPS_SORTS_COMPLETABLES = ["toucheAuto", "cibleEspeces"] as const;
+
+export function completerSortsDepuisGrimoire(sorts: Sort[], grimoire: Sort[] = SEED_SORTS): Sort[] {
+  const refs = new Map(grimoire.map((s) => [s.nom.trim().toLowerCase(), s]));
+  let touche = false;
+  const complete = sorts.map((s) => {
+    if (s.toucheAuto !== undefined && s.cibleEspeces !== undefined) return s;
+    const ref = refs.get(s.nom.trim().toLowerCase());
+    if (!ref) return s;
+    let out = s;
+    for (const champ of CHAMPS_SORTS_COMPLETABLES) {
+      if (out[champ] === undefined && ref[champ] !== undefined) {
+        const v = ref[champ];
+        out = { ...out, [champ]: Array.isArray(v) ? [...v] : v };
+        touche = true;
+      }
+    }
+    return out;
+  });
+  return touche ? complete : sorts;
 }
 
 /**
@@ -654,10 +715,12 @@ export function descendreNiveau(c: Character): Character {
 export interface RecuperationResolution {
   /** PV soignés (dé + moitié de niveau, plafonnés par le max manquant). */
   soinTotal: number;
-  /** Tirage du dé (ex. [5] pour 1d8). */
+  /** Tirage du dé (ex. [5] pour 1d8) ou valeur max ([8]) si sans lancer. */
   details: number[];
   /** Bonus ajouté au dé : moitié du niveau arrondie à l'inférieur. */
   bonusNiveau: number;
+  /** Vrai si la valeur maximale du dé a été prise (récupération complète). */
+  valeurMax: boolean;
   pvAvant: number;
   pvApres: number;
   drAvant: number;
@@ -666,7 +729,7 @@ export interface RecuperationResolution {
 
 /**
  * Dépense 1 dé de récupération pour regagner de la vigueur :
- * soin = 1 dé (d6/d8/d10 selon famille, non explosif) + moitié du niveau
+ * soin = 1 dé (d6/d8/d10 selon famille, dé simple non évolutif) + moitié du niveau
  * arrondie à l'inférieur, plafonné aux PV max. Décrémente la réserve.
  * Refusé sans dé disponible ou à PV pleins (évite le gaspillage).
  */
@@ -697,6 +760,80 @@ export function depenserDeRecuperation<T extends Character>(
       soinTotal: pvApres - pvAvant,
       details: roll.rolls,
       bonusNiveau,
+      valeurMax: false,
+      pvAvant,
+      pvApres,
+      drAvant: dr.actuel,
+      drApres: dr.actuel - 1,
+    },
+  };
+}
+
+/**
+ * Récupération complète : +1 DR (plafond max) et TOUS les points de mana.
+ * Refusée si déjà au complet (DR et mana au max). Le soin éventuel se fait
+ * ensuite via depenserDeRecuperation (dé lancé) ou
+ * depenserDeRecuperationMax (valeur max, proposée aussitôt).
+ */
+export function recuperationComplete<T extends Character>(
+  c: T
+): {
+  personnage: T;
+  resolution: { drAvant: number; drApres: number; manaAvant: number; manaApres: number };
+} {
+  const dr = c.desRecuperation;
+  const mana = c.ressources?.mana;
+  const drAvant = dr?.actuel ?? 0;
+  const drApres = dr ? Math.min(dr.max, drAvant + 1) : drAvant;
+  const manaAvant = mana?.actuel ?? 0;
+  const manaApres = mana ? mana.max : manaAvant;
+  if ((!dr || drAvant >= (dr?.max ?? 0)) && (!mana || manaAvant >= mana.max)) {
+    throw new Error(
+      `${c.nom} : déjà au complet (DR ${drAvant}/${dr?.max ?? 0}, mana ${manaAvant}/${mana?.max ?? 0}).`
+    );
+  }
+  return {
+    personnage: {
+      ...c,
+      desRecuperation: dr ? { ...dr, actuel: drApres } : dr,
+      ressources: mana ? { ...c.ressources, mana: { ...mana, actuel: manaApres } } : c.ressources,
+    },
+    resolution: { drAvant, drApres, manaAvant, manaApres },
+  };
+}
+
+/**
+ * Dépense 1 DR en valeur maximale, sans lancer le dé : soin = max du dé
+ * + moitié du niveau, plafonné aux PV max. Proposé juste après une
+ * récupération complète (le joueur enchaîne ou garde son DR pour plus tard).
+ * Mêmes refus que le tirage (réserve vide ou vigueur pleine).
+ */
+export function depenserDeRecuperationMax<T extends Character>(
+  c: T
+): { personnage: T; resolution: RecuperationResolution } {
+  const dr = c.desRecuperation;
+  if (!dr || dr.actuel <= 0) {
+    throw new Error(`${c.nom} : plus de dé de récupération (${dr?.actuel ?? 0}/${dr?.max ?? 0}).`);
+  }
+  if (c.pv >= c.pvMax) {
+    throw new Error(`${c.nom} : vigueur au maximum (${c.pv}/${c.pvMax}), dé non dépensé.`);
+  }
+  const faces = parseDiceExpression(dr.type).sides;
+  const bonusNiveau = Math.max(0, Math.floor(Math.max(1, Math.floor(c.niveau)) / 2));
+  const pvAvant = c.pv;
+  const pvApres = Math.min(c.pvMax, pvAvant + faces + bonusNiveau);
+  const personnage: T = {
+    ...c,
+    pv: pvApres,
+    desRecuperation: { ...dr, actuel: dr.actuel - 1 },
+  };
+  return {
+    personnage,
+    resolution: {
+      soinTotal: pvApres - pvAvant,
+      details: [faces],
+      bonusNiveau,
+      valeurMax: true,
       pvAvant,
       pvApres,
       drAvant: dr.actuel,

@@ -1,30 +1,38 @@
 "use client";
 import { useState } from "react";
-import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { exportJson } from "@/src/lib/store/repository";
-import { ARME_FAMILLES, DEGAT_LABEL, ITEM_CATEGORIES, labelFamilleArme, type ArmeFamille, type DegatType, type ItemCategorie } from "@/src/lib/rules/world/types";
+import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
+import { CreateurObjet } from "@/src/components/tresors/CreateurObjet";
+import { ARME_FAMILLES, DEGAT_LABEL, ITEM_CATEGORIES, labelFamilleArme, type ArmeFamille, type DegatType, type Item, type ItemCategorie } from "@/src/lib/rules/world/types";
+import { libelleMains } from "@/src/lib/rules/equipement";
 
 const CAT_LABEL: Record<ItemCategorie, string> = {
   arme: "Armes", armure: "Armures", potion: "Potions", quete: "Quête", outil: "Outils", argent: "Argent", divers: "Divers",
 };
 
-/** Catalogue d'objets figé dans le code (worldSeeds) : lecture seule, pas de stock modifiable. */
+/** Catalogue : seeds en dur + créations MJ (persistées, modifiables). */
 export default function ItemsPage() {
-  const items = SEED_ITEMS;
+  const { catalogue: items, setMaison, idsMaison } = useCatalogueObjets();
   const [filter, setFilter] = useState<"toutes" | ItemCategorie>("toutes");
   const [famille, setFamille] = useState<"toutes" | ArmeFamille>("toutes");
+  const [editing, setEditing] = useState<Item | null>(null);
 
   const visible = items.filter((o) =>
     (filter === "toutes" || o.categorie === filter) &&
     (filter !== "arme" || famille === "toutes" || o.familles?.includes(famille))
   );
 
+  const supprimer = (id: string) => {
+    if (!window.confirm("Supprimer cet objet maison ? Les inventaires qui le citent garderont son id brut.")) return;
+    setMaison((prev) => prev.filter((o) => o.id !== id));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Objets ({items.length})</h1>
         <div className="flex gap-2 items-center">
-          <span className="text-xs text-zinc-500">Catalogue en dur (code)</span>
+          <span className="text-xs text-zinc-500">Seeds + créations MJ</span>
           <button onClick={() => exportJson("objets.json", items)} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Export JSON</button>
         </div>
       </div>
@@ -63,30 +71,62 @@ export default function ItemsPage() {
               <th className="text-left px-3 py-2">Catégorie</th>
               <th className="text-left px-3 py-2">Effet</th>
               <th className="text-left px-3 py-2">Qté</th>
+              <th className="text-left px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((o) => (
-              <tr key={o.id} className="border-t border-zinc-800 bg-zinc-950">
-                <td className="px-3 py-2">
-                  <span className="font-semibold">{o.nom}</span>
-                  {o.exemple && <span className="text-xs text-amber-400 ml-1">· ex</span>}
-                  {o.description && <span className="block text-xs text-zinc-500">{o.description}</span>}
-                </td>
-                <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-zinc-800">{CAT_LABEL[o.categorie]}</span>{o.familles?.map((f) => (<span key={f} title={ARME_FAMILLES.find((x) => x.key === f)?.exemples} className="ml-1 text-xs px-2 py-0.5 rounded bg-amber-900/60 text-amber-200">{labelFamilleArme(f)}</span>))}</td>
-                <td className="px-3 py-2 text-xs text-zinc-400">
-                  {o.estArme && <span className="block text-amber-300 font-mono">🗡 +{o.bonusAttaque ?? 0} · {o.degats ?? "1d6"}{o.effetCle ? ` · ✦${o.effetCle}` : ""}</span>}
-                  {o.effet ?? "—"}
-                </td>
-                <td className="px-3 py-2">
-                  <span className="font-mono font-bold">×{o.quantite}</span>
-                </td>
-              </tr>
-            ))}
+            {visible.map((o) => {
+              const maison = idsMaison.has(o.id);
+              return (
+                <tr key={o.id} className="border-t border-zinc-800 bg-zinc-950">
+                  <td className="px-3 py-2">
+                    <span className="font-semibold">{o.nom}</span>
+                    {o.exemple && <span className="text-xs text-amber-400 ml-1">· ex</span>}
+                    {maison && <span className="text-xs text-violet-300 ml-1">· maison</span>}
+                    {o.description && <span className="block text-xs text-zinc-500">{o.description}</span>}
+                  </td>
+                  <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded bg-zinc-800">{CAT_LABEL[o.categorie]}</span>{o.familles?.map((f) => (<span key={f} title={ARME_FAMILLES.find((x) => x.key === f)?.exemples} className="ml-1 text-xs px-2 py-0.5 rounded bg-amber-900/60 text-amber-200">{labelFamilleArme(f)}</span>))}</td>
+                  <td className="px-3 py-2 text-xs text-zinc-400">
+                    {o.estArme && <span className="block text-amber-300 font-mono">🗡 +{o.bonusAttaque ?? 0} · {o.degats ?? "1d6"}{o.effetCle ? ` · ✦${o.effetCle}` : ""} · {libelleMains(o)}</span>}
+                    {o.bonusDefense != null && <span className="block text-sky-300 font-mono">🛡 +{o.bonusDefense} DEF{o.emplacement ? ` · ${o.emplacement === "bouclier" ? "bouclier (1 main)" : o.emplacement === "accessoire" ? "accessoire" : "torse"}` : ""}{o.magique ? " · ✦ magique (non cumulé)" : ""}</span>}
+                    {!o.estArme && o.bonusDefense == null && o.mains != null && o.mains > 0 && <span className="block text-zinc-500 font-mono">{libelleMains(o)}</span>}
+                    {o.effet ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className="font-mono font-bold">×{o.quantite}</span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {maison && (
+                      <>
+                        <button onClick={() => setEditing(o)} className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 mr-1">Éditer</button>
+                        <button onClick={() => supprimer(o.id)} className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-red-900">✕</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {visible.length === 0 && <p className="text-sm text-zinc-500 p-4">Aucun objet dans cette catégorie.</p>}
       </div>
+
+      {editing && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <h2 className="font-bold">Éditer {editing.nom}</h2>
+            <CreateurObjet
+              key={editing.id}
+              initial={editing}
+              onEnregistrer={(item) => {
+                setMaison((prev) => prev.map((o) => (o.id === item.id ? item : o)));
+                setEditing(null);
+              }}
+              onAnnuler={() => setEditing(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

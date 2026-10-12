@@ -39,8 +39,69 @@ export function removeEffect(effets: ActiveEffect[], effetId: string): ActiveEff
 }
 
 /**
+ * Marque un effet avec le tour de pose (manche + index dans l'ordre
+ * d'initiative). À appeler à chaque fois qu'un effet entre en combat, pour
+ * que la fin de tour ne le consomme pas le tour même où il a été appliqué.
+ */
+export function marquerPose(
+  effet: ActiveEffect,
+  manche: number,
+  tourIndex: number
+): ActiveEffect {
+  return { ...effet, pose: { manche, tourIndex } };
+}
+
+/**
+ * Dégâts/soins par tour dus au début du tour du porteur (ex: Saignement),
+ * SANS décrémenter les durées : celles-ci sont consommées à la FIN du tour
+ * du porteur (voir decrementerFinDeTour), pour qu'un effet "1 tour" couvre
+ * tout le tour de sa cible avant d'expirer.
+ */
+export function pvParTourTotal(effets: ActiveEffect[]): number {
+  return effets.reduce((sum, e) => sum + (e.modificateurs["pvParTour"] ?? 0), 0);
+}
+
+/**
+ * Tick de FIN de tour du porteur : décrémente les durées et retourne les
+ * effets restants + expirés. Un effet posé pendant le tour qui se termine
+ * (même manche, même index) n'est pas décrémenté : il vient d'être appliqué
+ * et doit encore couvrir un tour complet. Le marqueur de pose est nettoyé
+ * au premier traitement (utile ou non ensuite).
+ */
+export function decrementerFinDeTour(
+  effets: ActiveEffect[],
+  finManche: number,
+  finTourIndex: number
+): { restants: ActiveEffect[]; expires: ActiveEffect[] } {
+  const restants: ActiveEffect[] = [];
+  const expires: ActiveEffect[] = [];
+  for (const e of effets) {
+    const { pose, ...sansPose } = e;
+    const frais = pose != null && pose.manche === finManche && pose.tourIndex === finTourIndex;
+    if (frais) {
+      restants.push(sansPose);
+      continue;
+    }
+    if (e.toursRestants === null) {
+      restants.push(sansPose);
+    } else {
+      const r = e.toursRestants - 1;
+      if (r <= 0) expires.push({ ...sansPose, toursRestants: 0 });
+      else restants.push({ ...sansPose, toursRestants: r });
+    }
+  }
+  return { restants, expires };
+}
+
+/**
  * Tick au début du tour du propriétaire : dégâts/soins par tour + décrément.
  * Retourne effets restants, variation PV et effets expirés.
+ *
+ * Historique : décrémentait aussi les durées, ce qui faisait expirer un
+ * malus "1 tour" AVANT que sa cible ne joue (posé par le sorcier, consommé
+ * dès l'arrivée du tour de l'ennemi). Conservé pour compatibilité (tests,
+ * usages hors nextTurn) — le moteur de combat utilise désormais
+ * pvParTourTotal (début de tour) + decrementerFinDeTour (fin de tour).
  */
 export function tickEffects(effets: ActiveEffect[]): { restants: ActiveEffect[]; pvDelta: number; expires: ActiveEffect[] } {
   let pvDelta = 0;

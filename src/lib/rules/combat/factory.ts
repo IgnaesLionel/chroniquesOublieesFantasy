@@ -1,9 +1,11 @@
 import type { AttackDef, Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
-import { substituerDeEvolutif, substituerStats } from "@/src/lib/rules/dice/roller";
-import { deEvolutif, niveauAttaque } from "@/src/lib/rules/personnage";
+import { categoriesMonstre } from "@/src/lib/rules/categories";
+import { substituerDeEvolutif, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
+import { deEvolutif, deriverPersonnage, niveauAttaque } from "@/src/lib/rules/personnage";
 import { compterCapacites, niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
+import { completerSortsDepuisGrimoire } from "@/src/lib/rules/personnage";
 
 let counter = 0;
 function uid(prefix: string) {
@@ -28,7 +30,9 @@ export function attaqueFromItem(item: Item): AttackDef | null {
  * Sans dégâts (Malédiction, Peur...) : jet d'attaque + effet éventuel, 0 DM
  * (convention du moteur : 0 = "1d1-1"). Sans bonus explicite : attaque
  * magique du lanceur (passée par participantFromCharacter : niv+VOL).
- * Les caracs ("1d4°+INT") et le dé évolutif ("1dE") sont substitués.
+ * Les caracs ("1d4°+INT"), le dé évolutif legacy ("1dE") et les dés
+ * évolutifs ("1d4°" -> faces selon le niveau : d4 1-5, d6 6-8, d8 9-11,
+ * d10 12-14, d12 15+) sont substitués.
  * Action, vol de vie, touche auto, moitié si raté et effet au toucher
  * (dégâts par tour + modificateurs) suivent la fiche du sort. */
 export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<string, number> = {}, niveauDe = 1): AttackDef | null {
@@ -37,7 +41,7 @@ export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<str
     id: `sort:${sort.id}`,
     nom: `✦ ${sort.nom}`,
     bonus: sort.bonus ?? bonusMagique,
-    degats: sort.degats ? substituerDeEvolutif(substituerStats(sort.degats, caracs), deEvolutif(niveauDe)) : "1d1-1",
+    degats: sort.degats ? substituerDesEvolutifs(substituerDeEvolutif(substituerStats(sort.degats, caracs), deEvolutif(niveauDe)), deEvolutif(niveauDe)) : "1d1-1",
     action: sort.action ?? "attaque",
     volDeVie: sort.volDeVie,
     toucheAuto: sort.toucheAuto,
@@ -52,6 +56,9 @@ export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<str
  * (bonus d'attaque magique = niv+VOL, sauf bonus explicite du sort).
  */
 export function participantFromCharacter(c: Character, catalogue: Item[] = []): CombatParticipant {
+  // Sorts appris avant l'ajout de champs mécaniques (toucheAuto, cibleEspeces) :
+  // complétés depuis le grimoire (jamais écrasés s'ils sont définis).
+  const sortsRef = completerSortsDepuisGrimoire(c.sorts ?? []);
   const attaques: AttackDef[] = [...c.attaques];
   for (const entree of c.inventaire ?? []) {
     if (!entree.equipe) continue;
@@ -61,13 +68,13 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     if (a) attaques.push(a);
   }
   const magique = niveauAttaque(c.niveau) + c.caracteristiques.VOL;
-  for (const sort of c.sorts ?? []) {
+  for (const sort of sortsRef) {
     const a = attaqueFromSort(sort, magique, c.caracteristiques, c.niveau);
     if (a) attaques.push(a);
   }
   // Verrou de niveau par sort (gratuité Mage déduite) pour les panneaux.
   const compte = compterCapacites(c);
-  const sorts = (c.sorts ?? []).map((s) => {
+  const sorts = sortsRef.map((s) => {
     if (s.voie == null || s.rang == null) return { ...s };
     const gratuit =
       compte.rang2Nom != null && normaliserNomCapacite(compte.rang2Nom) === normaliserNomCapacite(s.nom);
@@ -80,7 +87,10 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     camp: "pj",
     pvMax: c.pvMax,
     pv: c.pv,
-    defense: c.defense,
+    // DEF stockée, mais jamais en dessous de la dérivée (armures/boucliers équipés
+    // inclus) : une fiche non recalculée part quand même avec son bonus en combat.
+    // Un bonus MJ manuel supérieur est conservé (max).
+    defense: Math.max(c.defense, deriverPersonnage(c, catalogue).defense),
     initMod: c.initMod,
     initiative: null,
     attaques,
@@ -94,7 +104,42 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     caracs: { ...c.caracteristiques },
     profil: c.profil || c.classe,
     usagesSorts: {},
+    // Dé de récupération de la fiche : sert à la brûlure de mana (1 DR par PM).
+    ...(c.desRecuperation ? { deRecuperation: c.desRecuperation.type } : {}),
   };
+}
+
+/** Base d'un nom d'instance ("Rat géant #2" -> "Rat géant"). */
+export function nomBaseInstance(nom: string): string {
+  return nom.replace(/\s+#\d+\s*$/, "").trim();
+}
+
+/**
+ * Renumérote les monstres de même nom sur tout le groupe : 1 seul -> nom
+ * de base ("Rat géant"), N -> "Rat géant #1..N" dans l'ordre.
+ * Sert quand on ajoute un même type en plusieurs fois (2 rats puis 1 rat :
+ * sans ça, deux "Rat géant #1" ou trois "Rat géant" indistinguables).
+ * PJ et compagnons : inchangés (les doublons PJ restent signalés à la fin).
+ */
+export function renommerDoublonsMonstres(participants: CombatParticipant[]): CombatParticipant[] {
+  const totaux = new Map<string, number>();
+  for (const p of participants) {
+    if (p.camp !== "monstre") continue;
+    const base = nomBaseInstance(p.nom);
+    totaux.set(base, (totaux.get(base) ?? 0) + 1);
+  }
+  const compteurs = new Map<string, number>();
+  return participants.map((p) => {
+    if (p.camp !== "monstre") return p;
+    const base = nomBaseInstance(p.nom);
+    if ((totaux.get(base) ?? 0) <= 1) {
+      return p.nom === base ? p : { ...p, nom: base };
+    }
+    const i = (compteurs.get(base) ?? 0) + 1;
+    compteurs.set(base, i);
+    const nom = `${base} #${i}`;
+    return p.nom === nom ? p : { ...p, nom };
+  });
 }
 
 /** Template monstre x N -> instances "Gobelin #1..N" aux PV indépendants. */
@@ -118,6 +163,10 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     niveau: template.niveau,
     statut: "actif" as const,
     usagesSorts: {},
+    // Espèces du template (type + catégorie + sous-catégories, normalisées) :
+    // dégâts bonus contre certaines espèces (armes bénies, Destruction du mal...).
+    categories: categoriesMonstre(template),
+    sousCategories: [...(template.sousCategories ?? [])],
   }));
 }
 

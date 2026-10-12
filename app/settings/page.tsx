@@ -4,7 +4,7 @@ import {
   STORAGE_KEYS,
   applyBackup,
   buildBackup,
-  downloadJson,
+  exportJson,
   readJsonFile,
   validateBackup,
   type BackupData,
@@ -81,7 +81,7 @@ export default function SettingsPage() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
         <h2 className="font-bold text-sm uppercase text-zinc-400">Export global</h2>
         <button
-          onClick={() => downloadJson(`assistant-mj-${new Date().toISOString().slice(0, 10)}.json`, buildBackup())}
+          onClick={() => exportJson(`assistant-mj-${new Date().toISOString().slice(0, 10)}.json`, buildBackup())}
           className="px-5 py-2.5 rounded bg-amber-400 text-black font-bold"
         >
           Télécharger la sauvegarde JSON

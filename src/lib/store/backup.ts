@@ -7,6 +7,9 @@ import {
   scenarioSchema,
   sortSchema,
 } from "@/src/lib/data/validation";
+import { exportJson } from "@/src/lib/store/repository";
+
+export { exportJson };
 
 // Registre central des collections persistées. Une future base SQL
 // remplacera les clés localStorage sans changer ce contrat.
@@ -110,14 +113,9 @@ export function applyBackup(backup: BackupData): void {
   });
 }
 
+/** Alias historique : préférer `exportJson` (repository, source unique). */
 export function downloadJson(filename: string, data: unknown): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  exportJson(filename, data);
 }
 
 export function readJsonFile(file: File): Promise<unknown> {

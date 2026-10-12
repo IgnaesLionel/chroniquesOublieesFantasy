@@ -1,7 +1,7 @@
 // Types du moteur de combat pur. Sans React.
 // Les règles COF V2 non confirmées sont isolées dans CombatOptions.
 
-import type { ActiveEffect, AttackDef, Sort } from "@/src/lib/rules/types";
+import type { ActiveEffect, AttackDef, DeRecupType, Sort } from "@/src/lib/rules/types";
 import type { Rng } from "@/src/lib/rules/dice/roller";
 
 export type Camp = "pj" | "monstre";
@@ -27,6 +27,8 @@ export interface CombatParticipant {
   capacites: string[];
   /** Copie des ressources du personnage (ex: mana) pour les coûts de sorts. */
   ressources: Record<string, { max: number; actuel: number }>;
+  /** Dé de récupération de la fiche (d6/d8/d10) : brûlure de mana (1 DR par PM). Absent = pas de brûlure (monstres, invocations). */
+  deRecuperation?: DeRecupType;
   statut: Statut;
   /** Bonus d'attaque magique (niv+VOL) : invocations, jets MJ. */
   bonusMagique?: number;
@@ -34,6 +36,15 @@ export interface CombatParticipant {
   caracs?: Record<string, number>;
   /** Profil (voies suivies : loup, tactiques...). */
   profil?: string;
+  /**
+   * Espèces/catégories normalisées (type + catégorie + sous-catégories du
+   * template : "creature", "monstres/creatures", "mort-vivant"...).
+   * Renseigné pour les monstres ; vide/absent pour les PJ. Tester avec
+   * estDeCategorie (src/lib/rules/categories.ts).
+   */
+  categories?: string[];
+  /** Sous-catégories brutes du template (libellés d'affichage : "Mort-vivant"). */
+  sousCategories?: string[];
   /** Usages de sorts limités : sortId -> { tentatives, cibles touchées }. */
   usagesSorts?: Record<string, { n: number; cibles: string[] }>;
   /** Sort absorbé (Absorber) en attente de renvoi. */

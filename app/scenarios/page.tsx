@@ -1,9 +1,8 @@
 "use client";
 import { useState } from "react";
 import { SEED_SCENARIOS } from "@/src/lib/data/scenarioSeeds";
-import { SEED_ITEMS, SEED_NPCS } from "@/src/lib/data/worldSeeds";
-import type { Npc } from "@/src/lib/rules/world/types";
-import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
+import { useNpcs, useScenarios } from "@/src/lib/store/collections";
+import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 import { exportJson } from "@/src/lib/store/repository";
 import type { PlayState, Scenario } from "@/src/lib/rules/scenario/types";
 import { startPlay, validateScenario } from "@/src/lib/rules/scenario/engine";
@@ -11,9 +10,9 @@ import { ScenarioPlay } from "@/src/components/scenario/ScenarioPlay";
 import { SceneEditor } from "@/src/components/scenario/SceneEditor";
 
 export default function ScenariosPage() {
-  const { items, setItems } = useLocalCollection<Scenario>("cof.scenarios.v3", SEED_SCENARIOS);
-  const { items: npcs } = useLocalCollection<Npc>("cof.npcs", SEED_NPCS);
-  const stock = SEED_ITEMS;
+  const { items, setItems } = useScenarios();
+  const { items: npcs } = useNpcs();
+  const { catalogue: stock } = useCatalogueObjets();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "play">("play");
   const [sceneId, setSceneId] = useState<string | null>(null);

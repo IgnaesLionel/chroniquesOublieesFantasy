@@ -1,6 +1,7 @@
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
 import type { Character, Sort } from "@/src/lib/rules/types";
+import type { Item } from "@/src/lib/rules/world/types";
 import { ajouterCapacite, apprendreSort, normaliserNomCapacite, recalculerPersonnage, sortDuTalent } from "@/src/lib/rules/personnage";
 
 export { normaliserNomCapacite, sortDuTalent };
@@ -17,7 +18,7 @@ export { normaliserNomCapacite, sortDuTalent };
 export interface CreationProfil {
   /** Points de capacité à la création. */
   points: number;
-  /** +1 capacité de rang 2 gratuite (ex. les 4 profils Mage). */
+  /** +1 capacité de rang 2 gratuite (profils Mage ayant adopté la Voie du mage). */
   rang2Gratuit?: boolean;
   /** Voie spéciale remplaçant la voie du peuple (ex. "Voie du mage"). */
   voieRemplacement?: string;
@@ -212,9 +213,11 @@ export function compterCapacites(c: Character): CompteCapacites {
       l.cout = 0;
     }
   }
-  // Gratuité : UNE capacité de rang 2 (profils Mage).
+  // Gratuité : UNE capacité de rang 2, en voie du profil ou Maîtrise de la
+  // magie (voie du mage) — si et seulement si la Voie du mage est adoptée
+  // (le R2 gratuit est la contrepartie de l'abandon de la voie du peuple).
   let rang2Nom: string | null = null;
-  if (cfg.rang2Gratuit) {
+  if (cfg.rang2Gratuit && c.voieMage) {
     const elue = lignes.find((l) => l.rang === 2 && (l.source === "profil" || l.source === "mage"));
     if (elue) {
       elue.gratuit = true;
@@ -326,7 +329,7 @@ export function peutApprendre(
   const compte = compterCapacites(c);
   const cfg = creationProfil(profil);
   const gratuit =
-    (!!cfg.rang2Gratuit && rang === 2 && !compte.rang2Nom && (src === "profil" || src === "mage")) ||
+    (!!cfg.rang2Gratuit && !!c.voieMage && rang === 2 && !compte.rang2Nom && (src === "profil" || src === "mage")) ||
     (src === "peuple" && rang === 1);
   if (!gratuit && niveau < niveauMinRang(rang)) raisons.push(`niveau ${niveauMinRang(rang)} requis (niveau ${niveau})`);
   const cout = gratuit ? 0 : coutRang(rang);
@@ -347,11 +350,13 @@ export function talentsRang1Disponibles(c: Character): { nom: string; voie: stri
   );
 }
 
-/** Capacités de rang 2 éligibles à la gratuité Mage (vide si inéligible ou consommée). */
+/** Capacités de rang 2 éligibles à la gratuité Mage (vide si inéligible ou consommée).
+ * La gratuité exige la Voie du mage adoptée : en voie du profil ou Maîtrise
+ * de la magie (voie du mage), au choix du joueur. */
 export function talentsRang2Gratuits(c: Character): { nom: string; voie: string }[] {
   if (c.niveau !== 1) return [];
   const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
-  if (!creationProfil(profil).rang2Gratuit) return [];
+  if (!creationProfil(profil).rang2Gratuit || !c.voieMage) return [];
   if (etatCreation(c)?.rang2Nom) return [];
   const prises = new Set((c.capacites ?? []).map(normaliserNomCapacite));
   const voies = [...(CAPACITES[profil] ?? [])];
@@ -364,18 +369,36 @@ export function talentsRang2Gratuits(c: Character): { nom: string; voie: string 
 }
 
 /**
+ * Désapprend un talent ; si c'est aussi un sort, retire l'entrée lançable
+ * liée (même nom) : un sort orphelin de son talent n'est plus lançable.
+ * Les champs dérivés sont resynchronisés (ex: Armure d'os -> -3 DEF, mana
+ * suit VOL+sorts, PV plafonnés), comme à l'apprentissage.
+ */
+export function desapprendreTalentComplet<T extends Character>(c: T, nom: string, grimoire: Sort[] = [], catalogue: Item[] = []): T {
+  const sans: T = {
+    ...c,
+    capacites: (c.capacites ?? []).filter((t) => t !== nom),
+  };
+  if (sortDuTalent(nom, grimoire)) {
+    const q = normaliserNomCapacite(nom);
+    sans.sorts = (sans.sorts ?? []).filter((s) => normaliserNomCapacite(s.nom) !== q);
+  }
+  return recalculerPersonnage(sans, catalogue);
+}
+
+/**
  * Apprend un talent ; si c'est aussi un sort, crée l'entrée lançable (+ mana).
  * Connaître le talent sans le sort ne permet pas de le lancer en combat.
  * Les champs dérivés sont resynchronisés (ex: Armure d'os -> +3 DEF aussitôt).
  */
-export function apprendreTalentComplet<T extends Character>(c: T, nom: string, grimoire: Sort[] = []): T {
+export function apprendreTalentComplet<T extends Character>(c: T, nom: string, grimoire: Sort[] = [], catalogue: Item[] = []): T {
   let r = ajouterCapacite(c, nom);
   const sort = sortDuTalent(nom, grimoire);
   const q = normaliserNomCapacite(nom);
   if (sort && !r.sorts.some((s) => normaliserNomCapacite(s.nom) === q)) {
     r = apprendreSort(r, sort);
   }
-  return recalculerPersonnage(r);
+  return recalculerPersonnage(r, catalogue);
 }
 
 export interface PorteDesapprentissage {
@@ -386,8 +409,10 @@ export interface PorteDesapprentissage {
 /**
  * Peut-on désapprendre une capacité ? Interdit de retirer un rang tant qu'un
  * rang supérieur de la même voie est connu (désapprendre du haut vers le bas).
- * Les entrées inconnues ou maison (sans voie) restent toujours retirables,
- * pour ne jamais bloquer la correction d'un écart.
+ * Un sort dont le talent est connu ne se retire pas seul : le sort suit le
+ * talent (retirer le talent d'abord). Les entrées inconnues ou maison (sans
+ * voie) restent toujours retirables, pour ne jamais bloquer la correction
+ * d'un écart.
  */
 export function peutDesapprendre(
   c: Character,
@@ -401,11 +426,19 @@ export function peutDesapprendre(
   if (!entrees.some((t) => normaliserNomCapacite(t) === q)) {
     return { ok: false, raisons: ["non apprise"] };
   }
+  // Sort lié à un talent connu (même nom) : retrait via le talent uniquement.
+  const talentLie =
+    liste === "sorts" && (c.capacites ?? []).some((t) => normaliserNomCapacite(t) === q);
   let voie: string | null = null;
   let rang: number | null = null;
   if (liste === "sorts") {
     const sort = (c.sorts ?? []).find((s) => normaliserNomCapacite(s.nom) === q);
-    if (!sort?.voie || !sort?.rang) return { ok: true, raisons: [] }; // création maison : rien à vérifier
+    if (!sort?.voie || !sort?.rang) {
+      // Création maison : rien d'autre à vérifier (le lien au talent, lui, bloque).
+      return talentLie
+        ? { ok: false, raisons: [`"${nom.trim()}" : talent connu — désapprendre le talent d'abord`] }
+        : { ok: true, raisons: [] };
+    }
     voie = sort.voie.trim();
     rang = sort.rang;
   } else {
@@ -414,7 +447,11 @@ export function peutDesapprendre(
     voie = loc.voie;
     rang = loc.rang;
   }
-  if (!voie || !rang) return { ok: true, raisons: [] }; // garde-fou
+  if (!voie || !rang) {
+    return talentLie
+      ? { ok: false, raisons: [`"${nom.trim()}" : talent connu — désapprendre le talent d'abord`] }
+      : { ok: true, raisons: [] }; // garde-fou
+  }
   // Rangs supérieurs connus (talents + sorts) dans la même voie ?
   const superieurs = new Set<number>();
   const scanne = (
@@ -442,9 +479,17 @@ export function peutDesapprendre(
   );
   if (superieurs.size > 0) {
     const rangs = [...superieurs].sort((a, b) => a - b).join(", ");
-    return { ok: false, raisons: [`"${nom.trim()}" : désapprendre d'abord ${voie} rang ${rangs}`] };
+    return {
+      ok: false,
+      raisons: [
+        ...(talentLie ? [`"${nom.trim()}" : talent connu — désapprendre le talent d'abord`] : []),
+        `"${nom.trim()}" : désapprendre d'abord ${voie} rang ${rangs}`,
+      ],
+    };
   }
-  return { ok: true, raisons: [] };
+  return talentLie
+    ? { ok: false, raisons: [`"${nom.trim()}" : talent connu — désapprendre le talent d'abord`] }
+    : { ok: true, raisons: [] };
 }
 
 /**

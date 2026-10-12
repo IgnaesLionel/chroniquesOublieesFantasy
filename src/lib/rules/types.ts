@@ -3,6 +3,7 @@
 
 import type { Caracteristiques as CaracteristiquesCOF, DeRecupType, FamilleCOF } from "@/src/lib/rules/personnage";
 import type { ArmeFamille } from "@/src/lib/rules/world/types";
+import type { Bourse } from "@/src/lib/rules/bourse";
 
 export type { CaracteristiquesCOF, DeRecupType, FamilleCOF };
 
@@ -152,6 +153,12 @@ export interface Sort {
   };
   /** Frappe de zone : dégâts + effet à tous les ennemis actifs (ex: Armée des morts). */
   zone?: boolean;
+  /**
+   * Restriction d'espèce : le sort ne blesse que ces espèces (libellés
+   * comparés via normaliserCategorie, ex: Destruction du mal -> ["Mort-vivant"]).
+   * Sur une autre espèce : 0 DM, effet non appliqué, log explicite.
+   */
+  cibleEspeces?: string[];
 }
 
 export interface ActiveEffect {
@@ -163,6 +170,14 @@ export interface ActiveEffect {
   toursRestants: number | null;
   modificateurs: Record<string, number>;
   source?: string;
+  /**
+   * Tour (manche + index) où l'effet a été posé en combat.
+   * Sert à ne pas consommer l'effet à la fin du tour pendant lequel il a
+   * été appliqué : un "Ralenti (1 tour)" posé sur un ennemi doit couvrir
+   * tout son prochain tour et n'expirer qu'à la fin de celui-ci — y compris
+   * quand il est posé par quelqu'un d'autre ou par le porteur lui-même.
+   */
+  pose?: { manche: number; tourIndex: number };
 }
 
 interface CreatureBase {
@@ -216,6 +231,8 @@ export interface Character extends CreatureBase {
   ressources: Record<string, { max: number; actuel: number }>;
   /** Objets possédés ; les armes équipées servent en combat. */
   inventaire: InventaireEntree[];
+  /** Bourse (pp / po / pa). */
+  bourse?: Bourse;
   /** Sorts connus (offensifs utilisables comme attaques, défensifs comme soutien). */
   sorts: Sort[];
 }
@@ -236,6 +253,13 @@ export interface MonsterTemplate extends Omit<CreatureBase, "pv" | "effets"> {
   /** Champs fiche Notion : taille, catégorie, RD, déplacement, initiative affichée, source. */
   taille?: string;
   categorie?: string;
+  /**
+   * Sous-catégories libres (libellés bruts, ex: ["Mort-vivant"]) : une
+   * créature "Monstres/Créatures" peut aussi être un mort-vivant, un
+   * "Humanoïde" peut être un démon... Comparer via normaliserCategorie /
+   * estDeCategorie (insensible casse/accents/pluriels usuels).
+   */
+  sousCategories?: string[];
   rd?: number;
   deplacement?: number | null;
   initiativeFiche?: number;

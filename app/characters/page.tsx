@@ -1,11 +1,13 @@
 "use client";
 import { useMemo, useState } from "react";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
-import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
-import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
+import { useCharacters } from "@/src/lib/store/collections";
+import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 import { exportJson } from "@/src/lib/store/repository";
+import { pvTexteColor } from "@/src/lib/ui/pv";
 import type { Character } from "@/src/lib/rules/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
+import { BoursePanel } from "@/src/components/characters/BoursePanel";
 import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
 import {
   FAMILLES,
@@ -13,6 +15,8 @@ import {
   changerFamille,
   deriverPersonnage,
   depenserDeRecuperation,
+  depenserDeRecuperationMax,
+  recuperationComplete,
   descendreNiveau,
   drInitial,
   monterNiveau,
@@ -22,6 +26,8 @@ import {
   verifierPersonnage,
 } from "@/src/lib/rules/personnage";
 import { estEffective, etatCreation } from "@/src/lib/rules/creation";
+import { validerEquipement } from "@/src/lib/rules/equipement";
+import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
 import {
   VOIE_MAGE,
   adopterVoieMage,
@@ -29,19 +35,12 @@ import {
   voiePeupleDe,
 } from "@/src/lib/data/peuples";
 
-function pvColor(pv: number, max: number) {
-  const r = max > 0 ? pv / max : 0;
-  if (r > 0.5) return "text-green-400";
-  if (r > 0.25) return "text-amber-400";
-  return "text-red-400";
-}
-
 const CARACS = ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"] as const;
 const PEUPLES = ["Humain", "Demi-Elfe", "Elfe haut", "Nain"];
 
 export default function CharactersPage() {
-  const { items: raw, setItems } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
-  const stock = SEED_ITEMS;
+  const { items: raw, setItems } = useCharacters();
+  const { catalogue: stock } = useCatalogueObjets();
   const [editing, setEditing] = useState<Character | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [drMessage, setDrMessage] = useState<Record<string, string>>({});
@@ -84,7 +83,7 @@ export default function CharactersPage() {
       return { ...c, ressources: { ...c.ressources, mana: { ...cur, actuel: Math.min(cur.max, cur.actuel + 1) } } };
     });
   /** Dépense 1 DR : soin = dé (d6/d8/d10) + moitié du niveau, PV plafonnés. */
-  const utiliserDR = (id: string) => {
+  const soignerDR = (id: string) => {
     const cible = items.find((x) => x.id === id);
     if (!cible) return;
     try {
@@ -99,15 +98,60 @@ export default function CharactersPage() {
       setDrMessage((m) => ({ ...m, [id]: e instanceof Error ? e.message : "Récupération impossible." }));
     }
   };
-  const rendreDR = (id: string) =>
+  /** Ajustement manuel de la réserve DR (MJ : repos, malus…), sans soin. */
+  const ajusterDR = (id: string, d: number) =>
     patch(id, (c) => {
       const dr = c.desRecuperation;
       if (!dr) return c;
-      return { ...c, desRecuperation: { ...dr, actuel: Math.min(dr.max, dr.actuel + 1) } };
+      return { ...c, desRecuperation: { ...dr, actuel: Math.max(0, Math.min(dr.max, dr.actuel + d)) } };
     });
+  /**
+   * Récupération complète : +1 DR (plafond max) + mana à fond, puis proposition
+   * de dépenser aussitôt 1 DR en valeur max (+ ½ niveau, sans lancer le dé).
+   */
+  const recuperationCompleteUi = (id: string) => {
+    const cible = items.find((x) => x.id === id);
+    if (!cible) return;
+    let restaure: Character;
+    try {
+      const r = recuperationComplete(cible);
+      restaure = r.personnage;
+    } catch (e) {
+      setDrMessage((m) => ({ ...m, [id]: e instanceof Error ? e.message : "Récupération impossible." }));
+      return;
+    }
+    const dr = restaure.desRecuperation;
+    const mana = restaure.ressources?.mana;
+    patch(id, () => restaure);
+    const base = `Récupération complète : DR ${cible.desRecuperation?.actuel ?? 0} → ${dr?.actuel ?? 0}, mana ${cible.ressources?.mana?.actuel ?? 0} → ${mana?.actuel ?? 0}`;
+    const bonus = Math.floor(restaure.niveau / 2);
+    if (
+      restaure.pv < restaure.pvMax &&
+      window.confirm(
+        `${restaure.nom} : récupération complète (DR et mana restaurés). Dépenser aussitôt 1 DR pour +${parseInt(dr?.type.slice(1) ?? "0", 10)}${bonus > 0 ? `+${bonus}` : ""} PV (valeur max, sans lancer le dé) ?`
+      )
+    ) {
+      try {
+        const { personnage, resolution } = depenserDeRecuperationMax(restaure);
+        patch(id, () => personnage);
+        const b = resolution.bonusNiveau > 0 ? `+${resolution.bonusNiveau}` : "";
+        setDrMessage((m) => ({
+          ...m,
+          [id]: `${base}, puis +${resolution.soinTotal} PV (${dr?.type} max [${resolution.details.join(", ")}]${b}) : ${resolution.pvAvant} → ${resolution.pvApres}`,
+        }));
+      } catch (e) {
+        setDrMessage((m) => ({
+          ...m,
+          [id]: `${base} (dé gardé pour plus tard).${e instanceof Error ? ` ${e.message}` : ""}`,
+        }));
+      }
+    } else {
+      setDrMessage((m) => ({ ...m, [id]: `${base} (dés gardés pour plus tard).` }));
+    }
+  };
 
-  const recalculer = (id: string) => patch(id, (c) => recalculerPersonnage(c));
-  const toutRecalculer = () => setItems((prev) => prev.map((c) => recalculerPersonnage(normaliserPersonnage(c as unknown as Record<string, unknown>))));
+  const recalculer = (id: string) => patch(id, (c) => recalculerPersonnage(c, stock));
+  const toutRecalculer = () => setItems((prev) => prev.map((c) => recalculerPersonnage(normaliserPersonnage(c as unknown as Record<string, unknown>), stock)));
   const remettreAZero = (id: string, nom: string) => {
     if (!window.confirm(`Remettre ${nom} à zéro (retour création : niveau 1, talents/sorts vidés, traits du peuple réinitialisés, inventaire de base restauré, PV/chance/mana au max) ?`)) return;
     const base = SEED_CHARACTERS.find((s) => s.id === id)?.inventaire ?? [];
@@ -190,8 +234,8 @@ export default function CharactersPage() {
 
       <div className="grid md:grid-cols-2 gap-3">
         {items.map((c) => {
-          const d = deriverPersonnage(c);
-          const ecarts = verifierPersonnage(c);
+          const d = deriverPersonnage(c, stock);
+          const ecarts = verifierPersonnage(c, stock);
           const mana = c.ressources?.mana ?? { max: d.manaMax, actuel: d.manaMax };
           const chance = c.ressources?.chance ?? { max: d.chanceMax, actuel: d.chanceMax };
           const dr = c.desRecuperation ?? { type: d.drType, max: d.drNombre, actuel: drInitial(c.caracteristiques.CON, c.profil || c.classe, d.famille) };
@@ -225,40 +269,32 @@ export default function CharactersPage() {
                   <div className="text-[11px] text-zinc-500">10+PER</div>
                 </div>
                 <div className="rounded bg-zinc-950 border border-zinc-800 p-2">
-                  <div className="text-[11px] uppercase text-zinc-500">Défense</div>
+                  <div className="text-[11px] uppercase text-zinc-500">🛡️ Défense</div>
                   <div className="font-bold font-mono text-base">{c.defense}</div>
                   <div className="text-[11px] text-zinc-500">10+AGI+Éq+Mod</div>
                 </div>
-                <div className={`rounded bg-zinc-950 border border-zinc-800 p-2 font-bold font-mono text-base ${pvColor(c.pv, c.pvMax)}`}>
-                  <div className="text-[11px] uppercase text-zinc-500 font-sans font-normal">Vigueur</div>
+                <div className={`rounded bg-zinc-950 border border-zinc-800 p-2 font-bold font-mono text-base ${pvTexteColor(c.pv, c.pvMax)}`}>
+                  <div className="text-[11px] uppercase text-zinc-500 font-sans font-normal">❤️ Vigueur</div>
                   {c.pv}/{c.pvMax}
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-sm">
                 <div className="rounded bg-zinc-950 border border-zinc-800 p-2">
-                  <div className="text-[11px] uppercase text-zinc-500">Chance {chance.actuel}/{chance.max}</div>
+                  <div className="text-[11px] uppercase text-zinc-500" title="Ajustement manuel de la réserve (gain/perte, sans utilisation en test)">Chance {chance.actuel}/{chance.max}</div>
                   <div className="flex gap-1 justify-center mt-1">
                     <button onClick={() => depenserChance(c.id)} className="px-2 py-0.5 rounded bg-zinc-800 text-xs">−1</button>
                     <button onClick={() => rendreChance(c.id)} className="px-2 py-0.5 rounded bg-zinc-800 text-xs">+1</button>
                   </div>
                 </div>
                 <div className="rounded bg-zinc-950 border border-zinc-800 p-2">
-                  <div className="text-[11px] uppercase text-zinc-500" title="Soin d'un DR : 1 dé + moitié du niveau (arrondie à l'inférieur)">
-                    Récup {dr.type}{Math.floor(c.niveau / 2) > 0 ? `+${Math.floor(c.niveau / 2)}` : ""} {dr.actuel}/{dr.max}
+                  <div className="text-[11px] uppercase text-zinc-500" title="Réserve de dés de récupération (repos, MJ). Le soin se fait via le bouton +PV (DR) plus bas.">
+                    Récup {dr.type} {dr.actuel}/{dr.max}
                   </div>
                   <div className="flex gap-1 justify-center mt-1">
-                    <button
-                      onClick={() => utiliserDR(c.id)}
-                      disabled={dr.actuel <= 0 || c.pv >= c.pvMax}
-                      title={dr.actuel <= 0 ? "Plus de dé de récupération (repos : +1)" : c.pv >= c.pvMax ? "Vigueur au maximum" : `Dépenser 1 DR : soin ${dr.type}${Math.floor(c.niveau / 2) > 0 ? `+${Math.floor(c.niveau / 2)}` : ""} PV`}
-                      className="px-2 py-0.5 rounded bg-green-900 hover:bg-green-800 text-xs font-semibold disabled:opacity-40"
-                    >
-                      +PV
-                    </button>
-                    <button onClick={() => rendreDR(c.id)} title="Repos : rend 1 DR (manuel, max inclus)" className="px-2 py-0.5 rounded bg-zinc-800 text-xs">+1</button>
+                    <button onClick={() => ajusterDR(c.id, -1)} title="Perdre 1 DR (manuel, sans soin)" className="px-2 py-0.5 rounded bg-zinc-800 text-xs">−1</button>
+                    <button onClick={() => ajusterDR(c.id, 1)} title="Gagner 1 DR (repos, manuel)" className="px-2 py-0.5 rounded bg-zinc-800 text-xs">+1</button>
                   </div>
-                  {drMessage[c.id] && <div className="text-[11px] text-green-300/90 mt-1">{drMessage[c.id]}</div>}
                 </div>
                 <div className="rounded bg-zinc-950 border border-zinc-800 p-2">
                   <div className="text-[11px] uppercase text-zinc-500">Mana {mana.actuel}/{mana.max}</div>
@@ -273,8 +309,10 @@ export default function CharactersPage() {
                 <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center">CONTACT <b>{d.attaques.contact >= 0 ? `+${d.attaques.contact}` : d.attaques.contact}</b> <span className="text-zinc-500">niv+FOR</span></span>
                 <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center">DISTANCE <b>{d.attaques.distance >= 0 ? `+${d.attaques.distance}` : d.attaques.distance}</b> <span className="text-zinc-500">niv+AGI</span></span>
                 <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center">MAGIQUE <b>{d.attaques.magique >= 0 ? `+${d.attaques.magique}` : d.attaques.magique}</b> <span className="text-zinc-500">niv+VOL</span></span>
-                <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center" title="Dé évolutif : d4, d6 au niv. 6, d8 au 9, etc.">DÉ ÉVOL. <b>d{d.de}</b></span>
+                <span className="flex-1 rounded bg-zinc-950 border border-zinc-800 px-2 py-1.5 text-center" title="Dé évolutif : d4 (1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+)">DÉ ÉVOL. <b>d{d.de}</b></span>
               </div>
+
+              <BoursePanel bourse={c.bourse} onChange={(bourse) => patch(c.id, (ch) => ({ ...ch, bourse }))} />
 
               {ecarts.length > 0 && (
                 <div className="text-xs text-amber-300/90 bg-amber-950/30 border border-amber-800/40 rounded px-2.5 py-1.5">
@@ -323,6 +361,12 @@ export default function CharactersPage() {
                 )}
                 {c.attaques.length > 0 && <div>{c.attaques.map((a) => `⚔ ${a.nom} +${a.bonus} · ${a.degats}`).join(" · ")}</div>}
                 <div className="text-zinc-500 pt-0.5">🎒 {(c.inventaire ?? []).length} objet(s) · ✦ {(c.sorts ?? []).length} sort(s){c.armure?.nom ? ` · 🛡 ${c.armure.nom}${c.armure.def ? ` (+${c.armure.def})` : ""}` : ""}</div>
+                {(() => {
+                  const v = validerEquipement(c.inventaire ?? [], stock);
+                  const port = verifierArmurePortee(c, stock);
+                  if (v.ok && port.length === 0) return null;
+                  return <div className="text-xs text-amber-300/90 pt-0.5">⚠ Équipement : {[...(v.ok ? [] : v.raisons), ...port].join(" · ")} (ouvrir Inventaire pour corriger)</div>;
+                })()}
               </div>
 
               <button
@@ -340,9 +384,28 @@ export default function CharactersPage() {
               )}
               <div className="flex gap-2 pt-1">
                 <button onClick={() => damage(c.id, 1)} className="flex-1 py-2 rounded bg-red-900 hover:bg-red-800 font-bold">−1 PV</button>
-                <button onClick={() => damage(c.id, 5)} className="flex-1 py-2 rounded bg-red-900 hover:bg-red-800 font-bold">−5 PV</button>
                 <button onClick={() => heal(c.id, 1)} className="flex-1 py-2 rounded bg-green-900 hover:bg-green-800 font-bold">+1 PV</button>
-                <button onClick={() => heal(c.id, 5)} className="flex-1 py-2 rounded bg-green-900 hover:bg-green-800 font-bold">+5 PV</button>
+              </div>
+              <div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => soignerDR(c.id)}
+                    disabled={dr.actuel <= 0 || c.pv >= c.pvMax}
+                    title={dr.actuel <= 0 ? "Plus de dé de récupération (repos : +1 dans le bloc Récup)" : c.pv >= c.pvMax ? "Vigueur au maximum" : `Dépenser 1 DR : soin ${dr.type}${Math.floor(c.niveau / 2) > 0 ? `+${Math.floor(c.niveau / 2)}` : ""} PV (dé lancé)`}
+                    className="flex-1 py-2 rounded bg-green-900 hover:bg-green-800 text-sm font-bold disabled:opacity-40"
+                  >
+                    🎲 Récupération rapide (+PV)
+                  </button>
+                  <button
+                    onClick={() => recuperationCompleteUi(c.id)}
+                    disabled={(dr.actuel >= dr.max) && (mana.actuel >= mana.max)}
+                    title={(dr.actuel >= dr.max) && (mana.actuel >= mana.max) ? "DR et mana au maximum" : "Récupération complète : +1 DR et mana à fond, avec proposition de dépenser aussitôt 1 DR en valeur max"}
+                    className="flex-1 py-2 rounded bg-teal-900 hover:bg-teal-800 text-sm font-bold disabled:opacity-40"
+                  >
+                    🛌 Récupération complète (+1 DR, mana full)
+                  </button>
+                </div>
+                {drMessage[c.id] && <div className="text-xs text-green-300/90 mt-1">{drMessage[c.id]}</div>}
               </div>
               <div className="flex gap-2">
                 <button
@@ -402,12 +465,12 @@ export default function CharactersPage() {
               </div>
               {editing && (
                 <div className="text-xs text-zinc-400 mt-1 font-mono">
-                  INIT {deriverPersonnage(editing).initiative} · DEF {deriverPersonnage(editing).defense} ·
-                  PV {deriverPersonnage(editing).pvMax} · Chance {deriverPersonnage(editing).chanceMax} ·
-                  DR {deriverPersonnage(editing).drType}×{deriverPersonnage(editing).drNombre} · Mana {deriverPersonnage(editing).manaMax} ·
-                  C {deriverPersonnage(editing).attaques.contact >= 0 ? "+" : ""}{deriverPersonnage(editing).attaques.contact} /
-                  D {deriverPersonnage(editing).attaques.distance >= 0 ? "+" : ""}{deriverPersonnage(editing).attaques.distance} /
-                  M {deriverPersonnage(editing).attaques.magique >= 0 ? "+" : ""}{deriverPersonnage(editing).attaques.magique}
+                  INIT {deriverPersonnage(editing, stock).initiative} · DEF {deriverPersonnage(editing, stock).defense} ·
+                  PV {deriverPersonnage(editing, stock).pvMax} · Chance {deriverPersonnage(editing, stock).chanceMax} ·
+                  DR {deriverPersonnage(editing, stock).drType}×{deriverPersonnage(editing, stock).drNombre} · Mana {deriverPersonnage(editing, stock).manaMax} ·
+                  C {deriverPersonnage(editing, stock).attaques.contact >= 0 ? "+" : ""}{deriverPersonnage(editing, stock).attaques.contact} /
+                  D {deriverPersonnage(editing, stock).attaques.distance >= 0 ? "+" : ""}{deriverPersonnage(editing, stock).attaques.distance} /
+                  M {deriverPersonnage(editing, stock).attaques.magique >= 0 ? "+" : ""}{deriverPersonnage(editing, stock).attaques.magique}
                 </div>
               )}
             </div>
@@ -451,7 +514,7 @@ export default function CharactersPage() {
                         <input type="checkbox" className="mt-1" checked={!!editing.voieMage} onChange={toggleVoieMage} />
                         <span>
                           <b>Adopter la {VOIE_MAGE.voie}</b>
-                          <span className="text-zinc-400"> — remplace la voie du peuple (garde son rang 1, bloque ses rangs 2-5). Choix définitif, avant le rang 2.</span>
+                          <span className="text-zinc-400"> — remplace la voie du peuple (garde son rang 1, bloque ses rangs 2-5). Choix définitif, avant le rang 2. Débloque le R2 gratuit (voie du profil ou Maîtrise de la magie).</span>
                         </span>
                       </label>
                       {editing.voieMage && (
@@ -475,7 +538,7 @@ export default function CharactersPage() {
             })()}
             <div className="flex gap-2 justify-between flex-wrap">
               <button
-                onClick={() => setEditing((e) => (e ? recalculerPersonnage(e) : e))}
+                onClick={() => setEditing((e) => (e ? recalculerPersonnage(e, stock) : e))}
                 className="px-4 py-2 rounded bg-zinc-800 text-sm"
                 title="Appliquer les formules COF aux champs stockés"
               >

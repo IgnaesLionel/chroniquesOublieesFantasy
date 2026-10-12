@@ -357,11 +357,24 @@ def main() -> None:
     creatures = sorted(p for p in ROOT.iterdir()
                        if p.is_dir() and not p.name.startswith(SKIP_PREFIXES)
                        and list(p.glob("*.md")))
+    # Les sous-catégories sont saisies dans l'app (pas dans Notion) : on les
+    # reporte depuis le JSON existant pour ne pas les perdre à la régénération.
+    conservees: dict[str, list[str]] = {}
+    if OUT.exists():
+        try:
+            for m in json.loads(OUT.read_text(encoding="utf-8")):
+                sc = (m.get("sousCategories") or []) if isinstance(m, dict) else []
+                if m.get("id") and sc:
+                    conservees[m["id"]] = [str(x) for x in sc]
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            print(f"  ! JSON existant illisible, sous-catégories non reportées ({e})")
     out, warnings, skipped = [], [], []
     for d in creatures:
         mds = sorted(d.glob("*.md"))
         fiche = parse_fiche(mds[0], warnings)
         if fiche:
+            if fiche["id"] in conservees:
+                fiche["sousCategories"] = conservees[fiche["id"]]
             out.append(fiche)
         else:
             skipped.append(d.name)

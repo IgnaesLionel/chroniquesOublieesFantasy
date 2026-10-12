@@ -1,7 +1,8 @@
-import { parseDiceExpression, rollDiceExpression, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
-import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
+import { parseDiceExpression, rollDiceExpression, substituerDesEvolutifs, substituerStats, type Rng } from "@/src/lib/rules/dice/roller";
+import { canAct, createEffect, getModifier, marquerPose } from "@/src/lib/rules/effects/effects";
+import { cibleEspeceAcceptee } from "@/src/lib/rules/categories";
 import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
-import { niveauAttaque } from "@/src/lib/rules/personnage";
+import { drType, niveauAttaque } from "@/src/lib/rules/personnage";
 import { CAPACITES } from "@/src/lib/data/capacites";
 import type { ActiveEffect, AttackDef, Character, Sort } from "@/src/lib/rules/types";
 import type {
@@ -16,6 +17,11 @@ import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 
 function stamp(): string {
   return new Date().toISOString();
+}
+
+/** Niveau effectif pour les dés évolutifs (°) : plancher niv. 1. */
+function niveauEffectif(p: { niveau?: number } | null | undefined): number {
+  return Math.max(1, Math.floor(p?.niveau ?? 1));
 }
 
 /** Applique dégâts (plancher 0). KO si pv 0. Mort gérée manuellement / Phase 5. */
@@ -71,14 +77,16 @@ export function checkEnd(state: CombatState): CombatState {
 
 /**
  * Construit l'effet au toucher : jet de sauvegarde éventuel (CON 10 du Pied :
- * réussi = pas d'effet, les dégâts restent), dégâts par tour lancés
- * (Saignements...), modificateurs supplémentaires.
+ * réussi = pas d'effet, les dégâts restent), dégâts par tour (dés évolutifs
+ * substitués au niveau de l'attaquant : Saignements...),
+ * modificateurs supplémentaires.
  */
 export function creerEffetTouche(
   attaque: { effetTouche?: { cle: string; duree: number | null; degatsParTour?: string; mods?: Record<string, number>; sauvegarde?: { carac: string; difficulte: number } } },
   attaquantNom: string,
   cible: Pick<CombatParticipant, "nom" | "caracs">,
-  rng: Rng = Math.random
+  rng: Rng = Math.random,
+  niveau = 1
 ): { effet: ActiveEffect | null; saveLog: string | null } {
   const spec = attaque.effetTouche;
   if (!spec) return { effet: null, saveLog: null };
@@ -94,7 +102,7 @@ export function creerEffetTouche(
   }
   const mods: Record<string, number> = { ...(spec.mods ?? {}) };
   if (spec.degatsParTour) {
-    const dot = rollDiceExpression(parseDiceExpression(spec.degatsParTour), rng);
+    const dot = rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(spec.degatsParTour, niveau)), rng);
     mods["pvParTour"] = -Math.max(0, dot.total);
   }
   return {
@@ -118,7 +126,8 @@ export function resolveAttack(
   attackId: string,
   rng: Rng = Math.random,
   options: CombatOptions = DEFAULT_COMBAT_OPTIONS,
-  attaqueOpts: AttaqueOpts = {}
+  attaqueOpts: AttaqueOpts = {},
+  paiement: PaiementSort = {}
 ): { state: CombatState; resolution: AttackResolution } {
   const attaquant = state.participants.find((p) => p.instanceId === attackerId);
   const cible = state.participants.find((p) => p.instanceId === targetId);
@@ -132,18 +141,23 @@ export function resolveAttack(
     const lim = etatLimite(attaquant, sort, targetId);
     if (!lim.ok) throw new Error(`${attaquant.nom} : ${lim.raison}.`);
   }
+  // Restriction d'espèce (ex: Destruction du mal -> morts-vivants uniquement) :
+  // sur une autre espèce, touché ou non, le sort ne fait ni dégâts ni effet.
+  const especeCibleOk = cibleEspeceAcceptee(sort, cible);
 
   // Coûts avant le jet (le sacrifice est perdu même en cas d'échec).
   let s = state;
-  if (sort) s = applySpellCost(s, attackerId, sort);
-  if (sort?.coutPV) s = applyCoutPV(s, attackerId, sort.coutPV, rng).state;
+  if (sort) s = payerCoutSort(s, attackerId, sort, paiement, rng).state;
+  if (sort?.coutPV) s = applyCoutPV(s, attackerId, sort.coutPV, rng, niveauEffectif(attaquant)).state;
 
   const modAttaque = getModifier(attaquant.effets, "attaque") + (attaqueOpts.modAttaque ?? 0);
   const modDefense = getModifier(cible.effets, "defense");
   const bonusBase = attaqueOpts.bonusOverride ?? attaque.bonus;
   const bonusEffectif = bonusBase + modAttaque;
   const defenseEffective = cible.defense + modDefense;
-  const degatsExpr = attaqueOpts.degatsOverride ?? attaque.degats;
+  // Dés évolutifs (°) résolus au niveau de l'attaquant (d4 1-5 ... d12 15+).
+  const nivAttaquant = niveauEffectif(attaquant);
+  const degatsExpr = substituerDesEvolutifs(attaqueOpts.degatsOverride ?? attaque.degats, nivAttaquant);
 
   // Dé bonus / malus (effets + coups spéciaux : Puissante, Parfaite).
   const aBonus = getModifier(attaquant.effets, "deBonus") > 0 || attaqueOpts.deBonus === true;
@@ -238,20 +252,20 @@ export function resolveAttack(
   let moitie = false;
   let bonusLog: string | null = null;
   let doublePeineLog: string | null = null;
-  if ((touche || attaque.toucheAuto) && !pare) {
+  if ((touche || attaque.toucheAuto) && !pare && especeCibleOk) {
     const expr = parseDiceExpression(degatsExpr);
     const roll = rollDiceExpression(expr, rng);
     degatsDetails = [...roll.rolls];
     degatsTotal = roll.total;
     const bonusDetails: string[] = [];
     for (const d of attaqueOpts.degatsBonus ?? []) {
-      const b = rollDiceExpression(parseDiceExpression(d), rng);
+      const b = rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(d, nivAttaquant)), rng);
       degatsDetails = [...degatsDetails, ...b.rolls];
       degatsTotal += Math.max(0, b.total);
       bonusDetails.push(d);
     }
     if (doublePeineDeclenchee) {
-      const b = rollDiceExpression(parseDiceExpression("1d4°"), rng);
+      const b = rollDiceExpression(parseDiceExpression(substituerDesEvolutifs("1d4°", nivAttaquant)), rng);
       degatsDetails = [...degatsDetails, ...b.rolls];
       degatsTotal += Math.max(0, b.total);
       doublePeineLog = `Double peine : +${Math.max(0, b.total)} DM [${b.rolls.join(", ")}] (2e touche)`;
@@ -267,7 +281,7 @@ export function resolveAttack(
       bonusLog = `+${parties.join(" + ")}${bonusDetails.length > 0 || attaqueOpts.bonusDM ? " (coup spécial)" : ""}`;
     }
     degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
-  } else if (attaque.demiDegatsSiRate) {
+  } else if (attaque.demiDegatsSiRate && especeCibleOk) {
     const roll = rollDiceExpression(parseDiceExpression(degatsExpr), rng);
     degatsDetails = roll.rolls;
     degatsTotal = Math.floor(roll.total / 2);
@@ -275,13 +289,16 @@ export function resolveAttack(
   }
 
   const toucheVraie = touche || attaque.toucheAuto === true;
-  // Effet au toucher (sauf parade/absorption) : sauvegarde, dots, modificateurs.
-  const { effet: effetTouche, saveLog } = toucheVraie && !pare
-    ? creerEffetTouche(attaque, attaquant.nom, cible, rng)
+  // Effet au toucher (sauf parade/absorption, espèce ciblée) : sauvegarde, dots, modificateurs.
+  // Tamponné au tour de pose pour n'être consommé qu'à la fin d'un tour complet.
+  const { effet: effetToucheBrut, saveLog } = toucheVraie && !pare && especeCibleOk
+    ? creerEffetTouche(attaque, attaquant.nom, cible, rng, nivAttaquant)
     : { effet: null, saveLog: null };
-  const effetSupp = toucheVraie && !pare && attaqueOpts.effetSupp
+  const effetTouche = effetToucheBrut ? marquerPose(effetToucheBrut, s.manche, s.tourIndex) : null;
+  const effetSuppBrut = toucheVraie && !pare && especeCibleOk && attaqueOpts.effetSupp
     ? createEffect(attaqueOpts.effetSupp.cle, { dureeTours: attaqueOpts.effetSupp.duree, source: attaquant.nom })
     : null;
+  const effetSupp = effetSuppBrut ? marquerPose(effetSuppBrut, s.manche, s.tourIndex) : null;
 
   const pvAvant = cible.pv;
   const pvApres = Math.max(0, pvAvant - degatsTotal);
@@ -364,6 +381,9 @@ export function resolveAttack(
     if (volLog) log.push({ id: id("vol"), at: stamp(), manche: s.manche, message: volLog });
     if (cibleTombe) log.push({ id: id("ko"), at: stamp(), manche: s.manche, message: `${cible.nom} est hors combat` });
   }
+  if (toucheVraie && !pare && !especeCibleOk) {
+    log.push({ id: id("imm"), at: stamp(), manche: s.manche, message: `Sans effet : ${cible.nom} n'est pas un ${(sort?.cibleEspeces ?? []).join("/")} (${attaque.nom} : espèce non ciblée).` });
+  }
 
   const resolution: AttackResolution = {
     attaquantId: attackerId, attaquantNom: attaquant.nom, cibleId: targetId, cibleNom: cible.nom,
@@ -403,11 +423,14 @@ export function depenserChanceApresCoup(
   const defenseEffective = cible.defense + modDefense;
   const jetTotal = last.jetTotal + 10;
   const touche = jetTotal >= defenseEffective;
+  const sortChance = sortDeAttaque(attaquant, attaque.id);
+  // Restriction d'espèce : pas de contournement via la chance.
+  const especeCibleOk = cibleEspeceAcceptee(sortChance, cible);
 
   let degatsDetails: number[] = [];
   let degatsTotal = 0;
-  if (touche) {
-    const roll = rollDiceExpression(parseDiceExpression(attaque.degats), rng);
+  if (touche && especeCibleOk) {
+    const roll = rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(attaque.degats, niveauEffectif(attaquant))), rng);
     degatsDetails = roll.rolls;
     degatsTotal = roll.total;
     // Archer émérite : +PER permanent, même sur un jet rattrapé.
@@ -420,10 +443,10 @@ export function depenserChanceApresCoup(
   const pvApres = Math.max(0, pvAvant - degatsTotal);
   const cibleTombe = pvAvant > 0 && pvApres === 0;
 
-  const { effet: effetTouche, saveLog } = touche
-    ? creerEffetTouche(attaque, attaquant.nom, cible, rng)
+  const { effet: effetToucheBrut, saveLog } = touche && especeCibleOk
+    ? creerEffetTouche(attaque, attaquant.nom, cible, rng, niveauEffectif(attaquant))
     : { effet: null, saveLog: null };
-  const sortChance = sortDeAttaque(attaquant, attaque.id);
+  const effetTouche = effetToucheBrut ? marquerPose(effetToucheBrut, state.manche, state.tourIndex) : null;
 
   let volChanceLog: string | null = null;
   const participants = state.participants.map((p) => {
@@ -460,6 +483,7 @@ export function depenserChanceApresCoup(
     if (saveLog) log.push({ id: id("pcsave"), at: stamp(), manche: state.manche, message: saveLog });
     if (volChanceLog) log.push({ id: id("pcvol"), at: stamp(), manche: state.manche, message: volChanceLog });
     if (cibleTombe) log.push({ id: id("pcko"), at: stamp(), manche: state.manche, message: `${cible.nom} est hors combat` });
+    if (!especeCibleOk) log.push({ id: id("pcimm"), at: stamp(), manche: state.manche, message: `Sans effet : ${cible.nom} n'est pas un ${(sortChance?.cibleEspeces ?? []).join("/")} (${attaque.nom} : espèce non ciblée).` });
   }
 
   const resolution: AttackResolution = {
@@ -526,22 +550,135 @@ export function renvoyerSort(
  * Sans coût ou ressource absente (monstres) : ne fait rien.
  */
 export function applySpellCost(state: CombatState, lanceurId: string, sort: Sort): CombatState {
-  if (!sort.cout || sort.cout.montant <= 0) return state;
+  return payerCoutSort(state, lanceurId, sort).state;
+}
+
+/** Mode de lancement : incantation classique (mana) ou brûlure de mana (PV). */
+export type ModePaiementSort = "mana" | "brulure";
+
+export interface PaiementSort {
+  /** Incantation classique (mana) ou brûlure de mana (PV). Défaut : "mana". */
+  mode?: ModePaiementSort;
+  /** Concentration accrue : sort (A) à −2 PM, lancé en action limitée (L). */
+  concentration?: boolean;
+}
+
+export interface CoutSortEffectif {
+  /** PM à payer après concentration (plancher 0). */
+  pm: number;
+  /** Coût avant concentration (rang). */
+  base: number;
+  /** Vrai si la concentration s'applique (sort d'attaque). */
+  concentre: boolean;
+}
+
+/**
+ * Coût effectif d'un sort : la concentration accrue réduit de 2 PM
+ * (plancher 0) les sorts nécessitant une action d'attaque (A), qui deviennent
+ * des actions limitées (L). Les sorts (L/M/G) — et ceux sans action d'attaque
+ * — gardent le coût de leur rang, non réductible.
+ */
+export function coutEffectifSort(sort: Sort, opts: PaiementSort = {}): CoutSortEffectif {
+  const base = sort.cout?.montant ?? 0;
+  if (opts.concentration) {
+    const action = sort.action ?? "attaque";
+    if (action !== "attaque") {
+      throw new Error(`${sort.nom} : la concentration accrue exige un sort d'attaque (A).`);
+    }
+    if (base <= 0) return { pm: 0, base, concentre: false };
+    return { pm: Math.max(0, base - 2), base, concentre: true };
+  }
+  return { pm: base, base, concentre: false };
+}
+
+export interface PaiementSortEffectue {
+  mode: "mana" | "brulure";
+  /** PM facturés (après concentration). */
+  pm: number;
+  /** PV perdus par brûlure (0 en incantation). */
+  pvBrules: number;
+  /** Détail des DR lancés. */
+  detailsBrulure: number[];
+  concentre: boolean;
+}
+
+/**
+ * Paie le coût d'un sort en combat, selon le mode de lancement :
+ * - incantation classique : PM déduits (lève si insuffisants) ;
+ * - brûlure de mana : à 0 PM, 1 DR par PM en PV perdus (sans RD, KO possible),
+ *   jamais pour lancer un sort de soins.
+ * Journalisé dans tous les cas. La brûlure peut terminer le combat (KO du
+ * lanceur) : checkEnd appliqué.
+ */
+export function payerCoutSort(
+  state: CombatState,
+  lanceurId: string,
+  sort: Sort,
+  opts: PaiementSort = {},
+  rng: Rng = Math.random
+): { state: CombatState; paiement: PaiementSortEffectue } {
+  const { pm, base, concentre } = coutEffectifSort(sort, opts);
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const logConcentration = (log: CombatState["log"], nom: string) => {
+    if (concentre) {
+      log.push({ id: id("conc"), at: stamp(), manche: state.manche, message: `${nom} se concentre pour ${sort.nom} (action limitée) : ${base} → ${pm} PM.` });
+    }
+  };
+  if (pm <= 0) {
+    if (!concentre) return { state, paiement: { mode: "mana", pm: 0, pvBrules: 0, detailsBrulure: [], concentre: false } };
+    const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+    const log = [...state.log];
+    if (lanceur) logConcentration(log, lanceur.nom);
+    return { state: { ...state, log }, paiement: { mode: "mana", pm: 0, pvBrules: 0, detailsBrulure: [], concentre } };
+  }
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
   if (!lanceur) throw new Error("Lanceur introuvable.");
-  const res = lanceur.ressources[sort.cout.ressource];
-  if (!res) return state;
-  if (res.actuel < sort.cout.montant) {
-    throw new Error(`${lanceur.nom} : ${sort.cout.ressource} insuffisant (${res.actuel}/${sort.cout.montant}) pour ${sort.nom}.`);
-  }
-  return {
-    ...state,
-    participants: state.participants.map((p) =>
+  if ((opts.mode ?? "mana") === "brulure") {
+    if (sort.soin) throw new Error(`${sort.nom} : la brûlure de mana ne peut pas lancer un sort de soins.`);
+    const mana = lanceur.ressources[sort.cout!.ressource];
+    if ((mana?.actuel ?? 0) !== 0) {
+      throw new Error(`${lanceur.nom} : la brûlure de mana exige d'être à 0 ${sort.cout!.ressource} (${mana?.actuel ?? 0} restant).`);
+    }
+    const dr = lanceur.deRecuperation;
+    if (!dr) throw new Error(`${lanceur.nom} : pas de dé de récupération pour la brûlure de mana.`);
+    const roll = rollDiceExpression(parseDiceExpression(`${pm}${dr}`), rng);
+    const pvBrules = Math.max(0, roll.total);
+    const pv = Math.max(0, lanceur.pv - pvBrules);
+    const participants = state.participants.map((p) =>
       p.instanceId === lanceurId
-        ? { ...p, ressources: { ...p.ressources, [sort.cout!.ressource]: { ...res, actuel: res.actuel - sort.cout!.montant } } }
+        ? { ...p, pv, statut: pv <= 0 ? ("ko" as const) : p.statut }
         : p
-    ),
-    log: [...state.log, { id: `mana-${Date.now()}`, at: stamp(), manche: state.manche, message: `${lanceur.nom} dépense ${sort.cout.montant} ${sort.cout.ressource} (${sort.nom}).` }],
+    );
+    const log = [...state.log];
+    logConcentration(log, lanceur.nom);
+    log.push({ id: id("brul"), at: stamp(), manche: state.manche, message: `${lanceur.nom} brûle sa mana (${pm} PM → [${roll.rolls.join(", ")}] = ${pvBrules} PV, DR ${dr}) : ${lanceur.pv} → ${pv} PV` });
+    if (pv <= 0 && lanceur.statut === "actif") {
+      log.push({ id: id("brulko"), at: stamp(), manche: state.manche, message: `${lanceur.nom} est hors combat` });
+    }
+    return {
+      state: checkEnd({ ...state, participants, log }),
+      paiement: { mode: "brulure", pm, pvBrules, detailsBrulure: roll.rolls, concentre },
+    };
+  }
+  const res = lanceur.ressources[sort.cout!.ressource];
+  if (!res) return { state, paiement: { mode: "mana", pm, pvBrules: 0, detailsBrulure: [], concentre } };
+  if (res.actuel < pm) {
+    throw new Error(`${lanceur.nom} : ${sort.cout!.ressource} insuffisant (${res.actuel}/${pm}) pour ${sort.nom}.`);
+  }
+  const log = [...state.log];
+  logConcentration(log, lanceur.nom);
+  log.push({ id: id("mana"), at: stamp(), manche: state.manche, message: `${lanceur.nom} dépense ${pm} ${sort.cout!.ressource} (${sort.nom}).` });
+  return {
+    state: {
+      ...state,
+      participants: state.participants.map((p) =>
+        p.instanceId === lanceurId
+          ? { ...p, ressources: { ...p.ressources, [sort.cout!.ressource]: { ...res, actuel: res.actuel - pm } } }
+          : p
+      ),
+      log,
+    },
+    paiement: { mode: "mana", pm, pvBrules: 0, detailsBrulure: [], concentre },
   };
 }
 
@@ -551,6 +688,104 @@ export interface CapaciteResolution {
   talentNom: string;
   effetNom: string | null;
   soinTotal?: number;
+}
+
+/**
+ * Applique la fin de combat aux fiches (bouton "Appliquer aux fiches") :
+ * PV + actuels mana/chance du participant, plafonnés aux max de la fiche.
+ * Monstres, invocations et PJ sans fiche : ignorés. Rien d'autre ne change
+ * (ni max, ni talents, ni sorts, ni effets).
+ */
+export function appliquerResultatsCombat(
+  fiches: Character[],
+  participants: CombatParticipant[]
+): Character[] {
+  return fiches.map((c) => {
+    const p = participants.find((x) => x.camp === "pj" && x.templateId === c.id);
+    if (!p) return c;
+    const ressources = { ...c.ressources };
+    for (const cle of ["mana", "chance"] as const) {
+      const cur = ressources[cle];
+      const pc = p.ressources[cle];
+      if (cur && pc) ressources[cle] = { ...cur, actuel: Math.max(0, Math.min(cur.max, pc.actuel)) };
+    }
+    return { ...c, pv: Math.max(0, Math.min(c.pvMax, p.pv)), ressources };
+  });
+}
+
+export interface ResyncResult {
+  participant: CombatParticipant;
+  /** Noms des attaques apparues depuis la fiche. */
+  nouvelles: string[];
+  /** Mention "mana a → b" si le max a changé, sinon "". */
+  manaInfo: string;
+  /** Faux si déjà à jour (aucune écriture, aucun log). */
+  modifie: boolean;
+}
+
+/**
+ * Resynchronise un participant PJ depuis sa fiche fraîche : attaques, sorts,
+ * talents, bonus magique, niveau, caracs, max mana/chance (dépensé conservé
+ * via reporterRessource). État volatile intact : PV, PV max, DEF, effets,
+ * statut, usages, initiative, attaques temporaires (sort-tmp:).
+ * Utilisée par le bouton ↻ et par la resynchronisation automatique du combat.
+ */
+export function resynchroniserDepuisFiche(
+  cible: CombatParticipant,
+  frais: CombatParticipant
+): ResyncResult {
+  // Attaques accordées en cours de combat (sort-tmp:) conservées.
+  const gardees = cible.attaques.filter((a) => a.id.startsWith("sort-tmp:"));
+  const attaques = [...frais.attaques.filter((a) => !gardees.some((g) => g.id === a.id)), ...gardees];
+  const nouvelles = frais.attaques.filter((a) => !cible.attaques.some((x) => x.id === a.id)).map((a) => a.nom);
+  const ressources = { ...cible.ressources };
+  for (const cle of ["mana", "chance"] as const) {
+    const report = reporterRessource(cible.ressources[cle], frais.ressources[cle]);
+    if (report) ressources[cle] = report;
+  }
+  const manaInfo =
+    cible.ressources["mana"] && frais.ressources["mana"] && frais.ressources["mana"].max !== cible.ressources["mana"].max
+      ? `, mana ${cible.ressources["mana"].max} → ${frais.ressources["mana"].max}`
+      : "";
+  const participant: CombatParticipant = {
+    ...cible,
+    attaques,
+    sorts: frais.sorts,
+    capacites: frais.capacites,
+    bonusMagique: frais.bonusMagique,
+    niveau: frais.niveau,
+    caracs: frais.caracs,
+    ressources,
+    deRecuperation: frais.deRecuperation,
+  };
+  const cleStructurelle = (p: CombatParticipant) =>
+    JSON.stringify({
+      attaques: p.attaques,
+      sorts: p.sorts,
+      capacites: p.capacites,
+      bonusMagique: p.bonusMagique,
+      niveau: p.niveau,
+      caracs: p.caracs,
+      ressources: p.ressources,
+      deRecuperation: p.deRecuperation,
+    });
+  return { participant, nouvelles, manaInfo, modifie: cleStructurelle(cible) !== cleStructurelle(participant) };
+}
+
+/**
+ * Reporte le max d'une ressource (mana, chance) de la fiche vers le
+ * participant de combat, en conservant les points déjà dépensés :
+ * dépensé = ancienMax - ancienActuel, nouvelActuel = nouveauMax - dépensé.
+ * Ex. mana 1/1 intact + fiche à 6 → 6/6 ; mana 0/1 (1 dépensé) + fiche à 6 → 5/6.
+ */
+export function reporterRessource(
+  ancienne: { max: number; actuel: number } | undefined,
+  fiche: { max: number; actuel: number } | undefined
+): { max: number; actuel: number } | undefined {
+  if (!fiche) return ancienne;
+  if (!ancienne) return { ...fiche };
+  const depense = Math.max(0, ancienne.max - ancienne.actuel);
+  return { max: fiche.max, actuel: Math.max(0, Math.min(fiche.max, fiche.max - depense)) };
 }
 
 /**
@@ -647,18 +882,19 @@ function enregistrerUsage(p: CombatParticipant, sortId: string, cibleId?: string
 }
 
 /**
- * Paie un sacrifice de PV (ex: "1d4°", Pacte démoniaque). Plancher 0
- * (KO possible, règles de dégâts). Journalisé.
+ * Paie un sacrifice de PV (ex: "1d4°", Pacte démoniaque — dés évolutifs
+ * résolus au niveau du lanceur). Plancher 0 (KO possible). Journalisé.
  */
 export function applyCoutPV(
   state: CombatState,
   lanceurId: string,
   expr: string,
-  rng: Rng = Math.random
+  rng: Rng = Math.random,
+  niveau = 1
 ): { state: CombatState; pvPerdus: number; details: number[] } {
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
   if (!lanceur) throw new Error("Lanceur introuvable.");
-  const roll = rollDiceExpression(parseDiceExpression(expr), rng);
+  const roll = rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(expr, niveau)), rng);
   const pvPerdus = Math.max(0, roll.total);
   const pv = Math.max(0, lanceur.pv - pvPerdus);
   const participants = state.participants.map((p) =>
@@ -705,18 +941,20 @@ export function utiliserCapacite(
   if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
 
   let s = state;
-  if (opts.coutPV) s = applyCoutPV(s, lanceurId, opts.coutPV, rng).state;
+  if (opts.coutPV) s = applyCoutPV(s, lanceurId, opts.coutPV, rng, niveauEffectif(lanceur)).state;
 
   const base = opts.effetCle
     ? createEffect(opts.effetCle, { dureeTours: opts.dureeTours ?? null, source: lanceur.nom })
     : null;
-  const effet = base ? { ...base, modificateurs: { ...base.modificateurs, ...(opts.mods ?? {}) } } : null;
+  const effetBrut = base ? { ...base, modificateurs: { ...base.modificateurs, ...(opts.mods ?? {}) } } : null;
+  // Tamponné au tour de pose (consommé seulement à la fin d'un tour complet).
+  const effet = effetBrut ? marquerPose(effetBrut, s.manche, s.tourIndex) : null;
 
   let soinDetails: number[] = [];
   let soinTotal = 0;
   if (opts.soin) {
     const lanceurApresCout = s.participants.find((p) => p.instanceId === lanceurId)!;
-    const roll = rollDiceExpression(parseDiceExpression(substituerStats(opts.soin, lanceurApresCout.caracs ?? {})), rng);
+    const roll = rollDiceExpression(parseDiceExpression(substituerStats(substituerDesEvolutifs(opts.soin, niveauEffectif(lanceur)), lanceurApresCout.caracs ?? {})), rng);
     soinDetails = roll.rolls;
     soinTotal = Math.max(0, roll.total);
   }
@@ -784,7 +1022,8 @@ export function invoquer(
   state: CombatState,
   lanceurId: string,
   sort: Sort,
-  rng: Rng = Math.random
+  rng: Rng = Math.random,
+  paiement: PaiementSort = {}
 ): { state: CombatState; resolution: InvocationResolution } {
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
   if (!lanceur) throw new Error("Lanceur introuvable.");
@@ -794,8 +1033,8 @@ export function invoquer(
   const lim = etatLimite(lanceur, sort);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
 
-  let s = applySpellCost(state, lanceurId, sort);
-  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng).state;
+  let s = payerCoutSort(state, lanceurId, sort, paiement, rng).state;
+  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng, niveauEffectif(lanceur)).state;
   const lanceurApres = s.participants.find((p) => p.instanceId === lanceurId)!;
 
   const pv = Math.max(1, inv.pvBase + inv.pvParNiveau * Math.max(1, Math.floor(lanceurApres.niveau)));
@@ -812,7 +1051,7 @@ export function invoquer(
     defense: inv.defense,
     initMod: 0,
     initiative: inv.initiative ?? lanceurApres.initiative,
-    attaques: [{ id: "inv-attaque", nom: `Contact (${inv.nom})`, bonus, degats: inv.degats }],
+    attaques: [{ id: "inv-attaque", nom: `Contact (${inv.nom})`, bonus, degats: substituerDesEvolutifs(substituerStats(inv.degats, lanceurApres.caracs ?? {}), niveauEffectif(lanceurApres)) }],
     effets: [],
     sorts: [],
     capacites: [],
@@ -883,7 +1122,7 @@ export function construireLoupCompagnon(
     defense,
     initMod: opts.initMod ?? 0,
     initiative: opts.initiative !== undefined ? opts.initiative : lanceur.initiative,
-    attaques: [{ id: "loup-morsure", nom: "Morsure", bonus, degats: alpha ? "1d4°+5" : "1d4+2" }],
+    attaques: [{ id: "loup-morsure", nom: "Morsure", bonus, degats: alpha ? substituerDesEvolutifs("1d4°+5", Math.max(1, Math.floor(lanceur.niveau))) : "1d4+2" }],
     effets: [],
     sorts: [],
     capacites: [],
@@ -929,7 +1168,8 @@ export function frapperZone(
   state: CombatState,
   lanceurId: string,
   sort: Sort,
-  rng: Rng = Math.random
+  rng: Rng = Math.random,
+  paiement: PaiementSort = {}
 ): { state: CombatState; resolution: ZoneResolution } {
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
   if (!lanceur) throw new Error("Lanceur introuvable.");
@@ -938,24 +1178,25 @@ export function frapperZone(
   const lim = etatLimite(lanceur, sort);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
 
-  let s = applySpellCost(state, lanceurId, sort);
-  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng).state;
+  let s = payerCoutSort(state, lanceurId, sort, paiement, rng).state;
+  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng, niveauEffectif(lanceur)).state;
 
+  const nivLanceur = niveauEffectif(lanceur);
   let degatsTotal = 0;
   let degatsDetails: number[] = [];
   if (sort.degats) {
-    const roll = rollDiceExpression(parseDiceExpression(sort.degats), rng);
+    const roll = rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(sort.degats, nivLanceur)), rng);
     degatsDetails = roll.rolls;
     degatsTotal = Math.max(0, roll.total);
   }
   let dotParTour = 0;
   if (sort.effetDegats) {
-    dotParTour = -Math.max(0, rollDiceExpression(parseDiceExpression(sort.effetDegats), rng).total);
+    dotParTour = -Math.max(0, rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(sort.effetDegats, nivLanceur)), rng).total);
   }
   const effetBase = sort.effetCle
     ? createEffect(sort.effetCle, { dureeTours: sort.effetDuree ?? null, source: lanceur.nom })
     : null;
-  const effet = effetBase
+  const effetBrut = effetBase
     ? {
         ...effetBase,
         modificateurs: {
@@ -965,6 +1206,8 @@ export function frapperZone(
         },
       }
     : null;
+  // Même objet partagé entre les ennemis : un seul tampon de pose suffit.
+  const effet = effetBrut ? marquerPose(effetBrut, s.manche, s.tourIndex) : null;
 
   const ennemis = new Set(
     s.participants
@@ -1024,7 +1267,8 @@ export function castSoutien(
   lanceurId: string,
   cibleId: string,
   sort: Sort,
-  rng: Rng = Math.random
+  rng: Rng = Math.random,
+  paiement: PaiementSort = {}
 ): { state: CombatState; resolution: SoutienResolution } {
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
   const cible = state.participants.find((p) => p.instanceId === cibleId);
@@ -1032,7 +1276,7 @@ export function castSoutien(
   if (!cible) throw new Error("Cible introuvable.");
   if (sort.type === "offensif") throw new Error(`${sort.nom} est offensif : utilisez une attaque.`);
   if (sort.invocation) {
-    const r = invoquer(state, lanceurId, sort, rng);
+    const r = invoquer(state, lanceurId, sort, rng, paiement);
     return {
       state: r.state,
       resolution: {
@@ -1052,8 +1296,8 @@ export function castSoutien(
   const lim = etatLimite(lanceur, sort, cibleId);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
 
-  let s = applySpellCost(state, lanceurId, sort);
-  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng).state;
+  let s = payerCoutSort(state, lanceurId, sort, paiement, rng).state;
+  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng, niveauEffectif(lanceur)).state;
 
   let soinDetails: number[] = [];
   let soinTotal = 0;
@@ -1067,9 +1311,10 @@ export function castSoutien(
   const effetBase = sort.effetCle
     ? createEffect(sort.effetCle, { dureeTours: sort.effetDuree ?? null, source: lanceur.nom })
     : null;
-  const effet = effetBase
+  const effetBrut = effetBase
     ? { ...effetBase, modificateurs: { ...effetBase.modificateurs, ...(sort.effetMods ?? {}) } }
     : null;
+  const effet = effetBrut ? marquerPose(effetBrut, s.manche, s.tourIndex) : null;
   // Attaque accordée (Beauté, Aspect) : ajoutée aux attaques de la cible.
   const lanceurApresCouts = s.participants.find((p) => p.instanceId === lanceurId)!;
   const attaqueTmp = sort.attaqueAccordee
@@ -1077,7 +1322,7 @@ export function castSoutien(
         id: `sort-tmp:${sort.id}`,
         nom: `✦ ${sort.attaqueAccordee.nom}`,
         bonus: sort.attaqueAccordee.bonus ?? lanceurApresCouts.bonusMagique ?? lanceurApresCouts.niveau,
-        degats: substituerStats(sort.attaqueAccordee.degats, lanceurApresCouts.caracs ?? {}),
+        degats: substituerStats(substituerDesEvolutifs(sort.attaqueAccordee.degats, niveauEffectif(lanceurApresCouts)), lanceurApresCouts.caracs ?? {}),
         volDeVie: sort.attaqueAccordee.volDeVie,
       }
     : null;
@@ -1152,6 +1397,10 @@ export interface HorsCombatResolution {
   attaqueAccordee: string | null;
   manaPaye: number;
   pvSacrifie: number;
+  /** PV perdus par brûlure de mana (0 en incantation). */
+  pvBrules: number;
+  /** Détail des DR lancés. */
+  detailsBrulure: number[];
 }
 
 /**
@@ -1159,15 +1408,18 @@ export interface HorsCombatResolution {
  * non-invocation) : vérifie le niveau et le mana, paie les coûts
  * (mana + PV), applique le soin, l'effet et l'attaque accordée éventuels.
  * L'action DRS (attaque/mouvement/limitée) est ignorée : hors combat il
- * n'y a pas de limite d'action ni de mouvement. Les limites par combat
- * (tentatives, par-cible) ne s'appliquent pas hors combat (pas de compteur).
+ * n'y a pas de limite d'action ni de mouvement, donc pas de concentration
+ * accrue. Les limites par combat (tentatives, par-cible) ne s'appliquent pas
+ * hors combat (pas de compteur). La brûlure de mana reste possible (à 0 PM,
+ * 1 DR par PM, jamais pour les soins).
  * Sorts purement narratifs (Augure...) : coût payé, effet au MJ.
  */
 export function lancerSortHorsCombat(
   lanceur: Character,
   cible: Character,
   sort: Sort,
-  rng: Rng = Math.random
+  rng: Rng = Math.random,
+  mode: ModePaiementSort = "mana"
 ): { lanceur: Character; cible: Character; resolution: HorsCombatResolution } {
   const lancable = sortLancableHorsCombat(sort);
   if (!lancable.ok) throw new Error(lancable.raison);
@@ -1175,23 +1427,41 @@ export function lancerSortHorsCombat(
   if (!niveau.ok) throw new Error(`${sort.nom} : ${niveau.raison}.`);
 
   const cout = sort.cout?.montant ?? 0;
-  if (cout > 0) {
-    const res = lanceur.ressources?.[sort.cout!.ressource];
-    const actuel = res?.actuel ?? 0;
-    if (!res || actuel < cout) {
-      throw new Error(`${lanceur.nom} : ${sort.cout!.ressource} insuffisant (${actuel}/${cout}) pour ${sort.nom}.`);
+  let manaPaye = 0;
+  let pvBrules = 0;
+  let detailsBrulure: number[] = [];
+  let lanceurApres: Character;
+  if (cout > 0 && mode === "brulure") {
+    if (sort.soin) throw new Error(`${sort.nom} : la brûlure de mana ne peut pas lancer un sort de soins.`);
+    const manaActuel = lanceur.ressources?.[sort.cout!.ressource]?.actuel ?? 0;
+    if (manaActuel !== 0) {
+      throw new Error(`${lanceur.nom} : la brûlure de mana exige d'être à 0 ${sort.cout!.ressource} (${manaActuel} restant).`);
     }
-  }
-
-  let lanceurApres: Character = cout > 0
-    ? {
-        ...lanceur,
-        ressources: {
-          ...lanceur.ressources,
-          [sort.cout!.ressource]: { ...lanceur.ressources[sort.cout!.ressource], actuel: lanceur.ressources[sort.cout!.ressource].actuel - cout },
-        },
+    const dr = lanceur.desRecuperation?.type ?? drType(lanceur.profil || lanceur.classe, lanceur.famille);
+    const roll = rollDiceExpression(parseDiceExpression(`${cout}${dr}`), rng);
+    pvBrules = Math.max(0, roll.total);
+    detailsBrulure = roll.rolls;
+    lanceurApres = { ...lanceur, pv: Math.max(0, lanceur.pv - pvBrules) };
+  } else {
+    if (cout > 0) {
+      const res = lanceur.ressources?.[sort.cout!.ressource];
+      const actuel = res?.actuel ?? 0;
+      if (!res || actuel < cout) {
+        throw new Error(`${lanceur.nom} : ${sort.cout!.ressource} insuffisant (${actuel}/${cout}) pour ${sort.nom}.`);
       }
-    : { ...lanceur };
+    }
+    manaPaye = cout;
+
+    lanceurApres = cout > 0
+      ? {
+          ...lanceur,
+          ressources: {
+            ...lanceur.ressources,
+            [sort.cout!.ressource]: { ...lanceur.ressources[sort.cout!.ressource], actuel: lanceur.ressources[sort.cout!.ressource].actuel - cout },
+          },
+        }
+      : { ...lanceur };
+  }
 
   let pvSacrifie = 0;
   if (sort.coutPV) {
@@ -1225,7 +1495,7 @@ export function lancerSortHorsCombat(
         id: `sort-tmp:${sort.id}`,
         nom: `✦ ${sort.attaqueAccordee.nom}`,
         bonus: sort.attaqueAccordee.bonus ?? bonusMagique,
-        degats: substituerStats(sort.attaqueAccordee.degats, lanceurApres.caracteristiques ?? {}),
+        degats: substituerStats(substituerDesEvolutifs(sort.attaqueAccordee.degats, Math.max(1, Math.floor(lanceurApres.niveau))), lanceurApres.caracteristiques ?? {}),
         volDeVie: sort.attaqueAccordee.volDeVie,
       } satisfies AttackDef
     : null;
@@ -1248,7 +1518,7 @@ export function lancerSortHorsCombat(
       pvLanceurAvant, pvLanceurApres: pvFinal,
       effetNom: effet?.nom ?? null,
       attaqueAccordee: attaqueTmp ? sort.attaqueAccordee!.nom : null,
-      manaPaye: cout, pvSacrifie,
+      manaPaye, pvSacrifie, pvBrules, detailsBrulure,
     };
     return { lanceur: lanceurApres, cible: lanceurApres, resolution };
   }
@@ -1271,7 +1541,7 @@ export function lancerSortHorsCombat(
       pvLanceurAvant, pvLanceurApres: pvLanceurApresCouts,
       effetNom: effet?.nom ?? null,
       attaqueAccordee: attaqueTmp ? sort.attaqueAccordee!.nom : null,
-      manaPaye: cout, pvSacrifie,
+      manaPaye, pvSacrifie, pvBrules, detailsBrulure,
     },
   };
 }

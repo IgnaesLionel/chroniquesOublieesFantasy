@@ -1,12 +1,6 @@
 "use client";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
-
-function pvColor(pv: number, max: number) {
-  const r = max === 0 ? 0 : pv / max;
-  if (r > 0.5) return "bg-green-500";
-  if (r > 0.25) return "bg-amber-400";
-  return "bg-red-500";
-}
+import { pvBarreColor } from "@/src/lib/ui/pv";
 
 function tonEffet(e: { modificateurs: Record<string, number> }): string {
   const m = e.modificateurs ?? {};
@@ -57,6 +51,11 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                     {p.camp === "pj" ? "PJ" : "MO"}
                   </span>
                   <span className="font-semibold">{p.nom}</span>
+                  {(p.sousCategories ?? []).length > 0 && (
+                    <span className="block text-[10px] text-amber-300/80" title="Sous-catégories (dégâts bonus de certains sorts)">
+                      💀 {(p.sousCategories ?? []).join(" · ")}
+                    </span>
+                  )}
                   {p.effets.length > 0 && (
                     <span className="block mt-1 space-x-1">
                       {p.effets.map((e) => (
@@ -75,7 +74,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                 <td className="px-3 py-2">
                   <div className="font-mono font-bold">{p.pv}/{p.pvMax}</div>
                   <div className="w-20 h-1.5 bg-zinc-800 rounded mt-1">
-                    <div className={`h-full rounded ${pvColor(p.pv, p.pvMax)}`} style={{ width: `${p.pvMax ? (100 * p.pv) / p.pvMax : 0}%` }} />
+                    <div className={`h-full rounded ${pvBarreColor(p.pv, p.pvMax)}`} style={{ width: `${p.pvMax ? (100 * p.pv) / p.pvMax : 0}%` }} />
                   </div>
                   <div className="flex gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => onHit(p.instanceId, 1)} className="px-1.5 rounded bg-red-900 text-xs">−1</button>

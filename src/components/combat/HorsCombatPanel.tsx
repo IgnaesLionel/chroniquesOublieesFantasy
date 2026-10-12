@@ -26,6 +26,7 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
   const [cibleId, setCibleId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  const [brulure, setBrulure] = useState(false);
 
   const lanceurs = characters.filter((c) => (c.sorts ?? []).length > 0);
   if (lanceurs.length === 0) return null;
@@ -49,8 +50,12 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
     setMessage(null);
     setErreur(null);
     if (!sort) return;
+    // Brûlure de mana : à 0 PM, 1 DR par PM en PV (jamais pour les soins).
+    const coutSort = sort.cout?.montant ?? 0;
+    const brulurePossible = coutSort > 0 && (mana?.actuel ?? 0) === 0 && !sort.soin;
+    const mode: "mana" | "brulure" = brulure && brulurePossible ? "brulure" : "mana";
     try {
-      const { lanceur: l2, cible: c2, resolution } = lancerSortHorsCombat(lanceur, cible, sort);
+      const { lanceur: l2, cible: c2, resolution } = lancerSortHorsCombat(lanceur, cible, sort, Math.random, mode);
       onUpdate(
         characters.map((c) => {
           if (c.id === l2.id && c.id === c2.id) return l2;
@@ -61,6 +66,7 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
       );
       const parties = [`${resolution.lanceurNom} lance ${resolution.sortNom} sur ${resolution.cibleNom}`];
       if (resolution.manaPaye > 0) parties.push(`−${resolution.manaPaye} mana`);
+      if (resolution.pvBrules > 0) parties.push(`🔥 brûlure : −${resolution.pvBrules} PV [${resolution.detailsBrulure.join(", ")}]`);
       if (resolution.pvSacrifie > 0) parties.push(`−${resolution.pvSacrifie} PV sacrifiés`);
       if (resolution.soinTotal > 0) {
         parties.push(`+${resolution.soinTotal} PV (${resolution.soinDetails.join(", ")}) : ${resolution.pvAvant} → ${resolution.pvApres}`);
@@ -148,6 +154,31 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
         </select>
       </label>
       {sort && <p className="text-xs text-zinc-500">{sort.description ?? "Aucune description."}</p>}
+      {sort && (sort.cout?.montant ?? 0) > 0 && (
+        <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
+          <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
+          <label className="flex items-center gap-2">
+            <input type="radio" checked={!brulure} onChange={() => setBrulure(false)} />
+            <span>Incantation ({sort.cout!.montant} PM)</span>
+          </label>
+          {(() => {
+            const raison = sort.soin
+              ? "brûlure interdite pour les soins"
+              : (mana?.actuel ?? 0) !== 0
+                ? "brûlure réservée au 0 mana"
+                : null;
+            return (
+              <label className={`flex items-center gap-2 ${raison ? "opacity-40" : ""}`} title={raison ?? "Brûlure de mana : paie en PV (1 DR par PM, sans RD, KO possible)"}>
+                <input type="radio" checked={brulure} disabled={!!raison} onChange={() => setBrulure(true)} />
+                <span>Brûlure de mana ({sort.cout!.montant} DR de PV)</span>
+              </label>
+            );
+          })()}
+          {brulure && (mana?.actuel ?? 0) !== 0 && (
+            <div className="text-xs text-amber-300/90">⚠ Brûlure possible uniquement à 0 mana.</div>
+          )}
+        </div>
+      )}
       <button
         onClick={lancer}
         disabled={!sort || !sortLancableHorsCombat(sort).ok || !sortUtilisable(lanceur.niveau, sort).ok}

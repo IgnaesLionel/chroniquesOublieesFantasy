@@ -1219,6 +1219,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 9,
@@ -1266,6 +1269,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 0,
   "initiativeFiche": 8,
@@ -1433,6 +1439,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 12,
@@ -1612,6 +1621,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 17,
@@ -1975,6 +1987,9 @@
   "comportement": "",
   "taille": "Très petite",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Démon"
+  ],
   "rd": 5,
   "deplacement": 10,
   "initiativeFiche": 15,
@@ -2074,6 +2089,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 12,
@@ -3558,6 +3576,9 @@
   "comportement": "",
   "taille": "",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": null,
   "initiativeFiche": 18,
@@ -3710,6 +3731,9 @@
   "comportement": "",
   "taille": "Grande",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 9,
@@ -3851,6 +3875,9 @@
   "comportement": "",
   "taille": "Grande",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 0,
   "initiativeFiche": 8,
@@ -4026,6 +4053,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 11,
@@ -4712,6 +4742,9 @@
   "comportement": "",
   "taille": "Grande",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Construit"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 10,
@@ -4860,6 +4893,9 @@
   "comportement": "",
   "taille": "Moyenne",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 10,
   "initiativeFiche": 17,
@@ -4955,6 +4991,9 @@
   "comportement": "",
   "taille": "",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": null,
   "initiativeFiche": 16,
@@ -5021,6 +5060,9 @@
   "comportement": "",
   "taille": "",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": null,
   "initiativeFiche": 8,
@@ -5133,6 +5175,9 @@
   "comportement": "",
   "taille": "Grande",
   "categorie": "Monstres/Créatures",
+  "sousCategories": [
+   "Mort-vivant"
+  ],
   "rd": 0,
   "deplacement": 5,
   "initiativeFiche": 8,

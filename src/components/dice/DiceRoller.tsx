@@ -38,6 +38,7 @@ export function DiceRoller({ compact = false }: { compact?: boolean }) {
         <button onClick={() => roll(input)} className="px-5 py-2 rounded bg-amber-400 text-black font-bold">Lancer</button>
       </div>
       {error && <div className="text-sm text-red-400">{error}</div>}
+      <p className="text-[11px] text-zinc-500">° = dé évolutif (substitué auto au niveau en combat ; lancer libre = dé de base).</p>
       {last && (
         <div className="rounded bg-zinc-950 border border-zinc-800 p-3 text-sm space-y-0.5">
           <div className="font-semibold text-amber-300">{last.label ?? "Jet"}</div>

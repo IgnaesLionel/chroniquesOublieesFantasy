@@ -76,6 +76,24 @@ describe("sorts hors combat", () => {
     expect(resolution.manaPaye).toBe(1);
   });
 
+  it("brûlure hors combat : à 0 PM, 1 DR par PM (jamais pour les soins)", () => {
+    const lanceur = pretre();
+    const cible = pretre("Cible");
+    const sort: Sort = { id: "b", nom: "Bouclier", type: "defensif", action: "limitee", cout: { ressource: "mana", montant: 2 } };
+    const sec = { ...lanceur, ressources: { mana: { max: 5, actuel: 0 } } };
+    // d8 (repli Prêtre/Mystique), rng 0.5 -> 5 par dé = 10 PV (20 -> 10), mana intact.
+    const { lanceur: l2, resolution } = lancerSortHorsCombat(sec, cible, sort, fixedRng([0.5]), "brulure");
+    expect(resolution.manaPaye).toBe(0);
+    expect(resolution.pvBrules).toBe(10);
+    expect(resolution.detailsBrulure).toEqual([5, 5]);
+    expect(l2.pv).toBe(10);
+    expect(l2.ressources.mana.actuel).toBe(0);
+    // Interdits : mana restant, sorts de soins.
+    expect(() => lancerSortHorsCombat(lanceur, cible, sort, Math.random, "brulure")).toThrow(/0 mana/);
+    const soin: Sort = { id: "s", nom: "Soins", type: "defensif", soin: "1d4", cout: { ressource: "mana", montant: 1 } };
+    expect(() => lancerSortHorsCombat(sec, cible, soin, Math.random, "brulure")).toThrow(/soins/);
+  });
+
   it("soin sur soi : sacrifice PV puis soin cumulés sur la même fiche", () => {
     const lanceur = { ...pretre(), pv: 15 };
     const sort: Sort = {
@@ -115,7 +133,7 @@ describe("sorts hors combat", () => {
       effetCle: "Aspect du démon",
       effetDuree: null,
       effetMods: { defense: 5 },
-      attaqueAccordee: { nom: "Griffes du démon", degats: "1d4+INT" },
+      attaqueAccordee: { nom: "Griffes du démon", degats: "1d4°+INT" },
     };
     const { cible: c2, resolution } = lancerSortHorsCombat(lanceur, cible, sort);
     expect(resolution.effetNom).toBe("Aspect du démon");

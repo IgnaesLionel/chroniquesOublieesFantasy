@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { SEED_NPCS } from "@/src/lib/data/worldSeeds";
-import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
+import { useNpcs } from "@/src/lib/store/collections";
 import { exportJson } from "@/src/lib/store/repository";
 import type { Npc } from "@/src/lib/rules/world/types";
 
@@ -11,7 +10,7 @@ const EMPTY: Npc = {
 };
 
 export default function NpcsPage() {
-  const { items, setItems } = useLocalCollection<Npc>("cof.npcs", SEED_NPCS);
+  const { items, setItems } = useNpcs();
   const [editing, setEditing] = useState<Npc | null>(null);
   const [dialogueInput, setDialogueInput] = useState("");
 

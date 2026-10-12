@@ -9,6 +9,7 @@ import {
   compterCapacites,
   coutRang,
   creationProfil,
+  desapprendreTalentComplet,
   estEffective,
   etatCreation,
   localiserCapacite,
@@ -69,6 +70,34 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
       expect(e.rang2Nom).toBeNull();
       expect(e.alertes).toEqual([]);
     }
+  });
+
+  it("R2 gratuit : exige la Voie du mage adoptée (profil ou Maîtrise)", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    // Référence : voie du mage adoptée + Maîtrise consommée -> gratuit.
+    expect(etatCreation(mirabel)!.rang2Nom).toBe("Maîtrise de la magie");
+    // Même fiche sans voie du mage : plus de gratuité (R2 payant + niveau requis).
+    const sansVoie: Character = {
+      ...mirabel,
+      voieMage: undefined,
+      traitsPeuple: ["Diversité"],
+    };
+    expect(etatCreation(sansVoie)!.rang2Nom).toBeNull();
+    expect(etatCreation(sansVoie)!.alertes.length).toBeGreaterThan(0);
+    expect(talentsRang2Gratuits(sansVoie)).toEqual([]);
+    const refuse = peutApprendre(
+      { ...sansVoie, capacites: ["Malédiction", "Saignements"] },
+      { nom: "Maîtrise de la magie", voie: "Voie du mage", rang: 2 }
+    );
+    expect(refuse.gratuit).toBe(false);
+    // Avec la voie adoptée : R2 de profil gratuit aussi (pas seulement Maîtrise).
+    const vierge = { ...mirabel, capacites: ["Malédiction", "Saignements"] };
+    const freeProfil = peutApprendre(vierge, { nom: "Beauté de la succube", voie: "Voie du démon", rang: 2 });
+    expect(freeProfil.ok).toBe(true);
+    expect(freeProfil.gratuit).toBe(true);
+    expect(compterCapacites({ ...vierge, capacites: [...vierge.capacites, "Beauté de la succube"] }).rang2Nom).toBe(
+      "Beauté de la succube"
+    );
   });
 
   it("coûts, niveaux min, points totaux", () => {
@@ -214,6 +243,14 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(bloqueSort.ok).toBe(false);
     expect(bloqueSort.raisons.some((r) => r.includes("Voie du mage rang 3"))).toBe(true);
     expect(peutDesapprendre(sortsMage, "Tour de magie", "sorts")).toEqual({ ok: true, raisons: [] });
+    // Sort lié à un talent connu : retrait via le talent uniquement.
+    const aelion = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
+    const lie = peutDesapprendre(aelion, "Bénédiction", "sorts");
+    expect(lie.ok).toBe(false);
+    expect(lie.raisons.some((r) => r.includes("talent connu"))).toBe(true);
+    // Talent parti : le sort se retire librement (R1, sans rang supérieur).
+    const orphelin = { ...aelion, capacites: (aelion.capacites ?? []).filter((t) => t !== "Bénédiction") };
+    expect(peutDesapprendre(orphelin, "Bénédiction", "sorts")).toEqual({ ok: true, raisons: [] });
   });
 
   it("estEffective : inactif sous le niveau requis (baisse de niveau)", () => {
@@ -264,6 +301,30 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     const r3 = apprendreTalentComplet(vierge, "Robustesse", SEED_SORTS);
     expect(r3.capacites).toContain("Robustesse");
     expect(r3.sorts).toHaveLength(0);
+  });
+
+  it("desapprendreTalentComplet : le sort lié part avec le talent", () => {
+    const aelion = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
+    // Cas signalé : Bénédiction apprise (talent + sort), on désapprend le talent.
+    expect(aelion.capacites).toContain("Bénédiction");
+    expect(aelion.sorts.map((s) => s.nom)).toContain("Bénédiction");
+    const r = desapprendreTalentComplet(aelion, "Bénédiction", SEED_SORTS);
+    expect(r.capacites).not.toContain("Bénédiction");
+    expect(r.sorts.map((s) => s.nom)).not.toContain("Bénédiction");
+    // L'autre sort survit ; le mana suit VOL + sorts (2+1 = 3, actuel plafonné).
+    expect(r.sorts.map((s) => s.nom)).toContain("Récupération mineure");
+    expect(r.ressources.mana).toEqual({ max: 3, actuel: 3 });
+    expect(aelion.sorts).toHaveLength(2); // non muté
+    // Talent pur : aucun sort touché.
+    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const r2 = desapprendreTalentComplet(dorain, "Protéger un allié", SEED_SORTS);
+    expect(r2.capacites).toEqual(["Robustesse"]);
+    expect(r2.sorts).toHaveLength(0);
+    // Armure d'os : la DEF retombe via la fonction (recalcul intégré).
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const avec = apprendreTalentComplet(mirabel, "Armure d'os", SEED_SORTS);
+    expect(avec.defense).toBe(14);
+    expect(desapprendreTalentComplet(avec, "Armure d'os", SEED_SORTS).defense).toBe(11);
   });
 
   it("Armure d'os : +3 DEF permanent à l'apprentissage, retiré au désapprentissage", () => {

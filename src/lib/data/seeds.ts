@@ -146,3 +146,26 @@ export const SEED_CHARACTERS: Character[] = [
 
 /** Bestiaire Notion de l'utilisateur (95 créatures, exemple:false). Régénéré via bestiaire/import_notion.py. */
 export const SEED_MONSTERS: MonsterTemplate[] = monstresNotion as MonsterTemplate[];
+
+const SEED_SOUS_CATEGORIES = new Map<string, string[]>(
+  SEED_MONSTERS.filter((m) => (m.sousCategories ?? []).length > 0).map((m) => [m.id, [...m.sousCategories!]])
+);
+
+/**
+ * Migration douce des sauvegardes locales : le localStorage peut contenir des
+ * monstres enregistrés AVANT l'ajout des sous-catégories (champ absent).
+ * Pour ceux-là uniquement (champ undefined + id connu des graines), on
+ * reporte les tags de la graine sans toucher au reste (ni aux monstres
+ * créés/édités par l'utilisateur : champ défini, même vide, = choix du MJ).
+ */
+export function avecSousCategoriesGraines(monstres: MonsterTemplate[]): MonsterTemplate[] {
+  let touche = false;
+  const liste = monstres.map((m) => {
+    if (m.sousCategories !== undefined) return m;
+    const tags = SEED_SOUS_CATEGORIES.get(m.id);
+    if (!tags) return m;
+    touche = true;
+    return { ...m, sousCategories: [...tags] };
+  });
+  return touche ? liste : monstres;
+}

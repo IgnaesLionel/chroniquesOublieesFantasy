@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable, type AttaqueOpts } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
@@ -17,7 +17,7 @@ interface Props {
   onAttacker: (id: string) => void;
   onAttack: (id: string) => void;
   onTarget: (id: string) => void;
-  onRoll: (opts?: AttaqueOpts) => void;
+  onRoll: (opts?: AttaqueOpts, paiement?: PaiementSort) => void;
   onChance: () => void;
 }
 
@@ -37,6 +37,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [eclair, setEclair] = useState(false);
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
+  const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
+  const [concentration, setConcentration] = useState(false);
   const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
   const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
   const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
@@ -79,7 +81,21 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       const des = courante?.degats.match(/^(\d*d\d+°?)(.*)$/);
       if (courante && des) opts.degatsOverride = `${des[1]}+${agi}`;
     }
-    onRoll(opts);
+    // Mode de lancement du sort (incantation / brûlure + concentration éventuelle).
+    const selAttaque = attacker?.attaques.find((x) => x.id === (attackId ?? attacker?.attaques[0]?.id));
+    const selSort = attacker && selAttaque && selAttaque.id.startsWith("sort:")
+      ? attacker.sorts.find((x) => `sort:${x.id}` === selAttaque.id)
+      : undefined;
+    const selCout = selSort?.cout?.montant ?? 0;
+    const concOk = !!selSort && (selSort.action ?? "attaque") === "attaque" && selCout > 0 && concentration;
+    const coutEff = concOk ? Math.max(0, selCout - 2) : selCout;
+    const burnOk = !!selSort && !selSort.soin && coutEff > 0 && (attacker?.ressources["mana"]?.actuel ?? 0) === 0
+      && !!attacker?.deRecuperation && modeLancement === "brulure";
+    const paiement: PaiementSort = {
+      mode: burnOk ? "brulure" : "mana",
+      concentration: concOk,
+    };
+    onRoll(opts, paiement);
   };
 
   return (
@@ -94,12 +110,38 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       </label>
       {attacker && (() => {
         const mana = attacker.ressources["mana"];
+        const selId = attackId ?? attacker.attaques[0]?.id;
+        const selAttaque = attacker.attaques.find((x) => x.id === selId);
+        const selSort = selAttaque && selAttaque.id.startsWith("sort:")
+          ? attacker.sorts.find((x) => `sort:${x.id}` === selAttaque.id)
+          : undefined;
+        const coutBase = selSort?.cout?.montant ?? 0;
+        const concPossible = !!selSort && (selSort.action ?? "attaque") === "attaque" && coutBase > 0;
+        const concActive = concentration && concPossible;
+        const coutEff = concActive ? Math.max(0, coutBase - 2) : coutBase;
+        const raisonBrulure = (): string | null => {
+          if (!selSort) return null;
+          if (selSort.soin) return "brûlure interdite pour les soins";
+          if (coutEff <= 0) return "brûlure inutile (coût 0)";
+          if ((mana?.actuel ?? 0) !== 0) return "brûlure réservée au 0 mana";
+          if (!attacker.deRecuperation) return "pas de dé de récupération";
+          return null;
+        };
+        const burnPossible = !!selSort && raisonBrulure() === null;
+        const burnActive = modeLancement === "brulure" && burnPossible;
         const info = (id: string) => {
           const attaque = attacker.attaques.find((x) => x.id === id);
           const sort = id.startsWith("sort:") ? attacker.sorts.find((x) => `sort:${x.id}` === id) : undefined;
           const cout = sort?.cout?.montant ?? 0;
           const raisons: string[] = [];
-          if ((mana?.actuel ?? 0) < cout) raisons.push("manque de mana");
+          const estSel = id === selId;
+          const coutOptions = estSel && concActive ? Math.max(0, cout - 2) : cout;
+          const burnOptions = estSel && burnActive;
+          if (!burnOptions && (mana?.actuel ?? 0) < coutOptions) raisons.push("manque de mana");
+          if (estSel && modeLancement === "brulure" && !burnActive && sort) {
+            const r = raisonBrulure();
+            if (r) raisons.push(r);
+          }
           if (sort) {
             const u = sortUtilisable(attacker.niveau, sort);
             if (!u.ok && u.raison) raisons.push(u.raison);
@@ -109,6 +151,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           return { cout, raisons, sort, attaque };
         };
         return (
+          <>
           <label className="block text-sm">Arme / sort
             {mana && <span className="ml-2 font-mono text-xs text-violet-300">mana {mana.actuel}/{mana.max}</span>}
             <select value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
@@ -125,6 +168,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
                   sort?.limiteCombat != null && !sort.limiteParCible ? `1×${sort.limiteCombat}/combat` : "",
                   sort?.limiteParCible ? "1/combat/cible" : "",
                   a.toucheAuto ? "auto" : "",
+                  sort?.cibleEspeces?.length ? `💀 ${sort.cibleEspeces.join("/")}` : "",
                 ].filter(Boolean).join(" · ");
                 return (
                   <option key={a.id} value={a.id} disabled={!jouable}>
@@ -134,6 +178,29 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               })}
             </select>
           </label>
+          {selSort && coutBase > 0 && (
+            <div className="rounded border border-zinc-800 p-2 mt-1.5 space-y-1.5 text-sm">
+              <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
+              <label className="flex items-center gap-2" title="Incantation classique : paie le coût en mana">
+                <input type="radio" checked={modeLancement === "mana"} onChange={() => setModeLancement("mana")} />
+                <span>Incantation ({coutEff} PM{concActive && coutEff !== coutBase ? `, concentré depuis ${coutBase}` : ""})</span>
+              </label>
+              <label className={`flex items-center gap-2 ${burnPossible ? "" : "opacity-40"}`} title={raisonBrulure() ?? `Brûlure de mana : paie en PV (1 ${attacker.deRecuperation ?? "DR"} par PM, sans RD, KO possible) — jamais pour les soins`}>
+                <input type="radio" checked={modeLancement === "brulure"} disabled={!burnPossible} onChange={() => setModeLancement("brulure")} />
+                <span>Brûlure de mana ({coutEff}{attacker.deRecuperation ?? "?"} de PV)</span>
+              </label>
+              {modeLancement === "brulure" && !burnPossible && raisonBrulure() && (
+                <div className="text-xs text-amber-300/90">⚠ {raisonBrulure()}</div>
+              )}
+              {concPossible && (
+                <label className="flex items-center gap-2" title="Sort (A) lancé en action limitée (L) : −2 PM. Le lanceur se prive de déplacement.">
+                  <input type="checkbox" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
+                  <span>Concentration accrue (−2 PM → {Math.max(0, coutBase - 2)} PM, action L)</span>
+                </label>
+              )}
+            </div>
+          )}
+          </>
         );
       })()}
       {attacker && attacker.attaques.length === 0 && (

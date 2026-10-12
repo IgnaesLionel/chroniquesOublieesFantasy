@@ -83,7 +83,7 @@ export const CAPACITES_MYSTIQUE: Record<string, VoieDetail[]> = {
       capacites: [
         { nom: "Bénédiction", rang: 1, resume: "Sort (limitée) : chant, alliés en vue +1 aux tests et attaques pendant CHA minutes (+2 au rang 5). Rang+2 en théologie et cosmologie (MJ).", sortId: "sort-benediction" },
         { nom: "Sanctuaire", rang: 2, resume: "Sort (limitée) : 10 rounds, attaquer le prêtre exige INT 10+CHA (auto si niveau < moitié). Fin sur action offensive, relançable après récup rapide (MJ).", sortId: "sort-sanctuaire" },
-        { nom: "Destruction du mal", rang: 3, resume: "Sort d'attaque : morts-vivants et démons dans 10 m subissent 2d4+CHA automatiques (3d4 au rang 5).", sortId: "sort-destruction-mal" },
+        { nom: "Destruction du mal", rang: 3, resume: "Sort d'attaque automatique (sans jet) : 2d4 DM aux morts-vivants et démons uniquement, sans effet sur les autres espèces (10 m, une cible par lancer).", sortId: "sort-destruction-mal" },
         { nom: "Volonté héroïque", rang: 4, resume: "VOL +1 et dé bonus aux tests de VOL." },
         { nom: "Intervention divine", rang: 5, resume: "Action gratuite, 1/combat : impose réussite ou échec d'un test (même après les dés), pas NC > niveau." },
       ],

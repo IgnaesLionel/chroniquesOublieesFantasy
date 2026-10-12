@@ -89,8 +89,30 @@ export interface Item {
   degats?: string;
   /** Familles d'arme (cumul possible : ex. hachette de lancer = haches + jet). */
   familles?: ArmeFamille[];
+  /** Bonus DEF (armures, boucliers) appliqué automatiquement si équipé. */
+  bonusDefense?: number;
+  /** Objet magique : non cumulé (seul le plus haut bonus magique compte). */
+  magique?: boolean;
+  /** Mains occupées quand l'objet est équipé (arme/bouclier : 1 ou 2, torse : 0). */
+  mains?: 0 | 1 | 2;
+  /** Emplacement d'armure (un seul torse et un seul bouclier équipés à la fois ; accessoire = ni l'un ni l'autre). */
+  emplacement?: "torse" | "bouclier" | "accessoire";
   /** Effet appliqué si TOUCHÉ (clé du catalogue, ex: "empoisonne"). */
   effetCle?: string;
   effetDuree?: number | null;
   exemple: boolean;
+}
+
+/** Mains occupées par un objet équipé (défaut : arme = 1, bouclier = 1, torse = 0, autre = 0). */
+export function mainsDe(item: Pick<Item, "mains" | "estArme" | "categorie" | "emplacement">): number {
+  if (typeof item.mains === "number") return item.mains;
+  if (item.emplacement === "bouclier") return 1;
+  if (item.categorie === "armure") return 0;
+  if (item.estArme) return 1;
+  return 0;
+}
+
+/** Vrai si l'objet est un torse (armure de corps, max 1 équipée). */
+export function estTorse(item: Pick<Item, "categorie" | "emplacement">): boolean {
+  return item.categorie === "armure" && item.emplacement !== "bouclier" && item.emplacement !== "accessoire";
 }

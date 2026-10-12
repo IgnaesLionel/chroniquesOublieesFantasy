@@ -92,9 +92,10 @@ export const SEED_SORTS: Sort[] = [
     id: "sort-destruction-mal", nom: "Destruction du mal", type: "offensif",
     voie: "Voie de la prière", rang: 3,
     action: "attaque",
-    description: "Tous les morts-vivants et démons dans 10 m subissent automatiquement 2d4+CHA DM (3d4 au rang 5).",
+    description: "Dégâts automatiques (sans jet) : 2d4 DM aux morts-vivants et démons uniquement — sans effet sur les autres espèces. Une cible par lancer, 10 m (MJ).",
     familles: ["Prêtre"],
-    degats: "2d4", cout: { ressource: "mana", montant: 3 },
+    degats: "2d4", toucheAuto: true, cibleEspeces: ["Mort-vivant", "Démon"],
+    cout: { ressource: "mana", montant: 3 },
   },
   {
     id: "sort-recuperation-mineure", nom: "Récupération mineure", type: "defensif",

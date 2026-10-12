@@ -48,15 +48,87 @@ describe("effets temporaires", () => {
     expect(t.pvDelta).toBe(-2);
   });
 
-  it("combat : nextTurn tick l'actif + expire + log", () => {
+  it("combat : nextTurn consomme à la FIN du tour du porteur (malus couvre tout son tour)", () => {
     const a = participant("A");
     const b = { ...participant("B"), camp: "monstre" as const };
     let s = createCombat([a, b]);
+    // A (tour en cours) empoisonne B pour 1 tour.
     s = addParticipantEffect(s, "B", createEffect("empoisonne", { dureeTours: 1 }));
     expect(s.participants[1].effets).toHaveLength(1);
-    s = nextTurn(s, false); // tour de B -> tick -> expire
+    // Tour de B : le malus est toujours là (il n'expire pas avant d'agir).
+    s = nextTurn(s, false);
+    expect(s.tourIndex).toBe(1);
+    expect(s.participants[1].effets).toHaveLength(1);
+    expect(s.participants[1].effets[0].toursRestants).toBe(1);
+    // Fin du tour de B : le malus expire seulement maintenant.
+    s = nextTurn(s, false);
     expect(s.participants[1].effets).toHaveLength(0);
     expect(s.log.some((l) => l.message.includes("expiré"))).toBe(true);
+  });
+
+  it("combat : auto-buff 1 tour posé pendant son tour survit jusqu'à la fin de son prochain tour", () => {
+    const a = participant("A");
+    const b = { ...participant("B"), camp: "monstre" as const };
+    let s = createCombat([a, b]);
+    // A se protège pendant son propre tour.
+    s = addParticipantEffect(s, "A", createEffect("protection", { dureeTours: 1 }));
+    // Tour de B : le buff de A est toujours actif (couvre l'inter-round).
+    s = nextTurn(s, false);
+    expect(s.participants[0].effets).toHaveLength(1);
+    // Tour de A (manche 2) : le buff couvre encore tout son tour.
+    s = nextTurn(s, false);
+    expect(s.tourIndex).toBe(0);
+    expect(s.participants[0].effets).toHaveLength(1);
+    // Fin du tour de A (manche 2) : le buff expire seulement maintenant.
+    s = nextTurn(s, false);
+    expect(s.participants[0].effets).toHaveLength(0);
+  });
+
+  it("combat : DoT appliqué au début du tour, durée consommée à la fin (2 ticks pour 2 tours)", () => {
+    const a = participant("A");
+    const b = { ...participant("B"), camp: "monstre" as const };
+    let s = createCombat([a, b]);
+    s = addParticipantEffect(s, "B", createEffect("saignement", { dureeTours: 2 }));
+    // Début du tour de B (manche 1) : -2 PV, effet toujours présent.
+    s = nextTurn(s, false);
+    expect(s.participants[1].pv).toBe(28);
+    expect(s.participants[1].effets[0].toursRestants).toBe(2);
+    // Tour de A (manche 2) : fin du tour de B -> 2 => 1.
+    s = nextTurn(s, false);
+    expect(s.participants[1].effets[0].toursRestants).toBe(1);
+    // Début du tour de B (manche 2) : -2 PV à nouveau...
+    s = nextTurn(s, false);
+    expect(s.participants[1].pv).toBe(26);
+    // ...puis fin de son tour : expiration.
+    s = nextTurn(s, false);
+    expect(s.participants[1].effets).toHaveLength(0);
+    expect(s.log.some((l) => l.message.includes("expiré"))).toBe(true);
+  });
+
+  it("combat : scénario du rapport — Ralenti 1 tour tient tout le tour de l'ennemi", () => {
+    // Sorcier (tour en cours) touche l'ennemi avec "Un pied dans la tombe"
+    // + Ralenti (1 tour) en effet supplémentaire.
+    const sorcierP: CombatParticipant = {
+      ...participant("Sorcier"),
+      attaques: [{ id: "pied", nom: "Un pied dans la tombe", bonus: 10, degats: "1d6" }],
+    };
+    const ennemi = { ...participant("Ennemi"), camp: "monstre" as const };
+    const s0 = createCombat([sorcierP, ennemi]);
+    const { state: s1 } = resolveAttack(
+      s0, "Sorcier", "Ennemi", "pied",
+      fixedRng([0.9, 0.5]),
+      undefined,
+      { effetSupp: { cle: "Ralenti", duree: 1 } }
+    );
+    expect(s1.participants[1].effets.map((e) => e.nom)).toContain("Ralenti");
+    // Tour de l'ennemi : il subit encore le malus pendant TOUT son tour.
+    const s2 = nextTurn(s1, false);
+    const malus = s2.participants[1].effets.find((e) => e.nom === "Ralenti");
+    expect(malus).toBeTruthy();
+    expect(malus!.toursRestants).toBe(1);
+    // Il ne le perd qu'à la fin de son tour.
+    const s3 = nextTurn(s2, false);
+    expect(s3.participants[1].effets.find((e) => e.nom === "Ralenti")).toBeUndefined();
   });
 
   it("combat : add/remove effet via helpers + journal", () => {

@@ -90,6 +90,7 @@ export const sortSchema = z.object({
     initiative: z.number().optional(),
   }).optional(),
   zone: z.boolean().optional(),
+  cibleEspeces: z.array(z.string()).optional(),
 });
 
 export const characterSchema = z.object({
@@ -123,6 +124,7 @@ export const characterSchema = z.object({
   ressources: z.record(z.string(), z.object({ max: z.number(), actuel: z.number() })),
   effets: z.array(z.any()).default([]),
   inventaire: z.array(inventaireSchema).default([]),
+  bourse: z.object({ pp: z.number().int().min(0), po: z.number().int().min(0), pa: z.number().int().min(0) }).optional(),
   sorts: z.array(sortSchema).default([]),
   notes: z.string().optional(),
   exemple: z.boolean(),
@@ -172,6 +174,7 @@ export const monsterSchema = z.object({
   comportement: z.string().optional(),
   taille: z.string().optional(),
   categorie: z.string().optional(),
+  sousCategories: z.array(z.string()).optional(),
   rd: z.number().optional(),
   deplacement: z.number().nullable().optional(),
   initiativeFiche: z.number().optional(),
@@ -210,6 +213,10 @@ export const itemSchema = z.object({
   effetCle: z.string().optional(),
   effetDuree: z.number().int().min(1).nullable().optional(),
   familles: z.array(z.enum(ARME_FAMILLE_KEYS)).optional(),
+  bonusDefense: z.number().int().min(0).optional(),
+  magique: z.boolean().optional(),
+  mains: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
+  emplacement: z.enum(["torse", "bouclier", "accessoire"]).optional(),
   exemple: z.boolean(),
 });
 

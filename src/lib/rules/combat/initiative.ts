@@ -1,7 +1,7 @@
 import { rollDie, type Rng } from "@/src/lib/rules/dice/roller";
 import type { ActiveEffect } from "@/src/lib/rules/types";
 import type { CombatLogEntry, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
-import { tickEffects } from "@/src/lib/rules/effects/effects";
+import { decrementerFinDeTour, marquerPose, pvParTourTotal } from "@/src/lib/rules/effects/effects";
 import { checkEnd } from "@/src/lib/rules/combat/attack";
 
 function entry(manche: number, message: string): CombatLogEntry {
@@ -45,7 +45,14 @@ export function getActive(state: CombatState): CombatParticipant | null {
   return state.participants[state.tourIndex] ?? null;
 }
 
-/** Prochain tour (saute KO/morts si sauterKO). Manche++ à chaque boucle. Tick les effets du nouvel actif. */
+/**
+ * Prochain tour (saute KO/morts si sauterKO). Manche++ à chaque boucle.
+ * Effets : les durées sont consommées à la FIN du tour de leur porteur
+ * (l'ancien actif est décrémenté en partant) et les dégâts/soins par tour
+ * sont appliqués au DÉBUT du tour du nouvel actif (sans décrément).
+ * Ainsi un malus "1 tour" posé sur un ennemi couvre tout son tour et
+ * n'expire qu'à la fin de celui-ci.
+ */
 export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   if (state.termine || state.participants.length === 0) return state;
   let idx = state.tourIndex;
@@ -60,29 +67,41 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   }
   const log = [...state.log];
   let participants = state.participants;
+  // 1) Fin de tour de l'ancien actif : on consomme ses durées d'effets.
+  // Un effet posé pendant ce même tour est épargné (il doit encore couvrir
+  // un tour complet, ex. auto-buff "1 tour" lancé pendant son propre tour).
+  const ancien = participants[state.tourIndex];
+  if (ancien && ancien.effets.length > 0) {
+    const { restants, expires } = decrementerFinDeTour(ancien.effets, state.manche, state.tourIndex);
+    participants = participants.map((p, i) => (i === state.tourIndex ? { ...p, effets: restants } : p));
+    for (const e of expires) log.push(entry(manche, `Effet "${e.nom}" expiré sur ${ancien.nom} (fin de tour).`));
+  }
+  // 2) Début de tour du nouvel actif : dégâts/soins par tour, sans décrément.
   const actif = participants[idx];
   if (actif && actif.effets.length > 0) {
-    const { restants, pvDelta, expires } = tickEffects(actif.effets);
+    const pvDelta = pvParTourTotal(actif.effets);
     let pv = actif.pv;
     if (pvDelta !== 0 && actif.statut === "actif") {
       pv = Math.max(0, Math.min(actif.pvMax, actif.pv + pvDelta));
       log.push(entry(manche, `${actif.nom} : effet (${pvDelta > 0 ? "+" : ""}${pvDelta} PV) -> ${pv}/${actif.pvMax} PV`));
     }
-    for (const e of expires) log.push(entry(manche, `Effet "${e.nom}" expiré sur ${actif.nom}.`));
     const statut = pv <= 0 ? ("ko" as const) : actif.statut;
     if (pv <= 0 && actif.statut === "actif") log.push(entry(manche, `${actif.nom} est hors combat`));
-    participants = participants.map((p, i) => (i === idx ? { ...p, effets: restants, pv, statut } : p));
+    if (pv !== actif.pv || statut !== actif.statut) {
+      participants = participants.map((p, i) => (i === idx ? { ...p, pv, statut } : p));
+    }
   }
   log.push(entry(manche, `Tour de ${actif?.nom ?? "—"} (manche ${manche}).`));
   return checkEnd({ ...state, participants, tourIndex: idx, manche, log });
 }
 
-/** Ajoute un effet à un participant (pur). */
+/** Ajoute un effet à un participant (pur). Tamponne le tour de pose. */
 export function addParticipantEffect(state: CombatState, instanceId: string, effet: ActiveEffect): CombatState {
+  const tamponne = marquerPose(effet, state.manche, state.tourIndex);
   return {
     ...state,
     participants: state.participants.map((p) =>
-      p.instanceId === instanceId ? { ...p, effets: [...p.effets, effet] } : p
+      p.instanceId === instanceId ? { ...p, effets: [...p.effets, tamponne] } : p
     ),
     log: [...state.log, entry(state.manche, `Effet "${effet.nom}" (${effet.toursRestants ?? "∞"} tours) sur ${state.participants.find((p) => p.instanceId === instanceId)?.nom ?? "?"}.`)],
   };

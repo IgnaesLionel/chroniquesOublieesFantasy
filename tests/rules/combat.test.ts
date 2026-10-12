@@ -3,8 +3,8 @@ import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { AttackDef } from "@/src/lib/rules/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, castSoutien, checkEnd, construireLoupCompagnon, depenserChanceApresCoup, etatLimite, frapperZone, invoquerCompagnon, renvoyerSort, resolveAttack, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
-import { monsterInstances, participantFromCharacter } from "@/src/lib/rules/combat/factory";
+import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, etatLimite, frapperZone, invoquerCompagnon, payerCoutSort, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { monsterInstances, nomBaseInstance, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { CAPACITES_USABLES } from "@/src/lib/data/capacites-usables";
@@ -47,6 +47,23 @@ describe("moteur de combat", () => {
     const pvRef = tpl.pv;
     got[0].pv = 0;
     expect(got[1].pv).toBe(pvRef);
+  });
+
+  it("doublons inter-lots renumérotés : 2 rats puis 1 rat -> #1..#3", () => {
+    const tpl = SEED_MONSTERS.find((m) => m.nom.toLowerCase().includes("rat")) ?? SEED_MONSTERS[0];
+    const lot1 = monsterInstances(tpl, 2);
+    const lot2 = monsterInstances(tpl, 1);
+    // Sans renommage : deux "#1" + un homonyme nu.
+    expect([lot1[0].nom, lot1[1].nom, lot2[0].nom]).toEqual([`${tpl.nom} #1`, `${tpl.nom} #2`, tpl.nom]);
+    const groupe = renommerDoublonsMonstres([...lot1, ...lot2]);
+    expect(groupe.map((g) => g.nom)).toEqual([1, 2, 3].map((i) => `${tpl.nom} #${i}`));
+  });
+
+  it("renommage : 1 seul garde le nom nu, les PJ sont intacts", () => {
+    const tpl = SEED_MONSTERS.find((m) => m.nom.toLowerCase().includes("rat")) ?? SEED_MONSTERS[0];
+    const [seul] = monsterInstances(tpl, 1);
+    expect(renommerDoublonsMonstres([pj("Aria"), seul]).map((p) => p.nom)).toEqual(["Aria", tpl.nom]);
+    expect(nomBaseInstance(`${tpl.nom} #2`)).toBe(tpl.nom);
   });
 
   it("initiatives triées décroissant", () => {
@@ -97,19 +114,20 @@ describe("moteur de combat", () => {
     expect(resolution.pvApres).toBe(8);
   });
 
-  it("dégâts explosifs en attaque : 4 relancé + modificateur", () => {
-    const lanceur = { ...pj("Mage"), attaques: [{ id: "sort", nom: "✦ Pied dans la tombe", bonus: 5, degats: "1d4°+2" }] };
+  it("dé évolutif en attaque : 1d4° -> d6 au niv. 7, sans relance", () => {
+    const lanceur = { ...pj("Mage"), niveau: 7, attaques: [{ id: "sort", nom: "✦ Pied dans la tombe", bonus: 5, degats: "1d4°+2" }] };
     const s = createCombat([lanceur, gobelin("Gob")]);
-    // Jet 15+5=20 vs déf 15 : touché ; d4 : 4 (relance 3) -> 4+3+2 = 9.
-    const { resolution } = resolveAttack(
+    // Jet 15+5=20 vs déf 15 : touché ; 1d6 (niv. 7) : 4 -> 4+2 = 6.
+    const { state, resolution } = resolveAttack(
       s, s.participants[0].instanceId, s.participants[1].instanceId, "sort",
-      fixedRng([0.72, 0.99, 0.5])
+      fixedRng([0.72, 0.5])
     );
     expect(resolution.touche).toBe(true);
-    expect(resolution.degatsDetails).toEqual([4, 3]);
-    expect(resolution.degatsTotal).toBe(9);
-    expect(resolution.pvApres).toBe(0);
-    expect(resolution.cibleTombe).toBe(true);
+    expect(resolution.degatsDetails).toEqual([4]);
+    expect(resolution.degatsTotal).toBe(6);
+    expect(resolution.pvApres).toBe(2);
+    expect(resolution.cibleTombe).toBe(false);
+    expect(state.log.some((l) => l.message.includes("1d6+2"))).toBe(true);
   });
 
   it("0 PV -> KO + journal hors combat, victoire PJ", () => {
@@ -341,6 +359,106 @@ describe("sorcier (voies du livre)", () => {
     expect(state.log.some((l) => l.message.includes("vol de vie"))).toBe(true);
   });
 
+  it("lancement : incantation, brûlure (1 DR/PM) et concentration (A→L, −2 PM)", () => {
+    const foudre = { id: "f", nom: "Foudre", type: "offensif" as const, action: "attaque" as const, cout: { ressource: "mana", montant: 4 } };
+    // Coût effectif : classique inchangé, concentré −2 PM, sorts L/M exclus.
+    expect(coutEffectifSort(foudre, {})).toEqual({ pm: 4, base: 4, concentre: false });
+    expect(coutEffectifSort(foudre, { concentration: true })).toEqual({ pm: 2, base: 4, concentre: true });
+    expect(coutEffectifSort({ ...foudre, cout: { ressource: "mana", montant: 1 } }, { concentration: true }).pm).toBe(0);
+    expect(() => coutEffectifSort({ ...foudre, action: "limitee" as const }, { concentration: true })).toThrow(/attaque/);
+    expect(() => coutEffectifSort({ ...foudre, action: "mouvement" as const }, { concentration: true })).toThrow(/attaque/);
+
+    const mage: CombatParticipant = { ...sorcier("Mage"), deRecuperation: "d6", pv: 20, pvMax: 20, ressources: { mana: { max: 6, actuel: 0 } } };
+    const s = createCombat([mage, gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    // Brûlure : 4 PM au d6, rng 0.5 -> 4 par dé = 16 PV (20 -> 4), mana intact.
+    const { state: s2, paiement } = payerCoutSort(s, a, foudre, { mode: "brulure" }, fixedRng([0.5]));
+    expect(paiement).toMatchObject({ mode: "brulure", pm: 4, pvBrules: 16, concentre: false });
+    expect(paiement.detailsBrulure).toEqual([4, 4, 4, 4]);
+    expect(s2.participants[0].pv).toBe(4);
+    expect(s2.participants[0].ressources.mana.actuel).toBe(0);
+    expect(s2.log.some((l) => l.message.includes("brûle sa mana"))).toBe(true);
+
+    // Interdits : mana restant, sorts de soins, pas de DR.
+    const plein: CombatParticipant = { ...sorcier("Plein"), deRecuperation: "d6" };
+    const sp = createCombat([plein, gobelin("G")]);
+    expect(() => payerCoutSort(sp, plein.instanceId, foudre, { mode: "brulure" })).toThrow(/0 mana/);
+    expect(() => payerCoutSort(s, a, { ...foudre, soin: "1d4" }, { mode: "brulure" })).toThrow(/soins/);
+    const sansDR = { ...pj("Guerrier"), ressources: { mana: { max: 0, actuel: 0 } } };
+    const ss = createCombat([sansDR, gobelin("G")]);
+    expect(() => payerCoutSort(ss, sansDR.instanceId, foudre, { mode: "brulure" })).toThrow(/récupération/);
+
+    // Brûlure concentrée : 3 PM (A) -> 1 PM = 1 DR ; KO possible et termine.
+    const sort3 = { ...foudre, cout: { ressource: "mana", montant: 3 } };
+    const mourant: CombatParticipant = { ...sorcier("Mourant"), deRecuperation: "d6", pv: 3, pvMax: 20, ressources: { mana: { max: 6, actuel: 0 } } };
+    const sm = createCombat([mourant, gobelin("G")]);
+    const { state: s3, paiement: p3 } = payerCoutSort(sm, mourant.instanceId, sort3, { mode: "brulure", concentration: true }, fixedRng([0.5]));
+    expect(p3).toMatchObject({ mode: "brulure", pm: 1, pvBrules: 4, concentre: true });
+    expect(s3.participants[0].pv).toBe(0);
+    expect(s3.participants[0].statut).toBe("ko");
+    expect(s3.termine).toBe(true);
+    expect(s3.gagnant).toBe("monstre");
+    expect(s3.log.some((l) => l.message.includes("se concentre"))).toBe(true);
+  });
+
+  it("resolveAttack en brûlure : sort lancé à 0 mana, PV sacrifiés", () => {
+    const foudre = { id: "f", nom: "Foudre", type: "offensif" as const, action: "attaque" as const, degats: "1d6", cout: { ressource: "mana", montant: 2 } };
+    const atk: CombatParticipant = {
+      ...sorcier("Mage"),
+      deRecuperation: "d6",
+      pv: 20, pvMax: 20,
+      ressources: { mana: { max: 6, actuel: 0 } },
+      attaques: [{ id: "sort:f", nom: "✦ Foudre", bonus: 10, degats: "1d6" }],
+      sorts: [foudre],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Brûlure 2d6 : 4+4 = 8 PV (20 -> 12), puis jet 19+10 touché, 1d6 : 4 DM.
+    const { state } = resolveAttack(s, a, t, "sort:f", fixedRng([0.5, 0.5, 0.9, 0.5]), DEFAULT_COMBAT_OPTIONS, {}, { mode: "brulure" });
+    expect(state.participants[0].pv).toBe(12);
+    expect(state.participants[0].ressources.mana.actuel).toBe(0);
+    expect(state.participants[1].pv).toBe(36);
+    expect(state.log.some((l) => l.message.includes("brûle sa mana"))).toBe(true);
+  });
+
+  it("resolveAttack concentrée : sort (A) à −2 PM en mana classique", () => {
+    const foudre = { id: "f", nom: "Foudre", type: "offensif" as const, action: "attaque" as const, degats: "1d6", cout: { ressource: "mana", montant: 4 } };
+    const atk: CombatParticipant = {
+      ...sorcier("Mage"),
+      attaques: [{ id: "sort:f", nom: "✦ Foudre", bonus: 10, degats: "1d6" }],
+      sorts: [foudre],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 4 PM -> 2 PM (mana 10 -> 8), jet 19+10 touché, 1d6 : 4 DM.
+    const { state } = resolveAttack(s, a, t, "sort:f", fixedRng([0.9, 0.5]), DEFAULT_COMBAT_OPTIONS, {}, { concentration: true });
+    expect(state.participants[0].ressources.mana.actuel).toBe(8);
+    expect(state.participants[1].pv).toBe(36);
+    expect(state.log.some((l) => l.message.includes("se concentre"))).toBe(true);
+  });
+
+  it("factory : le participant porte le DR de la fiche (brûlure)", () => {
+    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    expect(participantFromCharacter(mirabel, []).deRecuperation).toBe("d6");
+  });
+
+  it("sacrifice PV évolutif (1d4° -> d6 au niv. 7)", () => {
+    const sort = { id: "sv", nom: "S", type: "offensif" as const, cout: { ressource: "mana", montant: 2 }, coutPV: "1d4°" };
+    const atk = {
+      ...sorcier(),
+      niveau: 7,
+      attaques: [{ id: "sort:sv", nom: "✦ S", bonus: 10, degats: "1d6" }],
+      sorts: [sort],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Sacrifice 1d6 : 4 PV puis jet 19+10 touché puis 4 DM.
+    const { state } = resolveAttack(s, a, t, "sort:sv", fixedRng([0.5, 0.9, 0.5]));
+    expect(state.participants[0].pv).toBe(36);
+    expect(state.participants[1].pv).toBe(36);
+    expect(state.log.some((l) => l.message.includes("sacrifie 4 PV"))).toBe(true);
+  });
+
   it("sacrifice PV (Rituel/Invocation) payé avant le jet", () => {
     const sort = { id: "sv", nom: "S", type: "offensif" as const, cout: { ressource: "mana", montant: 2 }, coutPV: "1d6" };
     const atk = {
@@ -406,6 +524,21 @@ describe("sorcier (voies du livre)", () => {
     expect(effet!.modificateurs).toMatchObject({ pvParTour: -3 });
   });
 
+  it("dégâts par tour évolutifs (1d4° -> d6 au niv. 7)", () => {
+    const atk = {
+      ...sorcier(),
+      niveau: 7,
+      attaques: [{ id: "sa", nom: "Saignements", bonus: 10, degats: "1d1-1", effetTouche: { cle: "Saignement", duree: null, degatsParTour: "1d4°" } }],
+    };
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Touché (19+10), 0 DM direct, DoT 1d6 : 4.
+    const { state } = resolveAttack(s, a, t, "sa", fixedRng([0.9, 0.1, 0.5]));
+    const effet = state.participants[1].effets.find((e) => e.nom === "Saignement");
+    expect(effet).toBeTruthy();
+    expect(effet!.modificateurs).toMatchObject({ pvParTour: -4 });
+  });
+
   it("limite 1/combat (Ensevelissement) : 2e lancer refusé", () => {
     const sort = { id: "e", nom: "Ensevelissement", type: "offensif" as const, limiteCombat: 1, cout: { ressource: "mana", montant: 4 } };
     const atk = {
@@ -451,7 +584,7 @@ describe("sorcier (voies du livre)", () => {
     const moi = state.participants[0];
     const accordee = moi.attaques.find((x) => x.nom === "✦ Contact de la succube");
     expect(accordee).toBeTruthy();
-    expect(accordee!.degats).toBe("1d4°+2");
+    expect(accordee!.degats).toBe("1d4+2"); // niv. 5 -> d4
     expect(accordee!.volDeVie).toBe(true);
     expect(moi.effets.map((e) => e.nom)).toContain("Beauté de la succube");
     expect(moi.ressources.mana.actuel).toBe(8);
@@ -500,6 +633,23 @@ describe("sorcier (voies du livre)", () => {
     expect(() => frapperZone(state, a, armee, fixedRng([0.5]))).toThrow(/limite 1\/combat/);
   });
 
+  it("zone évolutive (2d4° -> 2d6 au niv. 7)", () => {
+    const armee = {
+      id: "am", nom: "Armée des morts", type: "utilitaire" as const, rang: 5,
+      action: "limitee" as const, degats: "2d4°",
+      effetCle: "Armée des morts", effetDuree: null, effetDegats: "2d4°",
+      limiteCombat: 1, zone: true, cout: { ressource: "mana", montant: 5 },
+    };
+    const caster = { ...sorcier(), niveau: 7, sorts: [armee] };
+    const s = createCombat([caster, gobelin("A", 20), gobelin("B", 20)]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    // 2d6 : 4+4 = 8 immédiats, DoT 2d6 : -8/round.
+    const { state } = frapperZone(s, a, armee, fixedRng([0.5, 0.5, 0.5, 0.5]));
+    expect(state.participants[1].pv).toBe(12);
+    expect(state.participants[2].pv).toBe(12);
+    expect(state.participants[2].effets[0].modificateurs).toMatchObject({ pvParTour: -8 });
+  });
+
   it("capacités : Pacte démoniaque sacrifie des PV, sans effet", () => {
     const caster = { ...sorcier(), capacites: ["Pacte démoniaque"] };
     const s = createCombat([caster, gobelin("G")]);
@@ -509,6 +659,90 @@ describe("sorcier (voies du livre)", () => {
     expect(state.participants[0].pv).toBe(37);
     expect(resolution.effetNom).toBeNull();
     expect(state.log.some((l) => l.message.includes("sacrifie 3 PV"))).toBe(true);
+  });
+
+  it("appliquerResultatsCombat : PV + mana/chance vers les fiches, monstres ignorés", () => {
+    const sylva = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut") ?? SEED_CHARACTERS[0];
+    const blesse: CombatParticipant = {
+      ...pj("Sylva"),
+      templateId: sylva.id,
+      camp: "pj",
+      pv: sylva.pvMax - 3,
+      ressources: { mana: { max: 6, actuel: 4 }, chance: { max: 3, actuel: 2 } },
+    };
+    const intact: CombatParticipant = { ...pj("Intact"), templateId: "inexistant", camp: "pj", pv: 1, ressources: {} };
+    const monstre: CombatParticipant = { ...gobelin("Gob"), pv: 0 };
+    const fiches = [
+      { ...sylva, pv: sylva.pvMax, ressources: { ...sylva.ressources, mana: { max: 6, actuel: 6 } } },
+    ];
+    const resultat = appliquerResultatsCombat(fiches, [blesse, intact, monstre]);
+    // Sylva : PV -3 persistés, mana/chance dépensés persistés.
+    expect(resultat[0].pv).toBe(sylva.pvMax - 3);
+    expect(resultat[0].ressources.mana).toEqual({ max: 6, actuel: 4 });
+    // Plafond fiche respecté (participant au-delà du max).
+    const gonfle = appliquerResultatsCombat(
+      fiches,
+      [{ ...blesse, pv: 99, ressources: { mana: { max: 6, actuel: 99 } } }]
+    );
+    expect(gonfle[0].pv).toBe(sylva.pvMax);
+    expect(gonfle[0].ressources.mana).toEqual({ max: 6, actuel: 6 });
+  });
+
+  it("resynchroniserDepuisFiche : structure suit la fiche, volatile intact, idempotent", () => {
+    const cible: CombatParticipant = {
+      ...pj("Elyndra"),
+      niveau: 1,
+      pv: 5,
+      pvMax: 20,
+      ressources: { mana: { max: 1, actuel: 0 } },
+      effets: [createEffect("protection")],
+      sorts: [],
+      capacites: [],
+      attaques: [{ id: "epee", nom: "Épée", bonus: 6, degats: "1d8+3" }],
+      usagesSorts: { vieux: { n: 1, cibles: [] } },
+    };
+    const frais: CombatParticipant = {
+      ...pj("Elyndra"),
+      niveau: 2,
+      bonusMagique: 5,
+      ressources: { mana: { max: 6, actuel: 6 }, chance: { max: 3, actuel: 3 } },
+      sorts: [{ id: "s", nom: "Soins", type: "defensif" }],
+      capacites: ["Talent"],
+      attaques: [{ id: "epee", nom: "Épée", bonus: 7, degats: "1d8+3" }],
+    };
+    const r = resynchroniserDepuisFiche(cible, frais);
+    expect(r.modifie).toBe(true);
+    expect(r.nouvelles).toEqual([]);
+    expect(r.manaInfo).toBe(", mana 1 → 6");
+    // Structure : suivie.
+    expect(r.participant.niveau).toBe(2);
+    expect(r.participant.bonusMagique).toBe(5);
+    expect(r.participant.sorts.map((s) => s.nom)).toContain("Soins");
+    expect(r.participant.attaques[0].bonus).toBe(7);
+    expect(r.participant.ressources.mana).toEqual({ max: 6, actuel: 5 }); // 1 dépensé conservé
+    expect(r.participant.ressources.chance).toEqual({ max: 3, actuel: 3 });
+    // Volatile : intact.
+    expect(r.participant.pv).toBe(5);
+    expect(r.participant.pvMax).toBe(20);
+    expect(r.participant.effets.map((e) => e.nom)).toContain("Protection");
+    expect(r.participant.usagesSorts).toEqual({ vieux: { n: 1, cibles: [] } });
+    // Idempotent : deuxième passage sans modification.
+    const r2 = resynchroniserDepuisFiche(r.participant, frais);
+    expect(r2.modifie).toBe(false);
+    expect(r2.manaInfo).toBe("");
+  });
+
+  it("reporterRessource : max suivi depuis la fiche, dépensé conservé", () => {
+    // Elyndra : 1/1 intact en combat + fiche à 6 → 6/6.
+    expect(reporterRessource({ max: 1, actuel: 1 }, { max: 6, actuel: 6 })).toEqual({ max: 6, actuel: 6 });
+    // 1 dépensé (0/1) + fiche à 6 → 5/6.
+    expect(reporterRessource({ max: 1, actuel: 0 }, { max: 6, actuel: 6 })).toEqual({ max: 6, actuel: 5 });
+    // Sans ancienne valeur : fiche telle quelle ; sans fiche : inchangé.
+    expect(reporterRessource(undefined, { max: 6, actuel: 6 })).toEqual({ max: 6, actuel: 6 });
+    expect(reporterRessource({ max: 3, actuel: 2 }, undefined)).toEqual({ max: 3, actuel: 2 });
+    // Max réduit : dépensé conservé, plancher 0.
+    expect(reporterRessource({ max: 6, actuel: 4 }, { max: 4, actuel: 4 })).toEqual({ max: 4, actuel: 2 });
+    expect(reporterRessource({ max: 6, actuel: 0 }, { max: 2, actuel: 2 })).toEqual({ max: 2, actuel: 0 });
   });
 
   it("soutien : effetMods fusionnés (Aspect +5 DEF)", () => {
@@ -526,8 +760,7 @@ describe("sorcier (voies du livre)", () => {
     expect(state.participants[0].attaques.some((x) => x.nom === "✦ Griffes du démon")).toBe(true);
   });
 
-  it("etatLimite + applyCoutPV unitaires", () => {
-    const sort = { id: "e", nom: "Ensevelissement", type: "offensif" as const, limiteCombat: 1 };
+  it("etatLimite + applyCoutPV unitaires", () => {    const sort = { id: "e", nom: "Ensevelissement", type: "offensif" as const, limiteCombat: 1 };
     expect(etatLimite(sorcier(), sort).ok).toBe(true);
     const usage = { ...sorcier(), usagesSorts: { e: { n: 1, cibles: [] } } };
     expect(etatLimite(usage, sort).ok).toBe(false);
@@ -843,7 +1076,7 @@ describe("rodeur (voies du livre)", () => {
     expect(ra.resolution.invoqueNom).toBe("Loup alpha (Rodeur)");
     expect(ra.state.participants[2].pv).toBe(16);
     expect(ra.state.participants[2].defense).toBe(16);
-    expect(ra.state.participants[2].attaques[0].degats).toBe("1d4°+5");
+    expect(ra.state.participants[2].attaques[0].degats).toBe("1d4+5"); // niv. 4 -> d4
     // Tactiques + Flèche (R5) : +1 archer +1 compagnon (celle-ci incluse) = +2.
     const tact = { ...rodeur(), capacites: ["Le loup", "Tactiques de meute", "Flèche de mort"] };
     const s4 = createCombat([tact, gobelin("G")]);
@@ -894,6 +1127,19 @@ describe("rodeur (voies du livre)", () => {
     expect(state.log.some((l) => l.message.includes("purgés"))).toBe(true);
   });
 
+  it("increvable au niv. 7 : 4d6+CON (dé évolutif)", () => {
+    const lanceur = { ...rodeur(), niveau: 7, capacites: ["Increvable"] };
+    const cible = { ...rodeur("Cible"), pv: 10 };
+    const s = createCombat([lanceur, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 4d6 : 4+4+4+4 = 16 + CON 1 = 17 PV (10 -> 27).
+    const { state, resolution } = utiliserCapacite(s, a, t, "Increvable", {
+      effetCle: "Increvable", dureeTours: 1, mods: { defense: 5 }, soin: "4d4°+CON", nettoie: true,
+    }, fixedRng([0.5, 0.5, 0.5, 0.5]));
+    expect(resolution.soinTotal).toBe(17);
+    expect(state.participants[1].pv).toBe(27);
+  });
+
   it("loup : compagnon permanent, plus une capacite lancable en combat", () => {
     expect(CAPACITES_USABLES.some((u) => u.talent === "Le loup")).toBe(false);
     const avec = { ...rodeur(), capacites: ["Le loup"], niveau: 3, bonusMagique: 6 };
@@ -912,5 +1158,138 @@ describe("rodeur (voies du livre)", () => {
     expect(() => construireLoupCompagnon(rodeur(), { instanceId: "x" })).toThrow(/pas de compagnon/);
     const inc = CAPACITES_USABLES.find((u) => u.talent === "Increvable");
     expect(inc).toMatchObject({ effetCle: "Increvable", dureeTours: 1, mods: { defense: 5 }, soin: "4d4°+CON", nettoie: true });
+  });
+});
+
+function pretreDestruction(): CombatParticipant {
+  const destruction = {
+    id: "sort-destruction-mal", nom: "Destruction du mal", type: "offensif" as const,
+    degats: "2d4", toucheAuto: true, cibleEspeces: ["Mort-vivant", "Démon"],
+    cout: { ressource: "mana", montant: 3 },
+  };
+  return {
+    ...pj("Prêtre"),
+    attaques: [{ id: "sort:sort-destruction-mal", nom: "✦ Destruction du mal", bonus: 8, degats: "2d4", toucheAuto: true }],
+    sorts: [destruction],
+    ressources: { mana: { max: 6, actuel: 6 } },
+  };
+}
+
+function squelette(): CombatParticipant {
+  const tpl = SEED_MONSTERS.find((m) => m.nom === "Squelette")!;
+  return monsterInstances(tpl, 1)[0];
+}
+
+describe("restriction d'espèce (Destruction du mal -> morts-vivants et démons)", () => {
+  it("automatique : 2d4 DM sur mort-vivant, mana payé", () => {
+    const s = createCombat([pretreDestruction(), squelette()]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Touche auto (pas de jet), 2d4 : 3+3 = 6 DM (9 -> 3 PV).
+    const { state, resolution } = resolveAttack(s, a, t, "sort:sort-destruction-mal", fixedRng([0.5, 0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.toucheAuto).toBe(true);
+    expect(resolution.degatsTotal).toBe(6);
+    expect(state.participants[1].pv).toBe(3);
+    expect(state.participants[0].ressources.mana.actuel).toBe(3);
+  });
+
+  it("automatique : dégâts aussi sur démon (Démonet, humanoïde démoniaque)", () => {
+    const tpl = SEED_MONSTERS.find((m) => m.nom === "Démonet")!;
+    const demonet = monsterInstances(tpl, 1)[0];
+    const pvAvant = demonet.pv;
+    const s = createCombat([pretreDestruction(), demonet]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 2d4 : 3+3 = 6 DM.
+    const { state, resolution } = resolveAttack(s, a, t, "sort:sort-destruction-mal", fixedRng([0.5, 0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.degatsTotal).toBe(6);
+    expect(state.participants[1].pv).toBe(pvAvant - 6);
+  });
+
+  it("sans effet sur les autres espèces : 0 DM, PV intacts, journal explicite", () => {
+    const s = createCombat([pretreDestruction(), gobelin("G")]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const { state, resolution } = resolveAttack(s, a, t, "sort:sort-destruction-mal", fixedRng([0.5, 0.5]));
+    expect(resolution.touche).toBe(true); // touché mais immunisé
+    expect(resolution.degatsTotal).toBe(0);
+    expect(resolution.pvApres).toBe(resolution.pvAvant);
+    expect(state.participants[1].pv).toBe(8);
+    expect(state.participants[1].effets).toHaveLength(0);
+    expect(state.log.some((l) => l.message.includes("Sans effet") && l.message.includes("Mort-vivant"))).toBe(true);
+  });
+
+  it("fiche ancienne (sort appris avant la restriction) : complété depuis le grimoire, 0 DM sur Chef Kobold", () => {
+    const aelion = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
+    // Snapshot tel qu'enregistré avant l'ajout de toucheAuto/cibleEspeces.
+    const stale = {
+      id: "sort-ancien-123", nom: "Destruction du mal", type: "offensif" as const,
+      voie: "Voie de la prière", rang: 3, action: "attaque" as const,
+      description: "ancien texte", familles: ["Prêtre"],
+      degats: "2d4", cout: { ressource: "mana", montant: 3 },
+    };
+    const fiche = { ...aelion, sorts: [...aelion.sorts, stale] };
+    const pretre = participantFromCharacter(fiche, []);
+    // Le participant porte le sort complété, sans muter la fiche.
+    expect(pretre.sorts.find((s) => s.nom === "Destruction du mal")?.cibleEspeces).toEqual(["Mort-vivant", "Démon"]);
+    expect(pretre.sorts.find((s) => s.nom === "Destruction du mal")?.toucheAuto).toBe(true);
+    expect(fiche.sorts.find((s) => s.nom === "Destruction du mal")).not.toHaveProperty("cibleEspeces");
+    const atkId = pretre.attaques.find((a) => a.nom.includes("Destruction"))!.id;
+    // Chef Kobold (ni démon ni mort-vivant) : 0 DM + log.
+    const koboldTpl = SEED_MONSTERS.find((m) => m.nom === "Chef Kobold")!;
+    const s = createCombat([pretre, monsterInstances(koboldTpl, 1)[0]]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const { state, resolution } = resolveAttack(s, a, t, atkId, fixedRng([0.5, 0.5]));
+    expect(resolution.degatsTotal).toBe(0);
+    expect(state.participants[1].pv).toBe(koboldTpl.pv);
+    expect(state.log.some((l) => l.message.includes("Sans effet"))).toBe(true);
+    // ...mais toujours 2d4 automatiques sur squelette.
+    const s2 = createCombat([pretre, squelette()]);
+    const r2 = resolveAttack(s2, s2.participants[0].instanceId, s2.participants[1].instanceId, atkId, fixedRng([0.5, 0.5]));
+    expect(r2.resolution.degatsTotal).toBe(6);
+    expect(r2.state.participants[1].pv).toBe(3);
+  });
+
+  it("sort à jet restreint : touché sur mort-vivant = dégâts, sur vivant = 0", () => {
+    const fleau = {
+      id: "fleau", nom: "Fléau", type: "offensif" as const,
+      degats: "1d6", cibleEspeces: ["mort-vivant"],
+      cout: { ressource: "mana", montant: 1 },
+    };
+    const lanceur = {
+      ...pj("Prêtre"),
+      attaques: [{ id: "sort:fleau", nom: "✦ Fléau", bonus: 10, degats: "1d6" }],
+      sorts: [fleau],
+      ressources: { mana: { max: 6, actuel: 6 } },
+    };
+    // Touché (19+10) sur squelette : 1d6 = 4 DM.
+    const s1 = createCombat([lanceur, squelette()]);
+    const r1 = resolveAttack(s1, s1.participants[0].instanceId, s1.participants[1].instanceId, "sort:fleau", fixedRng([0.9, 0.5]));
+    expect(r1.resolution.touche).toBe(true);
+    expect(r1.resolution.degatsTotal).toBe(4);
+    // Touché (19+10) sur gobelin : 0 DM + log.
+    const s2 = createCombat([{ ...lanceur }, gobelin("G")]);
+    const r2 = resolveAttack(s2, s2.participants[0].instanceId, s2.participants[1].instanceId, "sort:fleau", fixedRng([0.9, 0.5]));
+    expect(r2.resolution.touche).toBe(true);
+    expect(r2.resolution.degatsTotal).toBe(0);
+    expect(r2.state.log.some((l) => l.message.includes("Sans effet"))).toBe(true);
+  });
+
+  it("la chance ne contourne pas l'immunité d'espèce : touché mais 0 DM", () => {
+    const lanceur = {
+      ...pj("Prêtre"),
+      ressources: { chance: { max: 2, actuel: 2 }, mana: { max: 6, actuel: 6 } },
+      attaques: [{ id: "sort:fleau2", nom: "✦ Fléau", bonus: 6, degats: "1d6" }],
+      sorts: [{ id: "fleau2", nom: "Fléau", type: "offensif" as const, degats: "1d6", cibleEspeces: ["mort-vivant"], cout: { ressource: "mana", montant: 1 } }],
+    };
+    const s = createCombat([lanceur, gobelin("G")]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const manque = resolveAttack(s, a, t, "sort:fleau2", fixedRng([0.1, 0.5])).resolution; // 3+6=9 < 15
+    expect(manque.touche).toBe(false);
+    // 9+10 = 19 ≥ 15 : touché, mais gobelin immunisé -> 0 DM + log.
+    const { state, resolution } = depenserChanceApresCoup(s, a, t, "sort:fleau2", manque, fixedRng([0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.degatsTotal).toBe(0);
+    expect(state.participants[1].pv).toBe(8);
+    expect(state.log.some((l) => l.message.includes("Sans effet"))).toBe(true);
   });
 });

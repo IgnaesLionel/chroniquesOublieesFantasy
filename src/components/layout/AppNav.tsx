@@ -15,19 +15,21 @@ const LINKS = [
   { href: "/scenarios", label: "Scénarios" },
   { href: "/npcs", label: "PNJ" },
   { href: "/items", label: "Objets" },
+  { href: "/tresors", label: "Trésors" },
   { href: "/settings", label: "Paramètres" },
 ];
 
 export function AppNav() {
   const path = usePathname();
   return (
-    <nav className="border-b border-zinc-800 bg-zinc-950 px-4 py-3 flex gap-2 flex-wrap">
-      <span className="font-bold text-amber-400 mr-4">CO Fantasy · Assistant MJ</span>
+    <nav className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur px-4 py-2.5 flex gap-2 items-center overflow-x-auto">
+      <span className="font-bold text-amber-400 mr-2 whitespace-nowrap">CO Fantasy · Assistant MJ</span>
       {LINKS.map((l) => (
         <Link
           key={l.href}
           href={l.href}
-          className={`px-3 py-1.5 rounded text-sm font-medium ${
+          aria-current={path === l.href ? "page" : undefined}
+          className={`px-3 py-1.5 rounded text-sm font-medium whitespace-nowrap shrink-0 ${
             path === l.href ? "bg-amber-400 text-black" : "text-zinc-300 hover:bg-zinc-800"
           }`}
         >

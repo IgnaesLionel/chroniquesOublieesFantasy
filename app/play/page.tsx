@@ -1,31 +1,20 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
-import { SEED_SCENARIOS } from "@/src/lib/data/scenarioSeeds";
-import { SEED_ITEMS, SEED_NPCS } from "@/src/lib/data/worldSeeds";
-import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
-import type { Character } from "@/src/lib/rules/types";
-import type { Npc } from "@/src/lib/rules/world/types";
-import type { PlayState, Scenario } from "@/src/lib/rules/scenario/types";
+import { useCharacters, useNpcs, useScenarios } from "@/src/lib/store/collections";
+import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
+import { pvTexteColor } from "@/src/lib/ui/pv";
+import type { PlayState } from "@/src/lib/rules/scenario/types";
 import { startPlay } from "@/src/lib/rules/scenario/engine";
 import { ScenarioPlay } from "@/src/components/scenario/ScenarioPlay";
 import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
 import { DiceRoller } from "@/src/components/dice/DiceRoller";
 
-function pvColor(pv: number, max: number) {
-  if (max === 0) return "text-zinc-400";
-  const r = pv / max;
-  if (r > 0.5) return "text-green-400";
-  if (r > 0.25) return "text-amber-400";
-  return "text-red-400";
-}
-
 export default function PlayPage() {
-  const { items: characters, setItems: setCharacters } = useLocalCollection<Character>("cof.characters.v2", SEED_CHARACTERS);
-  const { items: scenarios } = useLocalCollection<Scenario>("cof.scenarios.v3", SEED_SCENARIOS);
-  const { items: npcs } = useLocalCollection<Npc>("cof.npcs", SEED_NPCS);
-  const stock = SEED_ITEMS;
+  const { items: characters, setItems: setCharacters } = useCharacters();
+  const { items: scenarios } = useScenarios();
+  const { items: npcs } = useNpcs();
+  const { catalogue: stock } = useCatalogueObjets();
 
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [play, setPlay] = useState<PlayState | null>(null);
@@ -75,7 +64,7 @@ export default function PlayPage() {
             {characters.map((c) => (
               <div key={c.id} className="flex items-center justify-between gap-2 text-sm py-1 border-b border-zinc-800/50">
                 <span className="flex-1">
-                  <b>{c.nom}</b> <span className={`font-mono font-bold ${pvColor(c.pv, c.pvMax)}`}>{c.pv}/{c.pvMax}</span>
+                  <b>{c.nom}</b> <span className={`font-mono font-bold ${pvTexteColor(c.pv, c.pvMax)}`}>{c.pv}/{c.pvMax}</span>
                   {c.pv === 0 && <span className="text-xs text-red-400 ml-1">KO</span>}
                 </span>
                 <span className="inline-flex gap-1">

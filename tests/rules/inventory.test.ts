@@ -3,9 +3,11 @@ import type { Character } from "@/src/lib/rules/types";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
-import { ARME_FAMILLES, ARME_FAMILLE_KEYS, DEGAT_LABEL, labelFamilleArme } from "@/src/lib/rules/world/types";
+import { ARME_FAMILLES, ARME_FAMILLE_KEYS, DEGAT_LABEL, labelFamilleArme, mainsDe, type Item } from "@/src/lib/rules/world/types";
 import { characterSchema, itemSchema } from "@/src/lib/data/validation";
 import { attaqueFromItem, attaqueFromSort, participantFromCharacter } from "@/src/lib/rules/combat/factory";
+import { bonusDefenseInventaire, bonusDefenseMagique, bonusDefenseMundane, deriverPersonnage, recalculerPersonnage } from "@/src/lib/rules/personnage";
+import { peutEquiper, validerEquipement } from "@/src/lib/rules/equipement";
 import { applySpellCost, castSoutien, resolveAttack } from "@/src/lib/rules/combat/attack";
 import { createCombat } from "@/src/lib/rules/combat/initiative";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
@@ -97,14 +99,21 @@ describe("inventaire, armes et sorts", () => {
   it("sort à carac : INT substituée dans les dégâts", () => {
     const sort = { id: "p", nom: "Pied dans la tombe", type: "offensif" as const, degats: "1d4°+INT" };
     const a = attaqueFromSort(sort, 3, { INT: 2 });
-    expect(a?.degats).toBe("1d4°+2");
+    expect(a?.degats).toBe("1d4+2"); // niv. 1 -> d4
     expect(a?.bonus).toBe(3);
     // Donnée grimoire : Un pied dans la tombe = 1d4°+INT.
     const grimoire = SEED_SORTS.find((s) => s.id === "sort-pied-tombe")!;
     expect(grimoire.degats).toBe("1d4°+INT");
   });
 
-  it("sort à dé évolutif : dE substitué selon le niveau", () => {
+  it("sort du grimoire au niv. 7 : 2d4°+INT -> 2d6+2 (Baiser du vampire)", () => {
+    const grimoire = SEED_SORTS.find((s) => s.id === "sort-baiser-vampire")!;
+    expect(grimoire.degats).toBe("2d4°+INT");
+    expect(attaqueFromSort(grimoire, 0, { INT: 2 }, 7)?.degats).toBe("2d6+2");
+    expect(attaqueFromSort(grimoire, 0, { INT: 2 }, 3)?.degats).toBe("2d4+2");
+  });
+
+  it("sort à dé évolutif legacy : dE substitué selon le niveau", () => {
     const sort = { id: "e", nom: "Attaque évolutive", type: "offensif" as const, degats: "1dE+1" };
     expect(attaqueFromSort(sort, 0, {}, 1)?.degats).toBe("1d4+1");
     expect(attaqueFromSort(sort, 0, {}, 9)?.degats).toBe("1d8+1");
@@ -235,5 +244,151 @@ describe("familles d'armes", () => {
     const modifiee = { ...base, inventaire: [...(base.inventaire ?? []), { itemId: "item-hache-1main", quantite: 1, equipe: true }] };
     const apres = participantFromCharacter(modifiee, SEED_ITEMS);
     expect(apres.attaques.map((a) => a.id)).toContain("item:item-hache-1main");
+  });
+
+  it("armures equipees : bonus DEF (bouclier +2, mailles +4)", () => {
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    expect(deriverPersonnage(base, SEED_ITEMS).defense).toBe(11);
+    const equipe = {
+      ...base,
+      inventaire: [
+        ...(base.inventaire ?? []),
+        { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+        { itemId: "item-chemise-mailles", quantite: 1, equipe: true },
+      ],
+    };
+    expect(bonusDefenseInventaire(equipe, SEED_ITEMS)).toBe(6);
+    expect(deriverPersonnage(equipe, SEED_ITEMS).defense).toBe(17);
+    expect(recalculerPersonnage(equipe, SEED_ITEMS).defense).toBe(17);
+    // Non équipé = pas de bonus.
+    const range = {
+      ...base,
+      inventaire: [...(base.inventaire ?? []), { itemId: "item-grand-bouclier", quantite: 1, equipe: false }],
+    };
+    expect(deriverPersonnage(range, SEED_ITEMS).defense).toBe(11);
+    // Combat : fiche non recalculée part quand même avec le bonus.
+    expect(participantFromCharacter({ ...equipe, defense: 11 }, SEED_ITEMS).defense).toBe(17);
+  });
+
+  it("magiques non cumulés (max), mundanes cumulés, talents en plus", () => {
+    const anneau: Item = {
+      id: "x-anneau", nom: "Anneau +3", categorie: "armure", quantite: 1, exemple: false,
+      bonusDefense: 3, mains: 0, emplacement: "torse", magique: true,
+    };
+    const armureMagique: Item = {
+      id: "x-armure", nom: "Cotte +2", categorie: "armure", quantite: 1, exemple: false,
+      bonusDefense: 2, mains: 0, emplacement: "torse", magique: true,
+    };
+    const catalogue = [...SEED_ITEMS, anneau, armureMagique];
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const equipe = {
+      ...base,
+      inventaire: [
+        ...(base.inventaire ?? []),
+        { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+        { itemId: "item-chemise-mailles", quantite: 1, equipe: true },
+        { itemId: "x-anneau", quantite: 1, equipe: true },
+        { itemId: "x-armure", quantite: 1, equipe: true },
+      ],
+    };
+    expect(bonusDefenseMundane(equipe, catalogue)).toBe(6);
+    expect(bonusDefenseMagique(equipe, catalogue)).toBe(3);
+    expect(bonusDefenseInventaire(equipe, catalogue)).toBe(9);
+    // Dorain : 10 + AGI 1 + 9 = 20.
+    expect(deriverPersonnage(equipe, catalogue).defense).toBe(20);
+    expect(recalculerPersonnage(equipe, catalogue).defense).toBe(20);
+    // Non équipé : ignoré des deux côtés.
+    const range = { ...equipe, inventaire: equipe.inventaire.map((e) => ({ ...e, equipe: e.itemId === "x-anneau" })) };
+    expect(bonusDefenseMagique(range, catalogue)).toBe(3);
+    expect(bonusDefenseMundane(range, catalogue)).toBe(0);
+  });
+});
+
+describe("règles d'équipement (mains, torse, bouclier)", () => {
+  it("deux armes à 1 main OK, deux armes à 2 mains KO", () => {
+    const deux1main = [
+      { itemId: "item-epee-longue-1d8", quantite: 1, equipe: true },
+      { itemId: "item-hache-1main", quantite: 1, equipe: true },
+    ];
+    expect(validerEquipement(deux1main, SEED_ITEMS).ok).toBe(true);
+    const epee2mains: Item = {
+      id: "x-epee-2m", nom: "Épée 2m", categorie: "arme", quantite: 1, exemple: false,
+      estArme: true, bonusAttaque: 0, degats: "2d6", mains: 2,
+    };
+    const hache2mains: Item = {
+      id: "x-hache-2m", nom: "Hache 2m", categorie: "arme", quantite: 1, exemple: false,
+      estArme: true, bonusAttaque: 0, degats: "2d6", mains: 2,
+    };
+    const cat = [...SEED_ITEMS, epee2mains, hache2mains];
+    expect(validerEquipement([
+      { itemId: "x-epee-2m", quantite: 1, equipe: true },
+      { itemId: "x-hache-2m", quantite: 1, equipe: true },
+    ], cat).ok).toBe(false);
+  });
+
+  it("arc (2 mains) + épée (1 main) impossible", () => {
+    const inv = [
+      { itemId: "item-arc-court", quantite: 1, equipe: true },
+      { itemId: "item-epee-longue-1d8", quantite: 1, equipe: false },
+    ];
+    const test = peutEquiper(inv, SEED_ITEMS, "item-epee-longue-1d8");
+    expect(test.ok).toBe(false);
+    expect(test.raisons.join(" ")).toMatch(/Mains/);
+  });
+
+  it("épée + bouclier OK, arme à 2 mains + bouclier KO", () => {
+    expect(validerEquipement([
+      { itemId: "item-epee-longue-1d8", quantite: 1, equipe: true },
+      { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+    ], SEED_ITEMS).ok).toBe(true);
+    expect(validerEquipement([
+      { itemId: "item-epee-2mains-2d6", quantite: 1, equipe: true },
+      { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+    ], SEED_ITEMS).ok).toBe(false);
+    expect(validerEquipement([
+      { itemId: "item-hache-2mains-2d6", quantite: 1, equipe: true },
+      { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+    ], SEED_ITEMS).ok).toBe(false);
+  });
+
+  it("un seul torse à la fois", () => {
+    const cuir: Item = {
+      id: "x-cuir", nom: "Cuir (+2 DEF)", categorie: "armure", quantite: 1, exemple: false,
+      bonusDefense: 2, mains: 0, emplacement: "torse",
+    };
+    const cat = [...SEED_ITEMS, cuir];
+    const inv = [
+      { itemId: "item-chemise-mailles", quantite: 1, equipe: true },
+      { itemId: "x-cuir", quantite: 1, equipe: false },
+    ];
+    expect(peutEquiper(inv, cat, "x-cuir").ok).toBe(false);
+    // Torse + bouclier : cumul autorisé.
+    expect(validerEquipement([
+      { itemId: "item-chemise-mailles", quantite: 1, equipe: true },
+      { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+    ], SEED_ITEMS).ok).toBe(true);
+  });
+
+  it("bâtons à 2 mains, baguette à 1 main", () => {
+    const mains = (id: string) => mainsDe(SEED_ITEMS.find((o) => o.id === id)!);
+    expect(mains("item-baton")).toBe(2);
+    expect(mains("item-baton-ferre")).toBe(2);
+    expect(mains("item-baguette")).toBe(1);
+    // Baguette + bouclier OK (1+1), bâton + bouclier KO (2+1).
+    expect(validerEquipement([
+      { itemId: "item-baguette", quantite: 1, equipe: true },
+      { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+    ], SEED_ITEMS).ok).toBe(true);
+    expect(validerEquipement([
+      { itemId: "item-baton-ferre", quantite: 1, equipe: true },
+      { itemId: "item-grand-bouclier", quantite: 1, equipe: true },
+    ], SEED_ITEMS).ok).toBe(false);
+  });
+
+  it("itemSchema accepte mains et emplacement", () => {
+    const base = { id: "x", nom: "X", categorie: "armure", quantite: 1, exemple: false };
+    expect(() => itemSchema.parse({ ...base, bonusDefense: 2, mains: 0, emplacement: "torse" })).not.toThrow();
+    expect(() => itemSchema.parse({ ...base, mains: 3 })).toThrow();
+    expect(() => itemSchema.parse({ ...base, emplacement: "casque" })).toThrow();
   });
 });

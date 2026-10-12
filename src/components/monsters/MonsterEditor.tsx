@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { MonsterTemplate } from "@/src/lib/rules/types";
 import { CAPACITES_PARTAGEES } from "@/src/lib/data/capacites-partagees";
+import { SOUS_CATEGORIES_SUGGEREES } from "@/src/lib/rules/categories";
 import { monsterSchema } from "@/src/lib/data/validation";
 import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
 
@@ -26,9 +27,21 @@ export function MonsterEditor({ draft, onChange, onSave, onCancel }: Props) {
   const [atkBonus, setAtkBonus] = useState("3");
   const [atkDegats, setAtkDegats] = useState("1d6");
   const [capNom, setCapNom] = useState("");
+  const [sousCatNom, setSousCatNom] = useState("");
   const [erreur, setErreur] = useState("");
 
   const set = (p: Partial<MonsterTemplate>) => onChange({ ...draft, ...p });
+
+  const sousCategories = draft.sousCategories ?? [];
+  const toggleSousCategorie = (nom: string) => {
+    set({ sousCategories: sousCategories.includes(nom) ? sousCategories.filter((x) => x !== nom) : [...sousCategories, nom] });
+  };
+  const addSousCategorie = () => {
+    const nom = sousCatNom.trim();
+    if (!nom || sousCategories.includes(nom)) return;
+    set({ sousCategories: [...sousCategories, nom] });
+    setSousCatNom("");
+  };
 
   const save = () => {
     const clamped = { ...draft, pv: Math.max(0, Math.min(draft.pvMax, draft.pv)) };
@@ -71,6 +84,35 @@ export function MonsterEditor({ draft, onChange, onSave, onCancel }: Props) {
           <label>Catégorie<input value={draft.categorie ?? ""} onChange={(e) => set({ categorie: e.target.value })} className={input} placeholder="Monstres/Créatures…" /></label>
           <label>Taille<input value={draft.taille ?? ""} onChange={(e) => set({ taille: e.target.value })} className={input} placeholder="Petite, Moyenne…" /></label>
           <label>Niveau (NC)<input type="number" min={0} step={0.5} value={draft.niveau} onChange={(e) => set({ niveau: Number(e.target.value) })} className={input} /></label>
+        </div>
+
+        <div className="text-sm space-y-1.5">
+          <div className="font-semibold" title="Une créature garde sa catégorie (ex : Monstres/Créatures) et peut cumuler des espèces : mort-vivant, démon... (dégâts bonus de certains sorts)">Sous-catégories ({sousCategories.length})</div>
+          <div className="flex flex-wrap gap-1">
+            {SOUS_CATEGORIES_SUGGEREES.map((s) => (
+              <button
+                key={s}
+                onClick={() => toggleSousCategorie(s)}
+                title={sousCategories.includes(s) ? "Retirer" : "Ajouter"}
+                className={`text-xs px-2 py-1 rounded border ${sousCategories.includes(s) ? "bg-amber-400/20 border-amber-400/60 text-amber-200" : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600"}`}
+              >
+                {sousCategories.includes(s) ? "✓ " : "+ "}{s}
+              </button>
+            ))}
+          </div>
+          {sousCategories.filter((x) => !(SOUS_CATEGORIES_SUGGEREES as readonly string[]).includes(x)).length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {sousCategories.filter((x) => !(SOUS_CATEGORIES_SUGGEREES as readonly string[]).includes(x)).map((x) => (
+                <span key={x} className="text-xs px-2 py-1 rounded bg-zinc-950 border border-zinc-700 text-zinc-200">
+                  {x} <button onClick={() => toggleSousCategorie(x)} className="text-red-400 ml-1">✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input value={sousCatNom} onChange={(e) => setSousCatNom(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addSousCategorie(); }} placeholder="Autre espèce (ex : Géant)…" className="flex-1 bg-zinc-800 rounded px-2 py-1.5" />
+            <button onClick={addSousCategorie} disabled={!sousCatNom.trim()} className="px-3 py-1.5 rounded bg-zinc-700 text-sm disabled:opacity-40">+ Ajouter</button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-sm">

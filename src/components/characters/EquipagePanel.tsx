@@ -2,8 +2,10 @@
 import { useState } from "react";
 import type { Character } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
-import { manaMax } from "@/src/lib/rules/personnage";
-import { apprendreTalentComplet, compterCapacites, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
+import { manaMax, recalculerPersonnage } from "@/src/lib/rules/personnage";
+import { libelleMains, peutEquiper, validerEquipement } from "@/src/lib/rules/equipement";
+import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
+import { apprendreTalentComplet, compterCapacites, desapprendreTalentComplet, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
 import { ACTION_LABEL, infererAction, voiesDe } from "@/src/lib/data/capacites";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 
@@ -15,6 +17,7 @@ interface Props {
 
 export function EquipagePanel({ character, stock, onUpdate }: Props) {
   const [addId, setAddId] = useState("");
+  const [equipMsg, setEquipMsg] = useState<string | null>(null);
   const [voieOuverte, setVoieOuverte] = useState<string | null>(null);
   const inv = character.inventaire ?? [];
   const sorts = character.sorts ?? [];
@@ -25,15 +28,51 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
 
   const resolveItem = (itemId: string) => stock.find((o) => o.id === itemId);
 
+  /** Une armure / un bouclier (bonus DEF) s'équipe comme une arme. */
+  const estEquipable = (item?: Item) =>
+    !!item && (!!item.estArme || item.categorie === "armure" || (item.bonusDefense ?? 0) > 0);
+
+  const appliquerInventaire = (inventaire: Character["inventaire"]) => {
+    setEquipMsg(null);
+    onUpdate(recalculerPersonnage({ ...character, inventaire }, stock));
+  };
+
   const addItem = () => {
     if (!addId) return;
     const exists = inv.find((e) => e.itemId === addId);
     const item = resolveItem(addId);
-    const updated = exists
-      ? inv.map((e) => (e.itemId === addId ? { ...e, quantite: e.quantite + 1 } : e))
-      : [...inv, { itemId: addId, quantite: 1, equipe: !!item?.estArme }];
-    onUpdate({ ...character, inventaire: updated });
+    if (exists) {
+      appliquerInventaire(inv.map((e) => (e.itemId === addId ? { ...e, quantite: e.quantite + 1 } : e)));
+      setAddId("");
+      return;
+    }
+    // Nouvel objet : équipé seulement si les mains / emplacements le permettent.
+    let equipe = estEquipable(item);
+    if (equipe) {
+      const test = peutEquiper(inv, stock, addId);
+      if (!test.ok) {
+        equipe = false;
+        setEquipMsg(`Ajouté non équipé : ${test.raisons.join(" · ")}`);
+      }
+    }
+    onUpdate(recalculerPersonnage({ ...character, inventaire: [...inv, { itemId: addId, quantite: 1, equipe }] }, stock));
     setAddId("");
+  };
+
+  const toggleEquipe = (itemId: string) => {
+    const cible = inv.find((x) => x.itemId === itemId);
+    if (cible && !cible.equipe) {
+      const test = peutEquiper(inv, stock, itemId);
+      if (!test.ok) {
+        setEquipMsg(`Impossible d'équiper : ${test.raisons.join(" · ")}`);
+        return;
+      }
+    }
+    appliquerInventaire(inv.map((x) => (x.itemId === itemId ? { ...x, equipe: !x.equipe } : x)));
+  };
+
+  const removeItem = (itemId: string) => {
+    appliquerInventaire(inv.filter((x) => x.itemId !== itemId));
   };
 
   const removeSort = (id: string) => {
@@ -47,42 +86,69 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
     });
   };
 
+  // Désapprendre un talent retire aussi son sort lié (ex. Bénédiction) :
+  // un sort orphelin n'est plus lançable. Dérivés resynchronisés (DEF, mana...).
   const removeTalent = (nom: string) =>
-    onUpdate({ ...character, capacites: (character.capacites ?? []).filter((t) => t !== nom) });
+    onUpdate(desapprendreTalentComplet(character, nom, SEED_SORTS, stock));
 
   const learnTalent = (nom: string) => {
     if (!nom) return;
     // Un talent qui est aussi un sort crée l'entrée lançable (+ mana).
-    onUpdate(apprendreTalentComplet(character, nom, SEED_SORTS));
+    onUpdate(apprendreTalentComplet(character, nom, SEED_SORTS, stock));
   };
 
   return (
     <div className="space-y-3 rounded border border-zinc-800 bg-zinc-950 p-3">
       <div>
         <div className="text-xs uppercase text-zinc-400 font-bold mb-1.5">Inventaire ({inv.length})</div>
-        <p className="text-xs text-zinc-500 mb-1">Seules les armes « Équipée » partent en combat.</p>
+        <p className="text-xs text-zinc-500 mb-1">Armes et armures « Équipé » partent en combat (DEF recalculée, 2 mains max, 1 torse + 1 bouclier max).</p>
+        {(() => {
+          const v = validerEquipement(inv, stock);
+          const port = verifierArmurePortee(character, stock);
+          return (
+            <p className={`text-xs font-mono mb-1 ${v.ok && port.length === 0 ? "text-zinc-500" : "text-amber-300"}`}>
+              👐 {v.etat.mains}/2 mains{v.ok ? "" : ` · ⚠ ${v.raisons.join(" · ")}`}
+              {port.length > 0 && ` · ⚠ ${port.join(" · ")}`}
+            </p>
+          );
+        })()}
+        {equipMsg && <p className="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/50 rounded px-2 py-1 mb-1">{equipMsg}</p>}
         {inv.length === 0 && <p className="text-xs text-zinc-500">Vide — ajoutez depuis le stock d'objets.</p>}
         <div className="space-y-1">
           {inv.map((e) => {
             const item = resolveItem(e.itemId);
+            const equipable = estEquipable(item);
+            const porte = !e.equipe && equipable ? peutEquiper(inv, stock, e.itemId) : { ok: true, raisons: [] as string[] };
             return (
               <div key={e.itemId} className="flex items-center gap-2 text-sm">
                 <span className="flex-1">
-                  {item?.estArme ? "🗡 " : "🎒 "}{item?.nom ?? e.itemId}
+                  {item?.estArme ? "🗡 " : item?.categorie === "armure" ? "🛡 " : "🎒 "}{item?.nom ?? e.itemId}
+                  {item?.magique && <span className="text-xs text-violet-300 ml-1">✦ magique</span>}
                   <span className="text-zinc-500 text-xs"> ×{e.quantite}</span>
+                  {item && equipable && <span className="text-zinc-500 text-xs"> ({libelleMains(item)})</span>}
                   {item?.estArme && <span className="text-zinc-500 text-xs"> (+{item.bonusAttaque ?? 0} · {item.degats ?? "1d6"})</span>}
+                  {(item?.bonusDefense ?? 0) > 0 && <span className="text-sky-300 text-xs"> (+{item?.bonusDefense} DEF{item?.magique ? ", non cumulé" : ""}{e.equipe ? "" : " — non équipé"})</span>}
                 </span>
-                {item?.estArme && (
-                  <button
-                    onClick={() => onUpdate({ ...character, inventaire: inv.map((x) => (x.itemId === e.itemId ? { ...x, equipe: !x.equipe } : x)) })}
-                    title={e.equipe ? "Équipée : utilisable en combat — cliquer pour déséquiper" : "Équiper : l'arme apparaîtra en combat"}
-                    className={`text-xs px-2 py-0.5 rounded font-semibold ${e.equipe ? "bg-green-700" : "bg-zinc-800"}`}
-                  >
-                    {e.equipe ? "✓ Équipée" : "Équiper"}
-                  </button>
+                {equipable && (
+                  porte.ok ? (
+                    <button
+                      onClick={() => toggleEquipe(e.itemId)}
+                      title={e.equipe ? "Équipé : bonus actif — cliquer pour déséquiper" : "Équiper : le bonus s'appliquera (DEF recalculée)"}
+                      className={`text-xs px-2 py-0.5 rounded font-semibold ${e.equipe ? "bg-green-700" : "bg-zinc-800"}`}
+                    >
+                      {e.equipe ? "✓ Équipé" : "Équiper"}
+                    </button>
+                  ) : (
+                    <span
+                      title={`Impossible : ${porte.raisons.join(" · ")} (déséquipez autre chose d'abord)`}
+                      className="text-xs px-2 py-0.5 rounded bg-zinc-900 text-zinc-600 cursor-not-allowed"
+                    >
+                      🔒
+                    </span>
+                  )
                 )}
                 <button
-                  onClick={() => onUpdate({ ...character, inventaire: inv.filter((x) => x.itemId !== e.itemId) })}
+                  onClick={() => removeItem(e.itemId)}
                   className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-red-900"
                 >
                   ✕
@@ -96,7 +162,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
             <select value={addId} onChange={(e) => setAddId(e.target.value)} className="flex-1 bg-zinc-800 rounded px-2 py-1.5 text-sm">
               <option value="">+ Objet du stock…</option>
               {stock.filter((o) => !inv.some((e) => e.itemId === o.id)).map((o) => (
-                <option key={o.id} value={o.id}>{o.nom}{o.estArme ? " (arme)" : ""}</option>
+                <option key={o.id} value={o.id}>{o.nom}{o.estArme ? " (arme)" : ""}{(o.bonusDefense ?? 0) > 0 ? ` (+${o.bonusDefense} DEF)` : ""}{o.magique ? " ✦" : ""}</option>
               ))}
             </select>
             <button onClick={addItem} disabled={!addId} className="px-3 py-1.5 rounded bg-zinc-800 text-sm disabled:opacity-40">Ajouter</button>
