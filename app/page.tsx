@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { STORAGE_KEYS, type CollectionName } from "@/src/lib/store/backup";
 
@@ -19,9 +19,8 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
 ];
 
 export default function Dashboard() {
-  const [counts, setCounts] = useState<Record<string, number> | null>(null);
-
-  useEffect(() => {
+  const [counts] = useState<Record<string, number> | null>(() => {
+    if (typeof window === "undefined") return null;
     const c: Record<string, number> = {};
     (Object.keys(STORAGE_KEYS) as CollectionName[]).forEach((k) => {
       try {
@@ -30,29 +29,36 @@ export default function Dashboard() {
         c[k] = 0;
       }
     });
-    setCounts(c);
-  }, []);
+    return c;
+  });
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Campagne — Tableau de bord</h1>
-      <p className="text-zinc-400 text-sm">
-        Assistant MJ : personnages, monstres, dés, combat, scénarios à embranchements, PNJ, objets et trésors.
-      </p>
+      <header className="text-center space-y-3 pt-4 pb-2">
+        <p className="overline-rune">Grimoire du Maître de Jeu</p>
+        <h1 className="text-3xl sm:text-4xl font-bold">Chroniques Oubliées Fantasy</h1>
+        <div className="hr-rune max-w-md mx-auto" aria-hidden="true"><span>❖</span></div>
+        <p className="text-zinc-400 text-sm italic font-body max-w-xl mx-auto">
+          Personnages, monstres, dés, combat, scénarios à embranchements, PNJ, objets et trésors —
+          tout le nécessaire pour mener la veillée.
+        </p>
+      </header>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {CARDS.map((c) => (
-          <Link key={c.href} href={c.href} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 hover:border-amber-400">
-            <div className="font-semibold text-amber-300">
+          <Link key={c.href} href={c.href} className="panel p-4 block transition-all hover:-translate-y-0.5 hover:border-gold-600 hover:shadow-[0_10px_30px_rgb(201_162_39/0.12)]">
+            <div className="font-display font-bold text-gold-200 tracking-wide">
               {c.t}
-              {c.key && counts !== null && <span className="ml-2 text-xs font-mono text-zinc-400">({counts[c.key] ?? 0})</span>}
+              {c.key && counts !== null && <span className="chip-seal ml-2">{counts[c.key] ?? 0}</span>}
             </div>
-            <div className="text-sm text-zinc-400">{c.d}</div>
+            <div className="text-sm text-zinc-400 mt-1 italic">{c.d}</div>
           </Link>
         ))}
       </div>
-      <Link href="/play" className="inline-block bg-amber-400 text-black font-semibold px-5 py-2.5 rounded-lg">
-        Démarrer la partie
-      </Link>
+      <div className="text-center pt-2">
+        <Link href="/play" className="btn-gold text-base">
+          ▶ Démarrer la partie
+        </Link>
+      </div>
     </div>
   );
 }

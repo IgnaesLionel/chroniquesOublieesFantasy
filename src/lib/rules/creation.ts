@@ -1,7 +1,9 @@
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { VOIE_MAGE, voiePeupleDe } from "@/src/lib/data/peuples";
+import { SEED_SORTS } from "@/src/lib/data/sorts";
 import type { Character, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
+import type { Caracteristiques, FamilleCOF } from "@/src/lib/rules/personnage";
 import { ajouterCapacite, apprendreSort, normaliserNomCapacite, recalculerPersonnage, sortDuTalent } from "@/src/lib/rules/personnage";
 
 export { normaliserNomCapacite, sortDuTalent };
@@ -512,4 +514,78 @@ export function estEffective(c: Character, nom: string): { effectif: boolean; ra
   const min = niveauMinRang(loc.rang);
   if (niveau >= min) return { effectif: true };
   return { effectif: false, raison: `niveau ${min} requis (niveau ${niveau})` };
+}
+
+export interface NouveauPersonnageParams {
+  id: string;
+  nom: string;
+  peuple: string;
+  famille: FamilleCOF;
+  profil: string;
+  caracteristiques: Caracteristiques;
+  traitsPeuple: string[];
+  voieMage?: boolean;
+  /** Talents de voies du profil (rang 1, + rang 2 gratuit Mage éventuel). */
+  talents: string[];
+  idealHeroique?: string;
+  travers?: string;
+}
+
+/**
+ * Construit un personnage niveau 1 prêt à jouer (pur, testable).
+ * Les talents qui sont aussi des sorts obtiennent leur entrée lançable
+ * (+ mana). Les dérivés (PV/DEF/init/chance/DR/mana) sont recalculés,
+ * PV et réserves au max. Lance une erreur si le nom est vide.
+ */
+export function creerPersonnage(
+  params: NouveauPersonnageParams,
+  grimoire: Sort[] = SEED_SORTS,
+  catalogue: Item[] = []
+): Character {
+  const nom = (params.nom ?? "").trim();
+  if (!nom) throw new Error("Nom requis.");
+  const profil = (params.profil ?? "").trim();
+  if (!profil) throw new Error("Profil requis.");
+  let c: Character = {
+    id: params.id,
+    kind: "personnage",
+    nom,
+    classe: profil,
+    niveau: 1,
+    pvMax: 1,
+    pv: 1,
+    defense: 10,
+    initMod: 0,
+    caracteristiques: { ...params.caracteristiques },
+    peuple: params.peuple,
+    famille: params.famille,
+    profil,
+    idealHeroique: params.idealHeroique?.trim() || undefined,
+    travers: params.travers?.trim() || undefined,
+    traitsPeuple: [...params.traitsPeuple],
+    voieMage: params.voieMage ? true : undefined,
+    attaques: [],
+    capacites: [],
+    ressources: {},
+    effets: [],
+    inventaire: [],
+    sorts: [],
+    exemple: false,
+    migreSorts: true,
+  };
+  for (const t of params.talents) {
+    const n = (t ?? "").trim();
+    if (!n) continue;
+    c = apprendreTalentComplet(c, n, grimoire, catalogue);
+  }
+  c = recalculerPersonnage(c, catalogue);
+  return {
+    ...c,
+    pv: c.pvMax,
+    ressources: {
+      ...c.ressources,
+      mana: { ...c.ressources.mana, actuel: c.ressources.mana.max },
+      chance: { ...c.ressources.chance, actuel: c.ressources.chance.max },
+    },
+  };
 }

@@ -8,6 +8,7 @@ import { pvTexteColor } from "@/src/lib/ui/pv";
 import type { Character } from "@/src/lib/rules/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
 import { BoursePanel } from "@/src/components/characters/BoursePanel";
+import { CreateurPersonnage } from "@/src/components/characters/CreateurPersonnage";
 import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
 import {
   FAMILLES,
@@ -42,6 +43,7 @@ export default function CharactersPage() {
   const { items: raw, setItems } = useCharacters();
   const { catalogue: stock } = useCatalogueObjets();
   const [editing, setEditing] = useState<Character | null>(null);
+  const [creation, setCreation] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [drMessage, setDrMessage] = useState<Record<string, string>>({});
 
@@ -215,7 +217,8 @@ export default function CharactersPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Personnages ({items.length})</h1>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={toutRecalculer} title="INIT=10+PER · DEF=10+AGI+Équip+Mod · PV=base+CON · Chance=2+CHA(+1 Aventurier) · DR=2+CON(+1 Mystique) · Mana=VOL+sorts" className="px-3 py-1.5 rounded bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300">↻ Recalculer</button>
+          <button onClick={() => setCreation(true)} className="px-3 py-1.5 rounded bg-amber-400 text-black text-sm font-bold hover:bg-amber-300">+ Nouveau personnage</button>
+          <button onClick={toutRecalculer} title="INIT=10+PER · DEF=10+AGI+Équip+Mod · PV=base+CON · Chance=2+CHA(+1 Aventurier) · DR=2+CON(+1 Mystique) · Mana=VOL+sorts" className="px-3 py-1.5 rounded bg-zinc-800 text-sm font-semibold hover:bg-zinc-700">↻ Recalculer</button>
           <button onClick={toutRemettreAZero} title="Retour création : niveau 1, talents/sorts vidés, traits et inventaires de base restaurés, PV/chance/mana au max" className="px-3 py-1.5 rounded bg-green-800 text-sm font-semibold hover:bg-green-700">✦ Remise à zéro</button>
           <button onClick={() => exportJson("personnages.json", items)} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Export JSON</button>
           <button onClick={reset} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Réinitialiser</button>
@@ -551,6 +554,16 @@ export default function CharactersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {creation && (
+        <CreateurPersonnage
+          onAnnuler={() => setCreation(false)}
+          onCreer={(c) => {
+            setItems((prev) => [...prev, c]);
+            setCreation(false);
+          }}
+        />
       )}
     </div>
   );

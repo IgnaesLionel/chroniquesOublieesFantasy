@@ -1,20 +1,237 @@
 @import "tailwindcss";
 
+/*
+ * Thème « Taverne du MJ » — medieval fantasy sombre et chaud.
+ *
+ * Astuce centrale : on remappe les variables zinc/amber de Tailwind vers des
+ * bruns chauds et un or vieilli. Toutes les pages existantes (cartes
+ * bg-zinc-900, boutons bg-amber-400…) prennent la teinte fantasy sans
+ * réécriture. Les nouvelles classes or/parchemin/bronze servent à la vitrine.
+ */
+
 :root {
   color-scheme: dark;
-  --background: #09090b;
-  --foreground: #f4f4f5;
+
+  /* Zinc remappé : pierre chaude / cuir sombre */
+  --color-zinc-950: #14100b;
+  --color-zinc-900: #1e1811;
+  --color-zinc-850: #241c13;
+  --color-zinc-800: #2c2318;
+  --color-zinc-700: #453823;
+  --color-zinc-600: #5d4d33;
+  --color-zinc-500: #7f7261;
+  --color-zinc-400: #ab9d80;
+  --color-zinc-300: #d3c8ae;
+  --color-zinc-200: #e4dac2;
+  --color-zinc-100: #f0e9d6;
+
+  /* Amber remappé : or vieilli */
+  --color-amber-950: #241a08;
+  --color-amber-900: #3a2c0d;
+  --color-amber-800: #5c4513;
+  --color-amber-700: #7d5f1c;
+  --color-amber-500: #b78f2a;
+  --color-amber-400: #c9a227;
+  --color-amber-300: #dfc06a;
+  --color-amber-200: #ecd9a0;
+  --color-amber-100: #f6ecc9;
+
+  --background: var(--color-zinc-950);
+  --foreground: var(--color-zinc-200);
 }
 
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Serifes d'ambiance (piles locales, sans webfont = build offline sûr).
+     Pour un vrai Cinzel : ajouter next/font ou un @import Google Fonts. */
+  --font-display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Times New Roman", serif;
+  --font-body: Georgia, "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
+  --font-sans: Georgia, "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
+  --font-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Tokens dédiés fantasy (classes text-gold-300, bg-gold-400, border-bronze-700…) */
+  --color-gold-600: #8a6d1f;
+  --color-gold-500: #b78f2a;
+  --color-gold-400: #c9a227;
+  --color-gold-300: #dfc06a;
+  --color-gold-200: #ecd9a0;
+  --color-parchment-300: #d3c8ae;
+  --color-parchment-200: #e4dac2;
+  --color-parchment-100: #f0e9d6;
+  --color-bronze-800: #453823;
+  --color-bronze-700: #5d4d33;
+  --color-blood-700: #7f1d1d;
+  --color-blood-500: #b91c1c;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  /* Lueur de torche en haut + vignettage, comme une taverne la nuit */
+  background-image:
+    radial-gradient(60rem 22rem at 50% -6rem, rgb(201 162 39 / 0.09), transparent 70%),
+    radial-gradient(40rem 30rem at 85% 110%, rgb(127 29 29 / 0.07), transparent 70%),
+    linear-gradient(var(--background), var(--background));
+  background-attachment: fixed;
+}
+
+/* Grain de parchemin (overlay fixe, sous le contenu) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Titres : capitales serifées couleur or */
+h1 {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  color: var(--color-gold-200);
+  text-wrap: balance;
+}
+
+h2 {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+}
+
+::selection {
+  background: var(--color-gold-400);
+  color: #14100b;
+}
+
+:is(input, select, textarea):focus-visible,
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--color-gold-500);
+  outline-offset: 1px;
+}
+
+summary {
+  cursor: pointer;
+}
+summary::marker {
+  color: var(--color-gold-500);
+}
+
+/* Filet ornemental : ❖ encadré de filets (élément vide, aria-hidden côté JSX) */
+.hr-rune {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-gold-500);
+}
+.hr-rune::before,
+.hr-rune::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, var(--color-bronze-700), transparent);
+}
+
+/* Sur-titre façon manuscrit */
+.overline-rune {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 0.7rem;
+  color: var(--color-gold-500);
+}
+
+/* Carte parchemin sombre : double filet bronze + lueur interne haute */
+.panel {
+  border-radius: 0.65rem;
+  border: 1px solid var(--color-bronze-700);
+  outline: 1px solid rgb(0 0 0 / 0.55);
+  outline-offset: -4px;
+  background:
+    linear-gradient(rgb(255 240 200 / 0.04), transparent 40%),
+    var(--color-zinc-900);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+}
+
+/* Bouton or : sceau du MJ */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.55rem;
+  padding: 0.65rem 1.25rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #1a1408;
+  background: linear-gradient(180deg, var(--color-gold-300), var(--color-gold-400) 55%, var(--color-gold-600));
+  border: 1px solid #6d5618;
+  box-shadow: 0 2px 0 #6d5618, 0 8px 20px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.25);
+}
+.btn-gold:hover {
+  filter: brightness(1.08);
+}
+.btn-gold:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #6d5618, 0 4px 12px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+.btn-gold:disabled {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+/* Bouton cuir sombre */
+.btn-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.55rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: var(--color-parchment-200);
+  background: linear-gradient(180deg, var(--color-zinc-800), var(--color-zinc-900));
+  border: 1px solid var(--color-bronze-700);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 240 200 / 0.07);
+}
+.btn-dark:hover {
+  border-color: var(--color-gold-600);
+  color: var(--color-gold-200);
+}
+
+/* Pastille façon sceau de cire (compteurs) */
+.chip-seal {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--color-gold-200);
+  background: rgb(127 29 29 / 0.35);
+  border: 1px solid var(--color-bronze-700);
+}
+
+/* Barre de défilement assortie */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-zinc-950);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-bronze-700);
+  border-radius: 8px;
+  border: 2px solid var(--color-zinc-950);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-600);
 }
