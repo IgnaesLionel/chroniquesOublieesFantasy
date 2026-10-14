@@ -243,7 +243,7 @@ export const SEED_SORTS: Sort[] = [
     action: "attaque",
     description: "Test opposé d'attaque magique (10 m, vivant) : 1d4°+INT DM, et ralenti 1 round (test CON 10 lancé, appliqué si raté).",
     familles: ["Sorcier"],
-    degats: "1d4°+INT", effetCle: "Ralenti", effetDuree: 1, effetSauvegarde: { carac: "CON", difficulte: 10 },
+    degats: "1d4°+INT", effetCle: "ralenti", effetDuree: 1, effetSauvegarde: { carac: "CON", difficulte: 10 },
     cout: { ressource: "mana", montant: 1 },
   },
   {

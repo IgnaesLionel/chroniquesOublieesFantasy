@@ -21,7 +21,7 @@ export function EffectsPanel({ participant, onAdd, onRemove }: Props) {
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
       <h2 className="font-bold text-sm uppercase text-zinc-400">Effets — {participant.nom}</h2>
       {!canAct(participant.effets) && (
-        <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">Ne peut pas agir (Étourdi/Immobilisé)</div>
+        <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">Ne peut pas agir (Étourdi/Paralysé/Surpris)</div>
       )}
       {mods.length > 0 && (
         <div className="text-xs text-amber-300">Modificateurs : {mods.map((m) => `${m.k} ${m.v > 0 ? "+" : ""}${m.v}`).join(" · ")}</div>

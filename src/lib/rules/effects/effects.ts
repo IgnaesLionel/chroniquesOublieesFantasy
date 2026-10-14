@@ -34,16 +34,21 @@ export function decrireModificateurs(mods: Record<string, number>): string[] {
     if (typeof v === "number" && v !== 0) lignes.push(texte(v));
   };
   push("attaque", (v) => `${v > 0 ? "+" : ""}${v} aux jets d'attaque`);
+  push("attaqueDistance", (v) => `${v > 0 ? "+" : ""}${v} aux attaques à distance (en plus)`);
   push("defense", (v) => `${v > 0 ? "+" : ""}${v} en DEF`);
   push("pvParTour", (v) => `${v > 0 ? "+" : ""}${v} PV au début de son tour`);
   if ((mods["empecheAgir"] ?? 0) > 0) lignes.push("ne peut pas agir (tour sauté)");
+  if ((mods["paralyse"] ?? 0) > 0) lignes.push("touché automatiquement, critique subi");
   if ((mods["deBonus"] ?? 0) > 0) lignes.push("dé bonus (2d20, garder le meilleur)");
   if ((mods["deMalus"] ?? 0) > 0) lignes.push("dé malus (2d20, garder le pire)");
+  if ((mods["pasDeDeplacement"] ?? 0) > 0) lignes.push("pas de déplacement (MJ)");
+  if ((mods["actionUnique"] ?? 0) > 0) lignes.push("une seule action par round (MJ)");
+  if (typeof mods["deplacementMax"] === "number") lignes.push(`déplacement max ${mods["deplacementMax"]} m par action de mouvement (MJ)`);
   if (typeof mods["seuilCrit"] === "number") lignes.push(`critique dès ${mods["seuilCrit"]} naturel`);
   if ((mods["parade"] ?? 0) > 0) lignes.push("parade (test opposé, capacité)");
   if ((mods["absorption"] ?? 0) > 0) lignes.push("absorption de sort (capacité)");
   for (const cle of Object.keys(mods).sort()) {
-    if (["attaque", "defense", "pvParTour", "empecheAgir", "deBonus", "deMalus", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
+    if (["attaque", "attaqueDistance", "defense", "pvParTour", "empecheAgir", "paralyse", "deBonus", "deMalus", "pasDeDeplacement", "actionUnique", "deplacementMax", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
     lignes.push(`${cle} ${mods[cle]}`);
   }
   return lignes;

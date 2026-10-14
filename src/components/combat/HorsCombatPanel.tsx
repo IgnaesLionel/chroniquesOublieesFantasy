@@ -27,6 +27,7 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [brulure, setBrulure] = useState(false);
+  const [concentration, setConcentration] = useState(false);
 
   const lanceurs = characters.filter((c) => (c.sorts ?? []).length > 0);
   if (lanceurs.length === 0) return null;
@@ -45,17 +46,20 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
     triés[0];
   const cible = characters.find((c) => c.id === cibleId) ?? lanceur;
   const mana = lanceur.ressources?.["mana"];
+  const coutBase = sort?.cout?.montant ?? 0;
+  const concPossible = !!sort && (sort.action ?? "attaque") === "attaque" && coutBase > 0;
+  const concActive = concentration && concPossible;
+  const coutEff = concActive ? Math.max(0, coutBase - 2) : coutBase;
 
   const lancer = () => {
     setMessage(null);
     setErreur(null);
     if (!sort) return;
-    // Brûlure de mana : à 0 PM, 1 DR par PM en PV (jamais pour les soins).
-    const coutSort = sort.cout?.montant ?? 0;
-    const brulurePossible = coutSort > 0 && (mana?.actuel ?? 0) === 0 && !sort.soin;
+    // Brûlure de mana : à 0 PM, 1 DR par PM effectif en PV (jamais pour les soins).
+    const brulurePossible = coutEff > 0 && (mana?.actuel ?? 0) === 0 && !sort.soin;
     const mode: "mana" | "brulure" = brulure && brulurePossible ? "brulure" : "mana";
     try {
-      const { lanceur: l2, cible: c2, resolution } = lancerSortHorsCombat(lanceur, cible, sort, Math.random, mode);
+      const { lanceur: l2, cible: c2, resolution } = lancerSortHorsCombat(lanceur, cible, sort, Math.random, mode, { concentration: concActive });
       onUpdate(
         characters.map((c) => {
           if (c.id === l2.id && c.id === c2.id) return l2;
@@ -65,6 +69,7 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
         })
       );
       const parties = [`${resolution.lanceurNom} lance ${resolution.sortNom} sur ${resolution.cibleNom}`];
+      if (resolution.concentre) parties.push("concentration accrue (−2 PM)");
       if (resolution.manaPaye > 0) parties.push(`−${resolution.manaPaye} mana`);
       if (resolution.pvBrules > 0) parties.push(`🔥 brûlure : −${resolution.pvBrules} PV [${resolution.detailsBrulure.join(", ")}]`);
       if (resolution.pvSacrifie > 0) parties.push(`−${resolution.pvSacrifie} PV sacrifiés`);
@@ -107,7 +112,8 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
       </h2>
       <p className="text-xs text-zinc-500">
         Soutien hors combat : action (A/M/L) ignorée, pas de limite d&apos;action ni de mouvement.
-        Niveau, mana et PV sacrifiés appliqués. Offensifs, zones et invocations : en combat uniquement.
+        Niveau, mana et PV sacrifiés appliqués. Concentration accrue possible (sorts A : −2 PM).
+        Offensifs, zones et invocations : en combat uniquement.
       </p>
       <label className="block text-sm">Lanceur
         <select
@@ -159,21 +165,29 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
           <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
           <label className="flex items-center gap-2">
             <input type="radio" checked={!brulure} onChange={() => setBrulure(false)} />
-            <span>Incantation ({sort.cout!.montant} PM)</span>
+            <span>Incantation ({coutEff} PM{concActive && coutEff !== coutBase ? `, concentré depuis ${coutBase}` : ""})</span>
           </label>
           {(() => {
             const raison = sort.soin
               ? "brûlure interdite pour les soins"
-              : (mana?.actuel ?? 0) !== 0
-                ? "brûlure réservée au 0 mana"
-                : null;
+              : coutEff <= 0
+                ? "brûlure inutile (coût 0)"
+                : (mana?.actuel ?? 0) !== 0
+                  ? "brûlure réservée au 0 mana"
+                  : null;
             return (
               <label className={`flex items-center gap-2 ${raison ? "opacity-40" : ""}`} title={raison ?? "Brûlure de mana : paie en PV (1 DR par PM, sans RD, KO possible)"}>
                 <input type="radio" checked={brulure} disabled={!!raison} onChange={() => setBrulure(true)} />
-                <span>Brûlure de mana ({sort.cout!.montant} DR de PV)</span>
+                <span>Brûlure de mana ({coutEff} DR de PV)</span>
               </label>
             );
           })()}
+          {concPossible && (
+            <label className="flex items-center gap-2" title="Sort (A) : le lanceur prend le temps de se concentrer (−2 PM, plancher 0).">
+              <input type="checkbox" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
+              <span>Concentration accrue (−2 PM → {Math.max(0, coutBase - 2)} PM)</span>
+            </label>
+          )}
           {brulure && (mana?.actuel ?? 0) !== 0 && (
             <div className="text-xs text-amber-300/90">⚠ Brûlure possible uniquement à 0 mana.</div>
           )}

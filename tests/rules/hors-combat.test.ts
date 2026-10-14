@@ -94,6 +94,43 @@ describe("sorts hors combat", () => {
     expect(() => lancerSortHorsCombat(sec, cible, soin, Math.random, "brulure")).toThrow(/soins/);
   });
 
+  it("concentration accrue hors combat : −2 PM (plancher 0) sur les sorts (A)", () => {
+    const lanceur = pretre();
+    const cible = pretre("Cible");
+    const sort: Sort = { id: "b", nom: "Bouclier", type: "defensif", action: "attaque", cout: { ressource: "mana", montant: 3 } };
+    const { lanceur: l2, resolution } = lancerSortHorsCombat(lanceur, cible, sort, fixedRng([0.5]), "mana", { concentration: true });
+    expect(resolution.concentre).toBe(true);
+    expect(resolution.manaPaye).toBe(1);
+    expect(l2.ressources.mana.actuel).toBe(4);
+    // Sans option : coût plein, non concentré.
+    const plein = lancerSortHorsCombat(lanceur, cible, sort, fixedRng([0.5]));
+    expect(plein.resolution.concentre).toBe(false);
+    expect(plein.resolution.manaPaye).toBe(3);
+    // Plancher 0 : coût 1 concentré = gratuit, mana intact.
+    const petit: Sort = { id: "p", nom: "Lueur", type: "utilitaire", action: "attaque", cout: { ressource: "mana", montant: 1 } };
+    const { lanceur: l3, resolution: r3 } = lancerSortHorsCombat(lanceur, cible, petit, fixedRng([0.5]), "mana", { concentration: true });
+    expect(r3.concentre).toBe(true);
+    expect(r3.manaPaye).toBe(0);
+    expect(l3.ressources.mana.actuel).toBe(5);
+    // Refusée sur les sorts (L/M/G), comme en combat.
+    const limite: Sort = { id: "l", nom: "Augure", type: "utilitaire", action: "limitee", cout: { ressource: "mana", montant: 2 } };
+    expect(() => lancerSortHorsCombat(lanceur, cible, limite, fixedRng([0.5]), "mana", { concentration: true })).toThrow(/attaque/);
+  });
+
+  it("concentration + brûlure hors combat : DR sur le coût réduit", () => {
+    const lanceur = pretre();
+    const cible = pretre("Cible");
+    const sort: Sort = { id: "b", nom: "Bouclier", type: "defensif", action: "attaque", cout: { ressource: "mana", montant: 3 } };
+    const sec = { ...lanceur, ressources: { mana: { max: 5, actuel: 0 } } };
+    // Coût concentré 1 PM -> 1d8 (repli Prêtre/Mystique), rng 0.5 -> 5 PV.
+    const { lanceur: l2, resolution } = lancerSortHorsCombat(sec, cible, sort, fixedRng([0.5]), "brulure", { concentration: true });
+    expect(resolution.concentre).toBe(true);
+    expect(resolution.manaPaye).toBe(0);
+    expect(resolution.pvBrules).toBe(5);
+    expect(resolution.detailsBrulure).toEqual([5]);
+    expect(l2.pv).toBe(15);
+  });
+
   it("soin sur soi : sacrifice PV puis soin cumulés sur la même fiche", () => {
     const lanceur = { ...pretre(), pv: 15 };
     const sort: Sort = {

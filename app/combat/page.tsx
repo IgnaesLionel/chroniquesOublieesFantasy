@@ -14,6 +14,7 @@ import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
+import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { CombatTable } from "@/src/components/combat/CombatTable";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
 import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
@@ -39,6 +40,10 @@ export default function CombatPage() {
   const [last, setLast] = useState<AttackResolution | null>(null);
   const [lastAttaque, setLastAttaque] = useState<{ attackerId: string; targetId: string; attackId: string } | null>(null);
   const [termineMessage, setTermineMessage] = useState<string | null>(null);
+  // État préjudiciable posé avant l'initiative (ex : surpris, aveuglé).
+  const [etatCible, setEtatCible] = useState<string | null>(null);
+  const [etatCle, setEtatCle] = useState("surpris");
+  const [etatDuree, setEtatDuree] = useState("");
 
   const active = combat ? getActive(combat) : null;
 
@@ -60,6 +65,21 @@ export default function CombatPage() {
     );
 
   const resyncStaging = () => setStaging((s) => stagingAJour(s));
+  /** Pose un état pré-combat (conservé au resync et au lancement). */
+  const appliquerEtatStaging = () => {
+    const cible = staging.find((p) => p.instanceId === etatCible) ?? staging[0];
+    if (!cible) return;
+    const tpl = EFFECT_CATALOG.find((t) => t.key === etatCle);
+    const duree = etatDuree.trim() === "" ? (tpl?.dureeDefaut ?? null) : Number(etatDuree);
+    if (!Number.isFinite(duree as number) && duree !== null) return;
+    if (typeof duree === "number" && duree < 1) return;
+    const effet = createEffect(etatCle, { dureeTours: duree, source: "Pré-combat" });
+    setStaging((s) => s.map((p) => (p.instanceId === cible.instanceId ? { ...p, effets: [...p.effets, effet] } : p)));
+  };
+  const retirerEtatStaging = (instanceId: string, effetId: string) =>
+    setStaging((s) =>
+      s.map((p) => (p.instanceId === instanceId ? { ...p, effets: p.effets.filter((e) => e.id !== effetId) } : p))
+    );
   const start = () => {
     if (staging.length < 2) return;
     const frais = stagingAJour(staging);
@@ -286,6 +306,57 @@ export default function CombatPage() {
             <div className="text-xs text-green-300/70 mt-1">Vérifiez l&apos;onglet Personnages : les PV affichés sont à jour.</div>
           </div>
         )}
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Rencontre ({staging.length})</h2>
+          {staging.length === 0 && <p className="text-sm text-zinc-500">Ajoutez PJ + monstres. Ex : 4 PJ + Gobelin ×4. Un état initial (surpris, aveuglé…) se pose ci-dessous avant l&apos;initiative.</p>}
+          <div className="flex flex-wrap gap-2">
+            {staging.map((p) => {
+              const nbSorts = p.attaques.filter((a) => a.id.startsWith("sort:")).length;
+              return (
+                <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) (${p.attaques.map((a) => a.nom).join(", ") || "aucune"}) dont ${nbSorts} sort(s)}`}>
+                  {p.templateId.startsWith("compagnon:loup") ? "🐺 " : ""}{p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span> <button onClick={() => removeStaging(p.instanceId)} className="text-red-400 ml-1">✕</button>
+                </span>
+              );
+            })}
+          </div>
+          {staging.some((p) => p.effets.length > 0) && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {staging.flatMap((p) =>
+                p.effets.map((e) => (
+                  <span key={e.id} className="text-xs px-2 py-1 rounded bg-red-950 border border-red-800 text-red-200" title={e.description}>
+                    {p.nom} : {e.nom} ({e.toursRestants ?? "∞"})
+                    <button onClick={() => retirerEtatStaging(p.instanceId, e.id)} className="ml-1.5 text-red-400">✕</button>
+                  </span>
+                ))
+              )}
+            </div>
+          )}
+          {staging.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2 items-center">
+              <select value={staging.find((p) => p.instanceId === etatCible)?.instanceId ?? staging[0].instanceId} onChange={(e) => setEtatCible(e.target.value)} title="Participant subissant l'état initial" className="bg-zinc-800 rounded px-2 py-1.5 text-xs">
+                {staging.map((p) => (
+                  <option key={p.instanceId} value={p.instanceId}>{p.nom}</option>
+                ))}
+              </select>
+              <select value={etatCle} onChange={(e) => setEtatCle(e.target.value)} title="État préjudiciable initial (avant l'initiative)" className="bg-zinc-800 rounded px-2 py-1.5 text-xs">
+                {EFFECT_CATALOG.map((t) => (
+                  <option key={t.key} value={t.key}>{t.nom} ({t.dureeDefaut ?? "∞"})</option>
+                ))}
+              </select>
+              <input value={etatDuree} onChange={(e) => setEtatDuree(e.target.value)} placeholder={EFFECT_CATALOG.find((t) => t.key === etatCle)?.dureeDefaut != null ? String(EFFECT_CATALOG.find((t) => t.key === etatCle)?.dureeDefaut) : "∞"} title="Durée en tours (vide = défaut)" className="w-14 bg-zinc-800 rounded px-2 py-1.5 text-xs text-center" />
+              <button onClick={appliquerEtatStaging} className="px-3 py-1.5 rounded bg-violet-700 hover:bg-violet-600 text-xs font-semibold">
+                + État initial
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 mt-3">
+            <button onClick={resyncStaging} title="Reconstruit chaque PJ depuis sa fiche (attaques, sorts, talents, loup)" className="px-4 py-2 rounded bg-zinc-800 text-sm">↻ Actualiser</button>
+            <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>
+            <button onClick={start} disabled={staging.length < 2} className="flex-1 py-2.5 rounded bg-amber-400 text-black font-bold disabled:opacity-40">
+              Lancer les initiatives ({staging.length})
+            </button>
+          </div>
+        </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
             <h2 className="font-bold text-sm uppercase text-zinc-400">Personnages</h2>
@@ -309,27 +380,6 @@ export default function CombatPage() {
                 <button onClick={() => addMonsters(m)} className="px-2.5 py-1 rounded bg-red-900 text-xs hover:bg-red-800">+ Ajouter</button>
               </div>
             ))}
-          </div>
-        </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-          <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Rencontre ({staging.length})</h2>
-          {staging.length === 0 && <p className="text-sm text-zinc-500">Ajoutez PJ + monstres. Ex : 4 PJ + Gobelin ×4.</p>}
-          <div className="flex flex-wrap gap-2">
-            {staging.map((p) => {
-              const nbSorts = p.attaques.filter((a) => a.id.startsWith("sort:")).length;
-              return (
-                <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) (${p.attaques.map((a) => a.nom).join(", ") || "aucune"}) dont ${nbSorts} sort(s)}`}>
-                  {p.templateId.startsWith("compagnon:loup") ? "🐺 " : ""}{p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span> <button onClick={() => removeStaging(p.instanceId)} className="text-red-400 ml-1">✕</button>
-                </span>
-              );
-            })}
-          </div>
-          <div className="flex gap-2 mt-3">
-            <button onClick={resyncStaging} title="Reconstruit chaque PJ depuis sa fiche (attaques, sorts, talents, loup)" className="px-4 py-2 rounded bg-zinc-800 text-sm">↻ Actualiser</button>
-            <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>
-            <button onClick={start} disabled={staging.length < 2} className="flex-1 py-2.5 rounded bg-amber-400 text-black font-bold disabled:opacity-40">
-              Lancer les initiatives ({staging.length})
-            </button>
           </div>
         </div>
       </div>

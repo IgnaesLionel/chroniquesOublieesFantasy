@@ -25,16 +25,26 @@ export function construirePJCombat(c: Character, catalogue: Item[] = []): Combat
   ];
 }
 
-/** Reconstruit les PJ depuis leurs fiches (staging et démarrage). */
+/** Reconstruit les PJ depuis leurs fiches (staging et démarrage). Les états pré-combat (effets posés avant l'initiative : surpris, aveuglé...) sont conservés. */
 export function rafraichirStaging(
   liste: CombatParticipant[],
   characters: Character[],
   catalogue: Item[] = []
 ): CombatParticipant[] {
+  const effetsParInstance = new Map(liste.map((p) => [p.instanceId, p.effets]));
   return liste.flatMap((p) => {
     if (p.templateId.startsWith("compagnon:loup")) return [];
     const fiche = characters.find((c) => c.id === p.templateId);
-    return fiche && p.camp === "pj" ? construirePJCombat(fiche, catalogue) : [p];
+    const reconstruits = fiche && p.camp === "pj" ? construirePJCombat(fiche, catalogue) : [p];
+    return reconstruits.map((r) => {
+      // InstanceId d'abord (stable en pratique) ; repli templateId pour les PJ
+      // (anciennes sauvegardes, ids reconstruits).
+      const gardes =
+        effetsParInstance.get(r.instanceId) ??
+        (r.camp === "pj" ? liste.find((q) => q.camp === "pj" && q.templateId === r.templateId)?.effets : undefined) ??
+        [];
+      return { ...r, effets: gardes };
+    });
   });
 }
 

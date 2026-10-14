@@ -982,7 +982,7 @@ describe("rodeur (voies du livre)", () => {
     });
     const aveugle = r2.state.participants[1].effets.find((e) => e.nom === "Aveuglé");
     expect(aveugle?.toursRestants).toBe(1);
-    expect(aveugle?.modificateurs).toMatchObject({ attaque: -3 });
+    expect(aveugle?.modificateurs).toMatchObject({ attaque: -5, defense: -5, attaqueDistance: -5 });
     expect(r2.state.log.some((l) => l.message.includes("Aveuglé"))).toBe(true);
   });
 

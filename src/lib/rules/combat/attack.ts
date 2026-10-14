@@ -157,9 +157,11 @@ export function resolveAttack(
   if (sort?.coutPV && !paiement.dejaPaye) s = applyCoutPV(s, attackerId, sort.coutPV, rng, niveauEffectif(attaquant)).state;
 
   const modAttaque = getModifier(attaquant.effets, "attaque") + (attaqueOpts.modAttaque ?? 0);
+  // Aveuglé : −5 supplémentaire aux attaques à distance (−10 au total).
+  const modDistance = estAttaqueDistance(attaque) ? getModifier(attaquant.effets, "attaqueDistance") : 0;
   const modDefense = getModifier(cible.effets, "defense");
   const bonusBase = attaqueOpts.bonusOverride ?? attaque.bonus;
-  const bonusEffectif = bonusBase + modAttaque;
+  const bonusEffectif = bonusBase + modAttaque + modDistance;
   const defenseEffective = cible.defense + modDefense;
   // Dés évolutifs (°) résolus au niveau de l'attaquant (d4 1-5 ... d12 15+).
   const nivAttaquant = niveauEffectif(attaquant);
@@ -202,6 +204,14 @@ export function resolveAttack(
     critique = true;
   } else {
     touche = jetTotal >= defenseEffective;
+  }
+  // Paralysé : touché automatiquement et subit un critique (LDB).
+  const cibleParalysee = !attaque.toucheAuto && getModifier(cible.effets, "paralyse") > 0;
+  let paralyseLog: string | null = null;
+  if (cibleParalysee) {
+    touche = true;
+    critique = true;
+    paralyseLog = `${cible.nom} est paralysé : touché automatiquement (critique)`;
   }
 
   // Parade / absorption (Guerrier) : test opposé sur attaque réussie (jets purs,
@@ -390,10 +400,11 @@ export function resolveAttack(
     log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Automatique (sans jet, ${attaque.nom})` });
   } else {
     const des = avantage && jetSecondaire != null ? `${d1}, ${jetSecondaire} (dé ${avantage} -> ${jetNaturel}) + ` : `${jetNaturel} + `;
-    log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${bonusBase}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque})` : ""} = ${jetTotal}` });
+    log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${bonusBase}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque})` : ""}${modDistance !== 0 ? ` (${modDistance} à distance)` : ""} = ${jetTotal}` });
   }
   log.push({ id: id("def"), at: stamp(), manche: s.manche, message: `Défense ${cible.nom} : ${cible.defense}${modDefense !== 0 ? ` (${modDefense > 0 ? "+" : ""}${modDefense} effets)` : ""}` });
   log.push({ id: id("hit"), at: stamp(), manche: s.manche, message: toucheVraie ? (critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ" });
+  if (paralyseLog) log.push({ id: id("paral"), at: stamp(), manche: s.manche, message: paralyseLog });
   if (paradeLog) log.push({ id: id("par"), at: stamp(), manche: s.manche, message: paradeLog });
   if (!toucheVraie && estAttaqueArme(attaque) && talentConnu(cible, "Riposte")) {
     log.push({ id: id("rip"), at: stamp(), manche: s.manche, message: `Riposte (G) : ${cible.nom} peut riposter contre ${attaquant.nom} (attaque au contact uniquement, 1/round — MJ : attaque manuelle)` });
@@ -884,6 +895,16 @@ export function estAttaqueContact(attaque: { id: string; familles?: string[] }, 
   const f = attaque.familles ?? [];
   if (f.length === 0) return true;
   return !f.some((x) => FAMILLES_DISTANCE.has(x));
+}
+
+/**
+ * Attaque à distance (arme de famille à distance, ex: arcs) ?
+ * Sorts exclus : tests d'attaque magique (−5 de l'aveuglé, sorts exigeant
+ * la vue interdits — MJ), pas des attaques à distance (−10).
+ */
+export function estAttaqueDistance(attaque: { id: string; familles?: string[] }): boolean {
+  if (!estAttaqueArme(attaque)) return false;
+  return (attaque.familles ?? []).some((x) => FAMILLES_DISTANCE.has(x));
 }
 
 /** Sort à l'origine d'une attaque "sort:<id>" (armes : indéfini). */
@@ -1516,6 +1537,8 @@ export interface HorsCombatResolution {
   pvBrules: number;
   /** Détail des DR lancés. */
   detailsBrulure: number[];
+  /** Vrai si la concentration accrue a réduit le coût (−2 PM, sort A). */
+  concentre: boolean;
 }
 
 /**
@@ -1523,10 +1546,12 @@ export interface HorsCombatResolution {
  * non-invocation) : vérifie le niveau et le mana, paie les coûts
  * (mana + PV), applique le soin, l'effet et l'attaque accordée éventuels.
  * L'action DRS (attaque/mouvement/limitée) est ignorée : hors combat il
- * n'y a pas de limite d'action ni de mouvement, donc pas de concentration
- * accrue. Les limites par combat (tentatives, par-cible) ne s'appliquent pas
+ * n'y a pas de limite d'action ni de mouvement. La concentration accrue
+ * reste possible : le lanceur prend le temps de se concentrer (−2 PM,
+ * plancher 0, sorts d'attaque (A) uniquement — comme en combat).
+ * Les limites par combat (tentatives, par-cible) ne s'appliquent pas
  * hors combat (pas de compteur). La brûlure de mana reste possible (à 0 PM,
- * 1 DR par PM, jamais pour les soins).
+ * 1 DR par PM effectif, jamais pour les soins).
  * Sorts purement narratifs (Augure...) : coût payé, effet au MJ.
  */
 export function lancerSortHorsCombat(
@@ -1534,14 +1559,15 @@ export function lancerSortHorsCombat(
   cible: Character,
   sort: Sort,
   rng: Rng = Math.random,
-  mode: ModePaiementSort = "mana"
+  mode: ModePaiementSort = "mana",
+  opts: { concentration?: boolean } = {}
 ): { lanceur: Character; cible: Character; resolution: HorsCombatResolution } {
   const lancable = sortLancableHorsCombat(sort);
   if (!lancable.ok) throw new Error(lancable.raison);
   const niveau = sortUtilisable(lanceur.niveau, sort);
   if (!niveau.ok) throw new Error(`${sort.nom} : ${niveau.raison}.`);
 
-  const cout = sort.cout?.montant ?? 0;
+  const { pm: cout, concentre } = coutEffectifSort(sort, { concentration: opts.concentration });
   let manaPaye = 0;
   let pvBrules = 0;
   let detailsBrulure: number[] = [];
@@ -1633,7 +1659,7 @@ export function lancerSortHorsCombat(
       pvLanceurAvant, pvLanceurApres: pvFinal,
       effetNom: effet?.nom ?? null,
       attaqueAccordee: attaqueTmp ? sort.attaqueAccordee!.nom : null,
-      manaPaye, pvSacrifie, pvBrules, detailsBrulure,
+      manaPaye, pvSacrifie, pvBrules, detailsBrulure, concentre,
     };
     return { lanceur: lanceurApres, cible: lanceurApres, resolution };
   }
@@ -1656,7 +1682,7 @@ export function lancerSortHorsCombat(
       pvLanceurAvant, pvLanceurApres: pvLanceurApresCouts,
       effetNom: effet?.nom ?? null,
       attaqueAccordee: attaqueTmp ? sort.attaqueAccordee!.nom : null,
-      manaPaye, pvSacrifie, pvBrules, detailsBrulure,
+      manaPaye, pvSacrifie, pvBrules, detailsBrulure, concentre,
     },
   };
 }

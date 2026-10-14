@@ -257,7 +257,7 @@ export default function ReglesPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li><b>Incantation classique</b> : paie le coût du sort en mana (coût = rang), avant le jet. Sans mana suffisante, le sort ne part pas.<Src de="Règle LDB" /></li>
           <li><b>Brûlure de mana</b> : à 0 PM, le lanceur peut sacrifier son énergie vitale pour continuer à lancer — <b>1 DR par PM</b> du sort en PV perdus (ex. 2 PM au d6 = 2d6 PV), <b>sans RD</b>, KO possible. <b>Impossible pour lancer un sort de soins.</b> En combat (panneaux Attaque/Soutien) comme hors combat.<Src de="Règle LDB" /></li>
-          <li><b>Concentration accrue</b> : un sort qui nécessite une action d&apos;attaque (A) peut être lancé en action <b>limitée (L) pour −2 PM</b> (plancher 0) — le lanceur se prive de déplacement. Les sorts (L/M/G) et ceux sans action d&apos;attaque gardent le coût de leur rang, non réductible. En combat uniquement (pas d&apos;économie d&apos;action hors combat).<Src de="Règle LDB" /></li>
+          <li><b>Concentration accrue</b> : un sort qui nécessite une action d&apos;attaque (A) peut être lancé en se concentrant pour <b>−2 PM</b> (plancher 0) — en combat, il est lancé en action <b>limitée (L)</b> et le lanceur se prive de déplacement ; hors combat, le lanceur prend simplement le temps de se concentrer. Les sorts (L/M/G) et ceux sans action d&apos;attaque gardent le coût de leur rang, non réductible. En combat (panneaux Attaque/Soutien) comme hors combat.<Src de="Règle LDB" /></li>
         </ul>
       </Section>
 
@@ -341,8 +341,25 @@ export default function ReglesPage() {
         </ul>
       </Section>
 
+      <Section id="etats-prejudiciables" titre="États préjudiciables">
+        <p className="text-xs text-zinc-500">Un état préjudiciable est un ensemble de pénalités standard infligées à un personnage (environnement, situation subie, capacité ou règle spécifique — mentionné en italique dans ce cas). Le moteur applique les jets d&apos;attaque, la DEF, les dés bonus/malus, le touché auto + critique du paralysé et le −10 à distance de l&apos;aveuglé ; la mention (MJ) = au jugement du MJ.<Src de="Règle LDB" /></p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>Aveuglé</b> : −5 en Init., en attaque et en DEF, −10 en attaque à distance. Les attaques magiques nécessitant de voir la cible sont impossibles (MJ).<Src de="Règle LDB" /></li>
+          <li><b>Affaibli</b> : dé malus à tous les tests (moteur : jets d&apos;attaque ; autres tests : MJ).<Src de="Règle LDB" /></li>
+          <li><b>Essoufflé</b> : déplacement limité à 5 m par action de mouvement (MJ).<Src de="Règle LDB" /></li>
+          <li><b>Étourdi</b> : aucune action possible et −5 en DEF.<Src de="Règle LDB" /></li>
+          <li><b>Immobilisé</b> : pas de déplacement (MJ) et dé malus aux tests d&apos;attaque — il peut toujours agir.<Src de="Règle LDB" /></li>
+          <li><b>Invalide</b> : déplacement limité à 5 m par action de mouvement (MJ).<Src de="Règle LDB" /></li>
+          <li><b>Paralysé</b> : aucune action possible ; en cas d&apos;attaque, touché automatiquement et subit un critique.<Src de="Règle LDB" /></li>
+          <li><b>Ralenti</b> : une seule action par round, d&apos;attaque ou de mouvement (MJ).<Src de="Règle LDB" /></li>
+          <li><b>Renversé</b> : −5 en attaque et en DEF ; se relever nécessite une action d&apos;attaque (MJ).<Src de="Règle LDB" /></li>
+          <li><b>Surpris</b> : pas d&apos;action et −5 en DEF au premier round de combat.<Src de="Règle LDB" /></li>
+          <li><b>Rendement décroissant</b> : contre une capacité pénible systématiquement répétée, le MJ peut assigner un bonus cumulatif de +5 au test de la cible pour y résister durant le combat.<Src de="Règle LDB" /></li>
+        </ul>
+      </Section>
+
       <Section id="effets" titre="Effets (buffs, debuffs, dots)">
-        <p className="text-xs text-zinc-500">Valeurs d&apos;exemple du catalogue, ajustables par le MJ. Badges en combat : vert = buff, rouge = dot/contrôle, violet = neutre, avec tours restants. Colonne Moteur = ce que l&apos;assistant applique vraiment. Dots/soins au début du tour du porteur ; durées consommées à la fin de son tour (un effet « 1 tour » couvre tout le tour, ∞ = permanent).</p>
+        <p className="text-xs text-zinc-500">Les 10 états préjudiciables ci-dessus reprennent les valeurs officielles ; les autres entrées du catalogue sont génériques (assistant), ajustables par le MJ. Badges en combat : vert = buff, rouge = dot/contrôle, violet = neutre, avec tours restants. Colonne Moteur = ce que l&apos;assistant applique vraiment. Dots/soins au début du tour du porteur ; durées consommées à la fin de son tour (un effet « 1 tour » couvre tout le tour, ∞ = permanent).</p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Effet</th><th className="text-left px-2 py-1">Mécanique</th><th className="text-left px-2 py-1">Moteur (exact)</th><th className="text-left px-2 py-1">Durée</th></tr></thead>

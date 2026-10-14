@@ -1,5 +1,13 @@
-// Catalogue d'effets génériques. Valeurs EXEMPLES, non officielles COF V2.
-// Le MJ peut ajuster durée / modificateurs à tout moment.
+// Catalogue d'effets.
+// Les 10 états préjudiciables sont les valeurs OFFICIELLES du livre de base
+// (LDB) : Aveuglé, Affaibli, Essoufflé, Étourdi, Immobilisé, Invalide,
+// Paralysé, Ralenti, Renversé, Surpris. Le moteur applique ce qu'il peut
+// (jets d'attaque, DEF, dé bonus/malus, toucher auto + critique du paralysé,
+// malus à distance de l'aveuglé) ; le reste est marqué (MJ) dans la
+// description : déplacements, actions par round, initiative (déjà tirée),
+// sorts exigeant la vue, tests hors jets d'attaque.
+// Les autres entrées (empoisonné, saignement...) sont génériques (assistant),
+// ajustables par le MJ.
 
 export interface EffectTemplate {
   key: string;
@@ -10,14 +18,23 @@ export interface EffectTemplate {
 }
 
 export const EFFECT_CATALOG: EffectTemplate[] = [
-  { key: "empoisonne", nom: "Empoisonné", description: "−2 aux jets d'attaque (exemple).", dureeDefaut: 3, modificateurs: { attaque: -2 } },
-  { key: "etourdi", nom: "Étourdi", description: "Ne peut pas agir (exemple).", dureeDefaut: 1, modificateurs: { empecheAgir: 1 } },
-  { key: "aveugle", nom: "Aveuglé", description: "−3 attaque (exemple).", dureeDefaut: 2, modificateurs: { attaque: -3 } },
-  { key: "immobilise", nom: "Immobilisé", description: "Ne peut pas agir (exemple).", dureeDefaut: 2, modificateurs: { empecheAgir: 1 } },
-  { key: "saignement", nom: "Saignement", description: "Perd 2 PV au début de son tour (exemple).", dureeDefaut: 3, modificateurs: { pvParTour: -2 } },
-  { key: "protection", nom: "Protection", description: "+2 défense (exemple).", dureeDefaut: 3, modificateurs: { defense: 2 } },
-  { key: "bonus-attaque", nom: "Bonus d'attaque", description: "+2 attaque (exemple).", dureeDefaut: 2, modificateurs: { attaque: 2 } },
-  { key: "brulure", nom: "Brûlure", description: "Perd 1 PV au début de son tour (Feu, exemple).", dureeDefaut: 2, modificateurs: { pvParTour: -1 } },
-  { key: "gele", nom: "Gelé", description: "−1 attaque, ralenti (Glace, exemple).", dureeDefaut: 1, modificateurs: { attaque: -1 } },
+  // États préjudiciables officiels (LDB).
+  { key: "aveugle", nom: "Aveuglé", description: "−5 en attaque et en DEF, −10 en attaque à distance. −5 en Init. au prochain jet (MJ, initiative déjà tirée) ; sorts exigeant de voir la cible impossibles (MJ).", dureeDefaut: 2, modificateurs: { attaque: -5, defense: -5, attaqueDistance: -5 } },
+  { key: "affaibli", nom: "Affaibli", description: "Dé malus à tous les tests (moteur : jets d'attaque ; autres tests : MJ).", dureeDefaut: 2, modificateurs: { deMalus: 1 } },
+  { key: "essouffle", nom: "Essoufflé", description: "Déplacement limité à 5 m par action de mouvement (MJ).", dureeDefaut: 2, modificateurs: { deplacementMax: 5 } },
+  { key: "etourdi", nom: "Étourdi", description: "Aucune action possible et −5 en DEF.", dureeDefaut: 1, modificateurs: { empecheAgir: 1, defense: -5 } },
+  { key: "immobilise", nom: "Immobilisé", description: "Pas de déplacement (MJ) et dé malus aux tests d'attaque.", dureeDefaut: 2, modificateurs: { deMalus: 1, pasDeDeplacement: 1 } },
+  { key: "invalide", nom: "Invalide", description: "Déplacement limité à 5 m par action de mouvement (MJ).", dureeDefaut: 2, modificateurs: { deplacementMax: 5 } },
+  { key: "paralyse", nom: "Paralysé", description: "Aucune action possible ; touché automatiquement et subit un critique.", dureeDefaut: 2, modificateurs: { empecheAgir: 1, paralyse: 1 } },
+  { key: "ralenti", nom: "Ralenti", description: "Une seule action par round, d'attaque ou de mouvement (MJ).", dureeDefaut: 2, modificateurs: { actionUnique: 1 } },
+  { key: "renverse", nom: "Renversé", description: "−5 en attaque et en DEF ; se relever exige une action d'attaque (MJ).", dureeDefaut: 2, modificateurs: { attaque: -5, defense: -5 } },
+  { key: "surpris", nom: "Surpris", description: "Pas d'action et −5 en DEF au premier round de combat.", dureeDefaut: 1, modificateurs: { empecheAgir: 1, defense: -5 } },
+  // Effets génériques (assistant, ajustables par le MJ).
+  { key: "empoisonne", nom: "Empoisonné", description: "−2 aux jets d'attaque (générique).", dureeDefaut: 3, modificateurs: { attaque: -2 } },
+  { key: "saignement", nom: "Saignement", description: "Perd 2 PV au début de son tour (générique).", dureeDefaut: 3, modificateurs: { pvParTour: -2 } },
+  { key: "protection", nom: "Protection", description: "+2 défense (générique).", dureeDefaut: 3, modificateurs: { defense: 2 } },
+  { key: "bonus-attaque", nom: "Bonus d'attaque", description: "+2 attaque (générique).", dureeDefaut: 2, modificateurs: { attaque: 2 } },
+  { key: "brulure", nom: "Brûlure", description: "Perd 1 PV au début de son tour (Feu, générique).", dureeDefaut: 2, modificateurs: { pvParTour: -1 } },
+  { key: "gele", nom: "Gelé", description: "−1 attaque, ralenti (Glace, générique).", dureeDefaut: 1, modificateurs: { attaque: -1 } },
   { key: "concentration", nom: "Concentration", description: "Marqueur, aucun modificateur.", dureeDefaut: null, modificateurs: {} },
 ];

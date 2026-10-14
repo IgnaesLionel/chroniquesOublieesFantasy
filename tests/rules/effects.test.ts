@@ -162,6 +162,88 @@ describe("effets temporaires", () => {
   });
 });
 
+describe("états préjudiciables (LDB)", () => {
+  it("catalogue : les 10 états officiels avec leurs modificateurs", () => {
+    expect(createEffect("aveugle").modificateurs).toMatchObject({ attaque: -5, defense: -5, attaqueDistance: -5 });
+    expect(createEffect("affaibli").modificateurs).toMatchObject({ deMalus: 1 });
+    expect(createEffect("essouffle").modificateurs).toMatchObject({ deplacementMax: 5 });
+    expect(createEffect("etourdi").modificateurs).toMatchObject({ empecheAgir: 1, defense: -5 });
+    expect(createEffect("immobilise").modificateurs).toMatchObject({ deMalus: 1, pasDeDeplacement: 1 });
+    expect(createEffect("invalide").modificateurs).toMatchObject({ deplacementMax: 5 });
+    expect(createEffect("paralyse").modificateurs).toMatchObject({ empecheAgir: 1, paralyse: 1 });
+    expect(createEffect("ralenti").modificateurs).toMatchObject({ actionUnique: 1 });
+    expect(createEffect("renverse").modificateurs).toMatchObject({ attaque: -5, defense: -5 });
+    expect(createEffect("surpris").modificateurs).toMatchObject({ empecheAgir: 1, defense: -5 });
+  });
+
+  it("bloquent l'action : étourdi, paralysé, surpris (pas l'immobilisé)", () => {
+    expect(canAct([createEffect("etourdi")])).toBe(false);
+    expect(canAct([createEffect("paralyse")])).toBe(false);
+    expect(canAct([createEffect("surpris")])).toBe(false);
+    // Immobilisé : pas de déplacement + dé malus, mais il agit toujours.
+    expect(canAct([createEffect("immobilise")])).toBe(true);
+    expect(canAct([createEffect("ralenti")])).toBe(true);
+    expect(canAct([createEffect("renverse")])).toBe(true);
+  });
+
+  it("aveuglé : -5 au contact, -10 à distance (arc)", () => {
+    const arc = (effets: ReturnType<typeof createEffect>[]) => ({
+      ...participant("Arc"),
+      attaques: [{ id: "arc", nom: "Arc court", bonus: 7, degats: "1d6", familles: ["arcs" as "arcs"] }],
+      effets,
+    });
+    const contact = (effets: ReturnType<typeof createEffect>[]) => ({
+      ...participant("Épée"),
+      attaques: [{ id: "epee", nom: "Épée", bonus: 7, degats: "1d6" }],
+      effets,
+    });
+    const cible = { ...participant("Cib"), camp: "monstre" as const, defense: 15 };
+    // 19 naturel : distance 19+7-5-5 = 16, contact 19+7-5 = 21.
+    const rDist = resolveAttack(createCombat([arc([createEffect("aveugle")]), cible]), "Arc", "Cib", "arc", fixedRng([0.9, 0.5]));
+    expect(rDist.resolution.jetTotal).toBe(16);
+    expect(rDist.state.log.some((l) => l.message.includes("à distance"))).toBe(true);
+    const rCont = resolveAttack(createCombat([contact([createEffect("aveugle")]), cible]), "Épée", "Cib", "epee", fixedRng([0.9, 0.5]));
+    expect(rCont.resolution.jetTotal).toBe(21);
+  });
+
+  it("affaibli : dé malus aux jets d'attaque", () => {
+    const atk = { ...participant("Att"), effets: [createEffect("affaibli")] };
+    const def = { ...participant("Def"), camp: "monstre" as const, defense: 10 };
+    // 3 puis 19 : dé malus garde 3.
+    const { resolution } = resolveAttack(createCombat([atk, def]), "Att", "Def", "a", fixedRng([0.1, 0.9, 0.5]));
+    expect(resolution.desAvantage).toBe("malus");
+    expect(resolution.jetNaturel).toBe(3);
+  });
+
+  it("paralysé : touché automatiquement, critique subi (même sur un jet raté)", () => {
+    const atk = participant("Att");
+    const def = { ...participant("Def"), camp: "monstre" as const, defense: 15, effets: [createEffect("paralyse")] };
+    // 2 naturel +5 = 7 < 15 : raté sans la paralysie.
+    const { resolution, state } = resolveAttack(createCombat([atk, def]), "Att", "Def", "a", fixedRng([0.05, 0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.critique).toBe(true);
+    expect(state.log.some((l) => l.message.includes("paralysé"))).toBe(true);
+  });
+
+  it("renversé : -5 attaque et -5 DEF appliqués des deux côtés", () => {
+    const atk = { ...participant("Att"), effets: [createEffect("renverse")] }; // +5-5 = +0
+    const def = { ...participant("Def"), camp: "monstre" as const, defense: 15, effets: [createEffect("renverse")] }; // déf 10
+    // 14 naturel : 14+0 = 14 vs 10 -> touche.
+    const { resolution } = resolveAttack(createCombat([atk, def]), "Att", "Def", "a", fixedRng([0.66, 0.5]));
+    expect(resolution.jetTotal).toBe(14);
+    expect(resolution.defenseCible).toBe(10);
+    expect(resolution.touche).toBe(true);
+  });
+
+  it("libellés moteur des nouvelles clés", () => {
+    expect(decrireModificateurs({ attaqueDistance: -5 })).toEqual(["-5 aux attaques à distance (en plus)"]);
+    expect(decrireModificateurs({ paralyse: 1 })).toEqual(["touché automatiquement, critique subi"]);
+    expect(decrireModificateurs({ pasDeDeplacement: 1 })).toEqual(["pas de déplacement (MJ)"]);
+    expect(decrireModificateurs({ actionUnique: 1 })).toEqual(["une seule action par round (MJ)"]);
+    expect(decrireModificateurs({ deplacementMax: 5 })).toEqual(["déplacement max 5 m par action de mouvement (MJ)"]);
+  });
+});
+
 describe("description exacte des modificateurs (règles)", () => {
   it("chaque clé moteur a un libellé", () => {
     expect(decrireModificateurs({ attaque: -3 })).toEqual(["-3 aux jets d'attaque"]);

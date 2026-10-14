@@ -71,8 +71,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const connaitEclair = talents.has(normaliserNomCapacite("Attaque éclair"));
   const STATUTS_FLECHE = [
     { cle: "aveugle", nom: "Aveuglé" },
-    { cle: "Affaibli", nom: "Affaibli" },
-    { cle: "Ralenti", nom: "Ralenti" },
+    { cle: "affaibli", nom: "Affaibli" },
+    { cle: "ralenti", nom: "Ralenti" },
     { cle: "immobilise", nom: "Immobilisé" },
   ];
   const lancer = () => {
@@ -249,7 +249,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       )}
       {bloque && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
-          {attacker?.nom} ne peut pas agir (Étourdi/Immobilisé) — retirez l&apos;effet ou passez son tour.
+          {attacker?.nom} ne peut pas agir (Étourdi/Paralysé/Surpris) — retirez l&apos;effet ou passez son tour.
         </div>
       )}
       <label className="block text-sm">Cible{choixMultiples ? `s (${ciblesAffichees.length}${maxCibles != null ? `/${maxCibles}` : ""})` : ""}
