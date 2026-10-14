@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "Campagne" },
   { href: "/play", label: "▶ Partie" },
+  { href: "/sessions", label: "Sessions" },
   { href: "/characters", label: "Personnages" },
   { href: "/classes", label: "Classes" },
   { href: "/sorts", label: "Sorts & Capacités" },
@@ -14,8 +15,7 @@ const LINKS = [
   { href: "/combat", label: "Combat" },
   { href: "/scenarios", label: "Scénarios" },
   { href: "/npcs", label: "PNJ" },
-  { href: "/items", label: "Objets" },
-  { href: "/tresors", label: "Trésors" },
+  { href: "/tresors", label: "Trésors & Objets" },
   { href: "/settings", label: "Paramètres" },
 ];
 

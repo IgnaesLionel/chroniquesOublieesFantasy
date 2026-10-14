@@ -19,9 +19,11 @@ interface Props {
   onTarget: (id: string) => void;
   onRoll: (opts?: AttaqueOpts, paiement?: PaiementSort) => void;
   onChance: () => void;
+  /** Lancement multi-cibles / zone (sinon repli mono-cible). */
+  onMulti?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts, paiement?: PaiementSort) => void;
 }
 
-export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttacker, onAttack, onTarget, onRoll, onChance }: Props) {
+export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttacker, onAttack, onTarget, onRoll, onChance, onMulti }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
   const bloque = attacker !== null && !canAct(attacker.effets);
@@ -37,6 +39,28 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [eclair, setEclair] = useState(false);
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
+  const [cibles, setCibles] = useState<string[] | null>(null);
+  // Sort sélectionné : zone et multi-cibles affichent des cases à cocher.
+  const selIdTop = attackId ?? attacker?.attaques[0]?.id;
+  const selAttaqueTop = attacker?.attaques.find((x) => x.id === selIdTop);
+  const selSortTop = attacker && selAttaqueTop && selAttaqueTop.id.startsWith("sort:")
+    ? attacker.sorts.find((x) => `sort:${x.id}` === selAttaqueTop.id)
+    : undefined;
+  const estZoneTop = !!selSortTop?.zone;
+  const maxCibles = selSortTop?.ciblesMax ?? null;
+  const estMultiTop = !!selSortTop && !estZoneTop && ((maxCibles ?? 1) > 1 || !!selSortTop.ciblesLibres);
+  const choixMultiples = !!onMulti && (estZoneTop || estMultiTop);
+  const ennemisTop = (attacker ? participants.filter((p) => p.statut === "actif" && p.camp !== attacker.camp && p.instanceId !== attacker.instanceId) : []).map((p) => p.instanceId);
+  // Pré-sélection : ennemis (plafonnée pour ×N). null = auto ; réinitialisée
+  // à chaque attaquant/attaque (état dérivé au rendu, pas d'effet).
+  const defautCibles = maxCibles != null ? ennemisTop.slice(0, maxCibles) : ennemisTop;
+  const ciblesAffichees = cibles ?? defautCibles;
+  const cleSelection = `${attackerId}|${selIdTop}`;
+  const [cleMemorisee, setCleMemorisee] = useState(cleSelection);
+  if (cleMemorisee !== cleSelection) {
+    setCleMemorisee(cleSelection);
+    setCibles(null);
+  }
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
   const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
@@ -95,7 +119,19 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       mode: burnOk ? "brulure" : "mana",
       concentration: concOk,
     };
+    if (choixMultiples && attacker) {
+      onMulti!(attacker.instanceId, selAttaque?.id ?? "", ciblesAffichees, opts, paiement);
+      return;
+    }
     onRoll(opts, paiement);
+  };
+  const basculerCible = (id: string) => {
+    setCibles((prev) => {
+      const base = prev ?? defautCibles;
+      if (base.includes(id)) return base.filter((x) => x !== id);
+      if (maxCibles != null && base.length >= maxCibles) return base;
+      return [...base, id];
+    });
   };
 
   return (
@@ -167,6 +203,9 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
                   a.volDeVie ? "vol" : "",
                   sort?.limiteCombat != null && !sort.limiteParCible ? `1×${sort.limiteCombat}/combat` : "",
                   sort?.limiteParCible ? "1/combat/cible" : "",
+                  sort?.zone ? "zone" : "",
+                  sort?.ciblesMax != null && sort.ciblesMax > 1 ? `×${sort.ciblesMax} cibles` : "",
+                  sort?.ciblesLibres ? "cibles multiples" : "",
                   a.toucheAuto ? "auto" : "",
                   sort?.cibleEspeces?.length ? `💀 ${sort.cibleEspeces.join("/")}` : "",
                 ].filter(Boolean).join(" · ");
@@ -213,12 +252,30 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           {attacker?.nom} ne peut pas agir (Étourdi/Immobilisé) — retirez l&apos;effet ou passez son tour.
         </div>
       )}
-      <label className="block text-sm">Cible
-        <select value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-          {vivants.filter((p) => p.instanceId !== attackerId).map((p) => (
-            <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense} — {p.pv}/{p.pvMax} PV</option>
-          ))}
-        </select>
+      <label className="block text-sm">Cible{choixMultiples ? `s (${ciblesAffichees.length}${maxCibles != null ? `/${maxCibles}` : ""})` : ""}
+        {choixMultiples ? (
+          <div className="mt-1 space-y-1 max-h-40 overflow-auto rounded border border-zinc-800 p-2">
+            {vivants.filter((p) => p.instanceId !== attackerId).map((p) => (
+              <label key={p.instanceId} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ciblesAffichees.includes(p.instanceId)}
+                  disabled={!ciblesAffichees.includes(p.instanceId) && maxCibles != null && ciblesAffichees.length >= maxCibles}
+                  onChange={() => basculerCible(p.instanceId)}
+                />
+                <span className="flex-1">{p.nom} — Déf {p.defense} — {p.pv}/{p.pvMax} PV</span>
+                {attacker && p.camp !== attacker.camp && <span className="text-xs text-red-400">ennemi</span>}
+              </label>
+            ))}
+            <p className="text-xs text-zinc-500">Ennemis pré-cochés{estZoneTop ? " (alliés dans la zone : cochez-les, ex. Explosion de feu)" : ""}.</p>
+          </div>
+        ) : (
+          <select value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+            {vivants.filter((p) => p.instanceId !== attackerId).map((p) => (
+              <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense} — {p.pv}/{p.pvMax} PV</option>
+            ))}
+          </select>
+        )}
       </label>
       {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair) && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
@@ -278,8 +335,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Prédilection +1, Double/Circulaire −2…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
         <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
       </div>
-      <button onClick={lancer} disabled={!attackerId || !targetId || bloque} className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 font-bold disabled:opacity-40">
-        Lancer l&apos;attaque
+      <button onClick={lancer} disabled={!attackerId || (!choixMultiples && !targetId) || (choixMultiples && ciblesAffichees.length === 0) || bloque} className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 font-bold disabled:opacity-40">
+        {choixMultiples ? `Lancer sur ${ciblesAffichees.length} cible${ciblesAffichees.length > 1 ? "s" : ""}` : "Lancer l'attaque"}
       </button>
       {last && (
         <div className="rounded bg-zinc-950 border border-zinc-800 p-3 text-sm space-y-0.5">

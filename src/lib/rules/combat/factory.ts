@@ -2,8 +2,8 @@ import type { AttackDef, Character, MonsterTemplate, Sort } from "@/src/lib/rule
 import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { categoriesMonstre } from "@/src/lib/rules/categories";
-import { substituerDeEvolutif, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
-import { deEvolutif, deriverPersonnage, niveauAttaque } from "@/src/lib/rules/personnage";
+import { substituerDeEvolutif, substituerDesEvolutifs, substituerStats, dureeEffetSort, resoudreFormuleSort } from "@/src/lib/rules/dice/roller";
+import { deEvolutif, deriverPersonnage, niveauAttaque, rangMaxVoie } from "@/src/lib/rules/personnage";
 import { compterCapacites, niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { completerSortsDepuisGrimoire } from "@/src/lib/rules/personnage";
 
@@ -33,21 +33,42 @@ export function attaqueFromItem(item: Item): AttackDef | null {
  * Les caracs ("1d4°+INT"), le dé évolutif legacy ("1dE") et les dés
  * évolutifs ("1d4°" -> faces selon le niveau : d4 1-5, d6 6-8, d8 9-11,
  * d10 12-14, d12 15+) sont substitués.
+ * Dégâts au rang de voie (degatsParRangVoie, ex: Arc de feu 1d4° puis 2d4°
+ * au rang 4) : rangVoie = rang max du lanceur dans la voie du sort.
+ * Sauvegarde et durée formulaires ("10+INT", "INT*10") résolues avec les
+ * caracs du lanceur + RANG (rang de voie).
  * Action, vol de vie, touche auto, moitié si raté et effet au toucher
  * (dégâts par tour + modificateurs) suivent la fiche du sort. */
-export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<string, number> = {}, niveauDe = 1): AttackDef | null {
+export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<string, number> = {}, niveauDe = 1, rangVoie = 1): AttackDef | null {
   if (sort.type !== "offensif") return null;
+  const contexte = { ...caracs, RANG: Math.max(1, Math.floor(rangVoie)) };
+  const degatsBruts = degatsSortAuRangVoie(sort, rangVoie) ?? sort.degats;
+  const sauvegarde = sort.effetSauvegarde
+    ? {
+        carac: sort.effetSauvegarde.carac,
+        difficulte: resoudreFormuleSort(sort.effetSauvegarde.difficulte, contexte),
+        ...(sort.effetSauvegarde.moitieDM ? { moitieDM: true as const } : {}),
+      }
+    : undefined;
+  const duree = dureeEffetSort(sort.effetDuree, caracs, rangVoie);
   return {
     id: `sort:${sort.id}`,
     nom: `✦ ${sort.nom}`,
     bonus: sort.bonus ?? bonusMagique,
-    degats: sort.degats ? substituerDesEvolutifs(substituerDeEvolutif(substituerStats(sort.degats, caracs), deEvolutif(niveauDe)), deEvolutif(niveauDe)) : "1d1-1",
+    degats: degatsBruts ? substituerDesEvolutifs(substituerDeEvolutif(substituerStats(degatsBruts, caracs), deEvolutif(niveauDe)), deEvolutif(niveauDe)) : "1d1-1",
     action: sort.action ?? "attaque",
     volDeVie: sort.volDeVie,
     toucheAuto: sort.toucheAuto,
     demiDegatsSiRate: sort.demiDegatsSiRate,
-    effetTouche: sort.effetCle ? { cle: sort.effetCle, duree: sort.effetDuree ?? null, degatsParTour: sort.effetDegats, mods: sort.effetMods, sauvegarde: sort.effetSauvegarde } : undefined,
+    effetTouche: (sort.effetCle || sort.effetSauvegarde || sort.effetDegats) ? { cle: sort.effetCle ?? sort.nom, duree, degatsParTour: sort.effetDegats, mods: sort.effetMods, sauvegarde } : undefined,
   };
+}
+
+/** Dégâts du sort au rang de voie du lanceur (plafonné au dernier palier). */
+export function degatsSortAuRangVoie(sort: Pick<Sort, "degatsParRangVoie">, rangVoie: number): string | undefined {
+  const paliers = sort.degatsParRangVoie;
+  if (!paliers || paliers.length === 0) return undefined;
+  return paliers[Math.min(Math.max(1, Math.floor(rangVoie)), paliers.length) - 1];
 }
 
 /**
@@ -69,7 +90,8 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
   }
   const magique = niveauAttaque(c.niveau) + c.caracteristiques.VOL;
   for (const sort of sortsRef) {
-    const a = attaqueFromSort(sort, magique, c.caracteristiques, c.niveau);
+    const rangVoie = rangMaxVoie(c, sort.voie ?? "");
+    const a = attaqueFromSort(sort, magique, c.caracteristiques, c.niveau, rangVoie);
     if (a) attaques.push(a);
   }
   // Verrou de niveau par sort (gratuité Mage déduite) pour les panneaux.

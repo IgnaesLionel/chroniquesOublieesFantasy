@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { AttackDef } from "@/src/lib/rules/types";
+import type { ArmeFamille } from "@/src/lib/rules/world/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, etatLimite, frapperZone, invoquerCompagnon, payerCoutSort, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, etatLimite, frapperCibles, frapperZone, invoquerCompagnon, payerCoutSort, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, nomBaseInstance, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
-import { fixedRng } from "@/src/lib/rules/dice/roller";
+import { fixedRng, parseDiceExpression, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import { SEED_SORTS } from "@/src/lib/data/sorts";
+import { CAPACITES } from "@/src/lib/data/capacites";
 import { CAPACITES_USABLES } from "@/src/lib/data/capacites-usables";
 import { createEffect } from "@/src/lib/rules/effects/effects";
+import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
 
 function pj(nom = "Guerrier", defense = 18): CombatParticipant {
   return {
@@ -1291,5 +1295,204 @@ describe("restriction d'espèce (Destruction du mal -> morts-vivants et démons)
     expect(resolution.degatsTotal).toBe(0);
     expect(state.participants[1].pv).toBe(8);
     expect(state.log.some((l) => l.message.includes("Sans effet"))).toBe(true);
+  });
+});
+
+describe("voie du sang en combat : Siphon (montant MJ) et Sang mordant (riposte)", () => {
+  it("utiliserCapacite soinFixe : +NC PV sans jet, journalisé", () => {
+    const lanceur = { ...pj("Sorcier"), capacites: ["Siphon des âmes"] };
+    const cible = { ...pj("Cible"), pv: 10 };
+    const s = createCombat([lanceur, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const { state, resolution } = utiliserCapacite(s, a, t, "Siphon des âmes", { effetCle: null, soinFixe: 7 });
+    expect(resolution.soinTotal).toBe(7);
+    expect(state.participants[1].pv).toBe(17);
+    expect(state.log.some((l) => l.message.includes("Soin (MJ)"))).toBe(true);
+  });
+
+  it("Sang mordant : 1d4° d'acide à l'attaquant au contact", () => {
+    const attaquant = pj("Attaquant");
+    const cible = { ...gobelin("Sorcier", 30), effets: [createEffect("Sang mordant")] };
+    const s = createCombat([attaquant, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // d20 15+6=21 touche (DEF 15) ; 1d8+3 -> 5+3=8 ; riposte 1d4 -> 3.
+    const { state, resolution } = resolveAttack(s, a, t, "epee", fixedRng([0.7, 0.5, 0.5]));
+    expect(resolution.touche).toBe(true);
+    expect(resolution.sangMordant).toEqual({ degats: 3, pvAttaquantApres: 37 });
+    expect(state.participants[0].pv).toBe(37);
+    expect(state.log.some((l) => l.message.includes("Sang mordant"))).toBe(true);
+  });
+
+  it("Sang mordant : ni à distance, ni sans l'effet", () => {
+    const archer = {
+      ...pj("Archer"),
+      attaques: [{ id: "arc", nom: "Arc", bonus: 6, degats: "1d6", familles: ["arcs" as ArmeFamille] }],
+    };
+    const cible = { ...gobelin("Sorcier", 30), effets: [createEffect("Sang mordant")] };
+    const s = createCombat([archer, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const dist = resolveAttack(s, a, t, "arc", fixedRng([0.7, 0.5, 0.5])).resolution;
+    expect(dist.touche).toBe(true);
+    expect(dist.sangMordant).toBeNull();
+    const s2 = createCombat([pj("Attaquant"), gobelin("G")]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    const nu = resolveAttack(s2, a2, t2, "epee", fixedRng([0.7, 0.5, 0.5])).resolution;
+    expect(nu.sangMordant).toBeNull();
+  });
+
+  it("estAttaqueContact : sorts exclus, distance exclue, naturelles incluses", () => {
+    expect(estAttaqueContact({ id: "epee" }, false)).toBe(true);
+    expect(estAttaqueContact({ id: "arc", familles: ["arcs"] }, false)).toBe(false);
+    expect(estAttaqueContact({ id: "epee", familles: ["epees"] }, false)).toBe(true);
+    expect(estAttaqueContact({ id: "sort:feu" }, true)).toBe(false);
+    expect(estAttaqueContact({ id: "sort:feu" }, false)).toBe(false);
+  });
+});
+
+describe("sorts fonctionnels : moitié des DM au save réussi", () => {
+  const boom = (difficulte: number) => ({
+    ...pj("Magicien"),
+    attaques: [{
+      id: "boom", nom: "Boom", bonus: 6, degats: "1d8+3",
+      effetTouche: { cle: "Feu", duree: null as null, sauvegarde: { carac: "CON", difficulte, moitieDM: true } },
+    }],
+  });
+
+  it("save réussie : DM divisés par 2 + journal", () => {
+    const s = createCombat([boom(5), gobelin("G")]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // d20 15+6 touche ; 1d8+3 -> 5+3=8 ; save 19 >= 5 -> moitié = 4.
+    const { state, resolution } = resolveAttack(s, a, t, "boom", fixedRng([0.7, 0.5, 0.9]));
+    expect(resolution.degatsTotal).toBe(4);
+    expect(state.participants[1].pv).toBe(4);
+    expect(state.log.some((l) => l.message.includes("Moitié"))).toBe(true);
+  });
+
+  it("save ratée : DM complets", () => {
+    const s = createCombat([boom(20), gobelin("G")]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // save 2 < 20 -> 8 DM complets.
+    const { state, resolution } = resolveAttack(s, a, t, "boom", fixedRng([0.7, 0.5, 0.05]));
+    expect(resolution.degatsTotal).toBe(8);
+    expect(state.participants[1].pv).toBe(0);
+  });
+
+  it("intégration : Arc de feu du grimoire au participant (dégâts + save résolue)", () => {
+    const sorcier = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
+    const arc = SEED_SORTS.find((s) => s.id === "sort-arc-feu")!;
+    const int = sorcier.caracteristiques.INT;
+    const p = participantFromCharacter({ ...sorcier, sorts: [arc] }, []);
+    const atk = p.attaques.find((x) => x.id === "sort:sort-arc-feu")!;
+    expect(atk.degats).toBe(`1d4+${int}`);
+    expect(atk.effetTouche?.sauvegarde).toMatchObject({ carac: "AGI", difficulte: 10 + int, moitieDM: true });
+  });
+});
+
+describe("ciblage multiple et zone ajustable", () => {
+  const arc = () => ({
+    id: "sort-arc-feu", nom: "Arc de feu", type: "offensif" as const,
+    degats: "1d4", ciblesMax: 3, cout: { ressource: "mana", montant: 1 },
+  });
+
+  it("frapperCibles : un jet par cible, mana payé une fois", () => {
+    const sortArc = arc();
+    const lanceur = {
+      ...pj("Magicien"),
+      sorts: [sortArc],
+      attaques: [{ id: "sort:sort-arc-feu", nom: "✦ Arc de feu", bonus: 4, degats: "1d4" }],
+      ressources: { mana: { max: 6, actuel: 6 } },
+    };
+    const s = createCombat([lanceur, gobelin("A", 30), gobelin("B", 30)]);
+    const [a, t1, t2] = s.participants.map((p) => p.instanceId);
+    // Cible 1 : d20 15+4 touche (DEF 15), 1d4 -> 3 DM ; cible 2 : d20 5+4=9 raté.
+    const { state, resolutions } = frapperCibles(s, a, arc(), "sort:sort-arc-feu", [t1, t2], fixedRng([0.7, 0.5, 0.2]));
+    expect(resolutions).toHaveLength(2);
+    expect(resolutions[0].touche).toBe(true);
+    expect(resolutions[0].degatsTotal).toBe(3);
+    expect(resolutions[1].touche).toBe(false);
+    expect(state.participants[1].pv).toBe(27);
+    expect(state.participants[2].pv).toBe(30);
+    expect(state.participants[0].ressources.mana.actuel).toBe(5);
+  });
+
+  it("frapperCibles : vide, surnombre et limite par cible rejetés avant paiement", () => {
+    const malediction = {
+      id: "m", nom: "Malédiction", type: "offensif" as const,
+      limiteParCible: true, cout: { ressource: "mana", montant: 1 },
+    };
+    const lanceur = { ...pj("Magicien"), sorts: [malediction], ressources: { mana: { max: 6, actuel: 6 } } };
+    const s = createCombat([lanceur, gobelin("A", 30), gobelin("B", 30)]);
+    const [a, t1, t2] = s.participants.map((p) => p.instanceId);
+    expect(() => frapperCibles(s, a, arc(), "x", [], fixedRng([0.5]))).toThrow(/Aucune cible/);
+    expect(() => frapperCibles(s, a, arc(), "x", [t1, t2, t1, t1], fixedRng([0.5]))).toThrow(/au maximum/);
+    // Malédiction déjà utilisée sur A : rejet avant tout paiement.
+    const marque = s.participants.map((p) =>
+      p.instanceId === a ? { ...p, sorts: [malediction], usagesSorts: { m: { n: 1, cibles: [t1] } } } : p
+    );
+    const s2 = { ...s, participants: marque };
+    expect(() => frapperCibles(s2, a, malediction, "x", [t1, t2], fixedRng([0.5]))).toThrow(/déjà affectée/);
+    expect(s2.participants[0].ressources.mana.actuel).toBe(6);
+  });
+
+  it("frapperZone : cibles explicites incluant un allié (Explosion de feu)", () => {
+    const boom = {
+      id: "bz", nom: "Boom", type: "offensif" as const, degats: "2d4",
+      zone: true, cout: { ressource: "mana", montant: 2 },
+    };
+    const lanceur = { ...pj("Magicien"), sorts: [boom], ressources: { mana: { max: 6, actuel: 6 } } };
+    const s = createCombat([lanceur, pj("Allié"), gobelin("G", 30)]);
+    const [a, al, g] = s.participants.map((p) => p.instanceId);
+    // 2d4 : 3+3 = 6 DM sur l'allié coché et le gobelin.
+    const { state } = frapperZone(s, a, boom, fixedRng([0.5, 0.5]), undefined, [al, g]);
+    expect(state.participants[1].pv).toBe(34);
+    expect(state.participants[2].pv).toBe(24);
+    expect(state.participants[0].ressources.mana.actuel).toBe(4);
+  });
+
+  it("Mot de pouvoir : zone + 1/jour dans les seeds", () => {
+    const mot = SEED_SORTS.find((s) => s.id === "sort-mot-pouvoir")!;
+    expect(mot.zone).toBe(true);
+    expect(mot.limiteCombat).toBe(1);
+  });
+});
+
+describe("fusion capacités : usages valides et exécutables", () => {
+  it("chaque usage pointe un talent de nos voies, champs valides", () => {
+    const connus = new Set<string>();
+    for (const voies of Object.values(CAPACITES)) {
+      for (const v of voies) for (const t of v.capacites) connus.add(normaliserNomCapacite(t.nom));
+    }
+    for (const u of CAPACITES_USABLES) {
+      expect(connus.has(normaliserNomCapacite(u.talent)), `talent inconnu : ${u.talent}`).toBe(true);
+      expect(["allies", "ennemis", "tous", "soi"]).toContain(u.cibles);
+      if (u.coutPV) {
+        expect(() => parseDiceExpression(substituerDesEvolutifs(u.coutPV!, 1)), `${u.talent} : coutPV invalide`).not.toThrow();
+      }
+      if (u.soin) {
+        const expr = substituerStats(substituerDesEvolutifs(u.soin, 1), { CON: 2, CHA: 2 });
+        expect(() => parseDiceExpression(expr), `${u.talent} : soin invalide`).not.toThrow();
+      }
+    }
+  });
+
+  it("Prouesse et Tour de force : coût PV auto au clic", () => {
+    const lanceur = { ...pj("Guerrier"), capacites: ["Prouesse"] };
+    const s = createCombat([lanceur, gobelin("G")]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 1d4 : 3 PV sacrifiés (40 -> 37).
+    const r = utiliserCapacite(s, a, t, "Prouesse", { effetCle: null, coutPV: "1d4°" }, fixedRng([0.5]));
+    expect(r.state.participants[0].pv).toBe(37);
+    expect(r.state.log.some((l) => l.message.includes("Prouesse"))).toBe(true);
+  });
+
+  it("Phénix et Feindre la mort : soin auto", () => {
+    const lanceur = { ...pj("Prêtre"), capacites: ["Phénix"] };
+    const blesse = { ...pj("Allié"), pv: 10 };
+    const s = createCombat([lanceur, blesse]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 2d4°+CHA (CHA 0) : 3+3 = 6 -> 16 PV.
+    const r = utiliserCapacite(s, a, t, "Phénix", { effetCle: null, soin: "2d4°+CHA" }, fixedRng([0.5, 0.5]));
+    expect(r.resolution.soinTotal).toBe(6);
+    expect(r.state.participants[1].pv).toBe(16);
   });
 });

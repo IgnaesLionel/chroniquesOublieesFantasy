@@ -88,6 +88,20 @@ export function peutEquiper(
   );
 }
 
+/** Ajoute un objet à un inventaire (non équipé, quantités fusionnées). Pur, sans mutation. */
+export function ajouterAInventaire(
+  inventaire: InventaireEntree[] = [],
+  itemId: string,
+  quantite = 1
+): InventaireEntree[] {
+  const qte = Math.max(1, Math.floor(quantite));
+  const inv = [...inventaire];
+  const i = inv.findIndex((e) => e.itemId === itemId);
+  if (i >= 0) inv[i] = { ...inv[i], quantite: inv[i].quantite + qte };
+  else inv.push({ itemId, quantite: qte, equipe: false });
+  return inv;
+}
+
 /** Libellé court des mains d'un objet (ex. "1 main", "2 mains", "torse"). */
 export function libelleMains(item: Item): string {
   if (item.categorie === "armure" && item.emplacement === "accessoire") return "accessoire";

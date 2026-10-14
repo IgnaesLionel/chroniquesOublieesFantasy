@@ -20,6 +20,7 @@ interface Props {
       coutPV: string | undefined;
       actionSpeciale: "renvoi" | undefined;
       soin: string | undefined;
+      soinFixe: number | undefined;
       nettoie: boolean | undefined;
     }
   ) => void;
@@ -36,6 +37,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
   const [cibleId, setCibleId] = useState<string | null>(null);
   const [effetCle, setEffetCle] = useState<string>("");
   const [duree, setDuree] = useState<string>("");
+  const [montant, setMontant] = useState<string>("");
 
   if (!lanceur || lanceur.capacites.length === 0) return null;
   const talent = lanceur.capacites.includes(talentNom ?? "") ? talentNom! : lanceur.capacites[0];
@@ -67,7 +69,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       <label className="block text-sm">Talent
         <select
           value={talent}
-          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setCibleId(null); }}
+          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); }}
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
         >
           {lanceur.capacites.map((t) => (
@@ -78,7 +80,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       {defaut && (
         <p className="text-xs text-zinc-500">
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
-          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
+          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
         </p>
       )}
@@ -104,19 +106,31 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
         /></label>
       </div>
+      {defaut?.montantMJ === "soin" && (
+        <label className="block text-sm">Montant du soin (MJ, ex. NC du Siphon)
+          <input
+            type="number" min={0} value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+            placeholder="PV rendus"
+            className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
+          />
+        </label>
+      )}
       {cibles.length === 0 && (
         <p className="text-xs text-red-400">Aucune cible valide pour ce talent (aucun allié actif).</p>
       )}
       <button
         onClick={() => {
           if (cible) {
+            const soinFixe = defaut?.montantMJ === "soin" && montant.trim() !== "" ? Number(montant) : undefined;
             onUtiliser(lanceur.instanceId, cible.instanceId, talent, {
               effetCle: effetActif || null,
               dureeTours: dureeActive,
               mods: defaut?.mods,
               coutPV: defaut?.coutPV,
               actionSpeciale: defaut?.actionSpeciale,
-              soin: defaut?.soin,
+              soin: soinFixe !== undefined ? undefined : defaut?.soin,
+              soinFixe,
               nettoie: defaut?.nettoie,
             });
           }

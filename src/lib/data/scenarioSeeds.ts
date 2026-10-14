@@ -11,8 +11,14 @@ export const SEED_SCENARIOS: Scenario[] = [
     scenes: [
       {
         id: "s1", titre: "Scène 1 — Arrivée au village",
+        type: "narration",
         texteMJ: "Le village est silencieux. Des traces de petits pieds boueux mènent vers la forêt. Le tavernier vous fait signe.",
+        narration: "Le village est silencieux. Des traces de petits pieds boueux mènent vers la forêt. Le tavernier vous fait signe.",
+        actionsPossibles: ["Interroger le tavernier", "Examiner les traces", "Aller à la forêt"],
         notesMJ: "Flags MJ : cle (porte secrète), indice (dialogue spécial), chef_mort (antre).",
+        infosSecretes: "Tobin cache la clé du passage (flag cle). Mira connaît un indice.",
+        consequences: "Chaque piste mène à une scène dédiée ; le passage secret exige la clé.",
+        indices: ["Traces de gobelins vers la forêt"],
         choix: [
           { id: "c1a", label: "A — Interroger le tavernier", versSceneId: "s2a" },
           { id: "c1b", label: "B — Aller directement à la forêt", versSceneId: "s2b" },
@@ -22,7 +28,13 @@ export const SEED_SCENARIOS: Scenario[] = [
       },
       {
         id: "s2a", titre: "Scène 2A — Le tavernier",
+        type: "interaction",
         texteMJ: "Le tavernier chuchote : « Les gobelins ont pris la route de la forêt... leur chef porte un cimeterre rouillé. »",
+        narration: "Le tavernier chuchote : « Les gobelins ont pris la route de la forêt... leur chef porte un cimeterre rouillé. »",
+        actionsPossibles: ["Gagner la confiance de Tobin (clé)", "Questionner Mira", "Rejoindre la forêt"],
+        infosSecretes: "La clé est sous le comptoir. Donnée si les PJ aident Tobin.",
+        consequences: "Clé obtenue -> passage secret débloqué (flag cle).",
+        indices: ["Le chef porte un cimeterre rouillé"],
         pnjIds: ["npc-tobin", "npc-mira"],
         itemIds: ["item-cle"],
         choix: [
@@ -32,7 +44,13 @@ export const SEED_SCENARIOS: Scenario[] = [
       },
       {
         id: "s2b", titre: "Scène 2B — La forêt",
+        type: "exploration",
         texteMJ: "Des grognements entre les arbres. Une embuscade gobeline se prépare ! (Prévoir rencontre : Gobelin ×3)",
+        narration: "Des grognements entre les arbres. Une embuscade gobeline se prépare !",
+        actionsPossibles: ["Tendre une embuscade", "Pister le groupe", "Rebrousser chemin"],
+        infosSecretes: "Embuscade : 3 gobelins. Le chef n'est pas là sauf si les PJ font du bruit.",
+        consequences: "Bruit -> renforts. Victoire silencieuse -> flag chef_mort possible à l'antre.",
+        rencontreId: "Gobelin ×3 (exemple)",
         itemIds: ["item-potion", "item-torche"],
         choix: [
           { id: "c2b", label: "Retourner au village", versSceneId: "s1" },
@@ -41,7 +59,13 @@ export const SEED_SCENARIOS: Scenario[] = [
       },
       {
         id: "s2c", titre: "Scène 2C — Les traces",
+        type: "exploration",
         texteMJ: "Test de pistage. Les traces confirment : 4 gobelins + 1 chef.",
+        narration: "Test de pistage. Les traces confirment : 4 gobelins + 1 chef.",
+        actionsPossibles: ["Suivre les traces", "Relever un indice", "Retourner au tavernier"],
+        infosSecretes: "Test PER difficile : les traces bifurquent vers la vieille porte.",
+        consequences: "Réussite -> indice supplémentaire vers la salle secrète.",
+        indices: ["4 gobelins + 1 chef"],
         pnjIds: ["npc-ermite"],
         choix: [
           { id: "c2c1", label: "Suivre les traces vers la forêt", versSceneId: "s2b" },
@@ -50,7 +74,12 @@ export const SEED_SCENARIOS: Scenario[] = [
       },
       {
         id: "s3", titre: "Scène 3 — Salle secrète / Dénouement",
+        type: "combat",
         texteMJ: "Branche conditionnelle atteinte (clé, indice ou chef mort). Récompense : trésor des gobelins.",
+        narration: "La porte grince. Le trésor des gobelins étincelle dans la pénombre.",
+        actionsPossibles: ["Affronter le chef", "Négocier", "S'emparer du coffret"],
+        infosSecretes: "Chef + 2 gardes si flag chef_mort absent. Sinon salle vide.",
+        consequences: "Victoire -> coffret du chef. Fuite -> retour village possible.",
         itemIds: ["item-tresor"],
         choix: [{ id: "c3", label: "Retourner au village (fin)", versSceneId: "s1" }],
       },

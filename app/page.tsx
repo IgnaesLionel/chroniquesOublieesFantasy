@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { STORAGE_KEYS, type CollectionName } from "@/src/lib/store/backup";
 
@@ -12,15 +12,18 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
   { href: "/dice", t: "Dés", d: "Lanceur + historique", key: null },
   { href: "/combat", t: "Combat", d: "Initiative, tours, effets", key: null },
   { href: "/scenarios", t: "Scénarios", d: "Scènes, choix, conditions", key: "scenarios" },
+  { href: "/sessions", t: "Sessions", d: "Tables, groupes, campagnes", key: "sessions" },
   { href: "/npcs", t: "PNJ", d: "Dialogues et secrets MJ", key: "npcs" },
-  { href: "/items", t: "Objets", d: "Inventaire et quête", key: "items" },
-  { href: "/tresors", t: "Trésors", d: "Trésors & objets magiques", key: null },
+  { href: "/tresors", t: "Trésors & Objets", d: "Butin, catalogue, objets magiques", key: "items" },
   { href: "/settings", t: "Sauvegarde", d: "Export / import JSON", key: null },
 ];
 
 export default function Dashboard() {
-  const [counts] = useState<Record<string, number> | null>(() => {
-    if (typeof window === "undefined") return null;
+  // Premier rendu identique côté serveur et client (null), puis chargement
+  // depuis localStorage après montage pour éviter un mismatch d'hydratation.
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
     const c: Record<string, number> = {};
     (Object.keys(STORAGE_KEYS) as CollectionName[]).forEach((k) => {
       try {
@@ -29,8 +32,8 @@ export default function Dashboard() {
         c[k] = 0;
       }
     });
-    return c;
-  });
+    setCounts(c);
+  }, []);
 
   return (
     <div className="space-y-6">

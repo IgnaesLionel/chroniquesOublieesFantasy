@@ -26,6 +26,29 @@ export function getModifier(effets: ActiveEffect[], cle: string): number {
   return effets.reduce((sum, e) => sum + (e.modificateurs[cle] ?? 0), 0);
 }
 
+/** Libellé exact de ce que le moteur applique pour chaque clé (règles → Règles). */
+export function decrireModificateurs(mods: Record<string, number>): string[] {
+  const lignes: string[] = [];
+  const push = (cle: string, texte: (v: number) => string) => {
+    const v = mods[cle];
+    if (typeof v === "number" && v !== 0) lignes.push(texte(v));
+  };
+  push("attaque", (v) => `${v > 0 ? "+" : ""}${v} aux jets d'attaque`);
+  push("defense", (v) => `${v > 0 ? "+" : ""}${v} en DEF`);
+  push("pvParTour", (v) => `${v > 0 ? "+" : ""}${v} PV au début de son tour`);
+  if ((mods["empecheAgir"] ?? 0) > 0) lignes.push("ne peut pas agir (tour sauté)");
+  if ((mods["deBonus"] ?? 0) > 0) lignes.push("dé bonus (2d20, garder le meilleur)");
+  if ((mods["deMalus"] ?? 0) > 0) lignes.push("dé malus (2d20, garder le pire)");
+  if (typeof mods["seuilCrit"] === "number") lignes.push(`critique dès ${mods["seuilCrit"]} naturel`);
+  if ((mods["parade"] ?? 0) > 0) lignes.push("parade (test opposé, capacité)");
+  if ((mods["absorption"] ?? 0) > 0) lignes.push("absorption de sort (capacité)");
+  for (const cle of Object.keys(mods).sort()) {
+    if (["attaque", "defense", "pvParTour", "empecheAgir", "deBonus", "deMalus", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
+    lignes.push(`${cle} ${mods[cle]}`);
+  }
+  return lignes;
+}
+
 export function canAct(effets: ActiveEffect[]): boolean {
   return getModifier(effets, "empecheAgir") <= 0;
 }

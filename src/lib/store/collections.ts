@@ -8,6 +8,7 @@ import { SEED_SORTS } from "@/src/lib/data/sorts";
 import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Npc } from "@/src/lib/rules/world/types";
 import type { Scenario } from "@/src/lib/rules/scenario/types";
+import type { Session } from "@/src/lib/rules/session/types";
 
 // Hooks typés par collection : l'UI ne connaît plus les clés localStorage.
 // Demain, ces hooks brancheront SQLite/Postgres sans changer les pages.
@@ -29,4 +30,8 @@ export function useScenarios() {
 
 export function useSorts() {
   return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS);
+}
+
+export function useSessions() {
+  return useLocalCollection<Session>(STORAGE_KEYS.sessions, []);
 }

@@ -5,16 +5,20 @@ import { VOIES_PEUPLE } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
+import { decrireModificateurs } from "@/src/lib/rules/effects/effects";
+import { NIVEAU_PROPRIETE, PROPRIETES_CONTACT, PROPRIETES_DISTANCE } from "@/src/lib/rules/armesMagiques";
+import { exempleProprieteArmure, PROPRIETES_ARMURES, type PlageProprieteArmure, type SorteProprieteArmure } from "@/src/lib/rules/armuresMagiques";
 import { ECHELLE_ARMURES, LIMITES_ARMURE, nomArmureLimite } from "@/src/lib/rules/limitesArmures";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 
-type Source = "DRS" | "Fiches" | "Tableau" | "Règle" | "Supposition";
+type Source = "DRS" | "Fiches" | "Tableau" | "Règle LDB" | "Maison" | "Supposition";
 
 const SRC_STYLE: Record<Source, string> = {
   DRS: "bg-blue-900 text-blue-200",
   Fiches: "bg-amber-900 text-amber-200",
   Tableau: "bg-green-900 text-green-200",
-  Règle: "bg-violet-900 text-violet-200",
+  "Règle LDB": "bg-violet-900 text-violet-200",
+  Maison: "bg-orange-900 text-orange-200",
   Supposition: "bg-red-900 text-red-200",
 };
 
@@ -22,7 +26,8 @@ const SRC_TITRE: Record<Source, string> = {
   DRS: "Transcrit du DRS (drs.chroniques-oubliees.fr)",
   Fiches: "Lu sur les 4 fiches papier",
   Tableau: "Tableau récapitulatif fourni",
-  Règle: "Règle donnée par message",
+  "Règle LDB": "Règle du livre de base",
+  Maison: "Règle maison de la table (remplace le livre)",
   Supposition: "Mon interprétation — à confirmer",
 };
 
@@ -51,6 +56,36 @@ const PROFILS = Object.values(PROFILS_PAR_FAMILLE).flat();
 const NB_TALENTS = Object.values(CAPACITES).flatMap((v) => v.flatMap((x) => x.capacites)).length;
 const NB_SORTS = SEED_SORTS.length;
 
+/** Lignes du tableau des propriétés d'armes : fusion contact/distance, 11-12 exclus (tirage MJ). */
+function lignesProprietesArmes(): { nom: string; porte: string; mecanique: string; niveau: string }[] {
+  const vues = new Map<string, { nom: string; porte: string; mecanique: string; niveau: string }>();
+  const push = (table: typeof PROPRIETES_CONTACT, porte: string) => {
+    for (const p of table.plages) {
+      if (p.sorte === "double") continue;
+      const cle = `${p.sorte}:${p.objet ?? ""}`;
+      const mecanique =
+        p.sorte === "affutee" || p.sorte === "precision"
+          ? "+1 critique, +1d4 aux DM"
+          : p.sorte === "fleau"
+            ? `+1d4 aux DM contre les ${p.objet}`
+            : `+1d4 aux DM de ${p.objet}`;
+      const ex = vues.get(cle);
+      if (ex) ex.porte = "Contact + Distance";
+      else vues.set(cle, { nom: p.label, porte: porte, mecanique, niveau: `+${NIVEAU_PROPRIETE[p.sorte]}` });
+    }
+  };
+  push(PROPRIETES_CONTACT, "Contact");
+  push(PROPRIETES_DISTANCE, "Distance");
+  return [...vues.values()];
+}
+
+const LIGNES_ARMES = lignesProprietesArmes();
+const LIGNES_ARMURES = PROPRIETES_ARMURES.plages
+  .filter((p): p is PlageProprieteArmure & { sorte: Exclude<SorteProprieteArmure, "double"> } => p.sorte !== "double")
+  .map((p) => ({ d12: p.min, ...exempleProprieteArmure(p.sorte) }));
+
+const SORTES_RESISTANCE_MAISON: string[] = ["resistance-feu", "resistance-froid", "resistance-electricite", "resistance-acide"];
+
 const SOMMAIRE: { id: string; t: string }[] = [
   { id: "aconfirmer", t: "⚠ Points à confirmer" },
   { id: "personnage", t: "Personnage (caracs, INIT, DEF, PV, Chance, DR, attaques, mana)" },
@@ -67,6 +102,8 @@ const SOMMAIRE: { id: string; t: string }[] = [
   { id: "actions", t: "Actions (A+M ou L) et coûts des sorts" },
   { id: "combat", t: "Combat" },
   { id: "effets", t: "Effets (buffs, debuffs, dots)" },
+  { id: "proprietes-armes", t: "Armes magiques (propriétés exactes)" },
+  { id: "proprietes-armures", t: "Armures magiques (propriétés exactes)" },
 ];
 
 export default function ReglesPage() {
@@ -90,23 +127,23 @@ export default function ReglesPage() {
 
       <Section id="aconfirmer" titre="⚠ Points à confirmer">
         <ul className="list-disc pl-5 space-y-1 text-sm">
-          <li>Points de chance : +10 à un test, utilisables sur tout test (détection, crochetage…) — en combat c&apos;est appliqué, hors combat au jugement MJ <Src de="Règle" /></li>
+          <li>Points de chance : +10 à un test, utilisables sur tout test (détection, crochetage…) — en combat c&apos;est appliqué, hors combat au jugement MJ <Src de="Règle LDB" /></li>
           <li>Dés de récupération : <b>rapide</b> = 1 DR dépensé, soin (d + 1/2 niveau) PV au dé ; <b>complète</b> = +1 DR et mana à fond, avec proposition de dépenser aussitôt 1 DR en valeur max (d max + 1/2 niveau, sans lancer) <Src de="Fiches" /></li>
           <li>Dé évolutif (°) : d4 (niv. 1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+) — pas de relance au max <Src de="DRS" /></li>
-          <li>Mages : la capacité de rang 2 gratuite (une voie du profil, ou Maîtrise de la magie) exige la Voie du mage adoptée — abandon de la voie du peuple (rang 1 conservé, rangs 2-5 bloqués) <Src de="Règle" /></li>
-          <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Supposition" /></li>
-          <li>Robustesse (Guerrier) : PV max +rang+2 appliqué automatiquement par le moteur (ex. Dorain : 10+CON 3+3 = 16) ; +rang+2 aux tests pour résister aux efforts physiques, à la chaleur et au froid = manuel, au jugement du MJ <Src de="Règle" /></li>
-          <li>Armes magiques : bonus +N = niveau N de l&apos;objet (ex. Arme niv. 2 → +2 ; niv. 1 → +1 sans propriété) <Src de="Règle" /></li>
-          <li>Armes magiques 11-12 : deux tirages 1-10 (pas de récursion), fusionnés en propriété doublée si identiques <Src de="Règle" /></li>
-          <li>Parade : +N DEF (= bonus de l&apos;arme), simple et cumulable (bouclier, armure), niveau += N ; tirée en plus à 10 % (d100) <Src de="Règle" /><Src de="Supposition" /></li>
-          <li>Armes à distance : mêmes propriétés qu&apos;au contact, Affûtée → de précision (crit +1, +1d4°, niveau +1) <Src de="Supposition" /></li>
+          <li>Mages : la capacité de rang 2 gratuite (une voie du profil, ou Maîtrise de la magie) exige la Voie du mage adoptée — abandon de la voie du peuple (rang 1 conservé, rangs 2-5 bloqués) <Src de="Règle LDB" /></li>
+          <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Règle LDB" /></li>
+          <li>Robustesse (Guerrier) : PV max +rang+2 appliqué automatiquement par le moteur (ex. Dorain : 10+CON 3+3 = 16) ; +rang+2 aux tests pour résister aux efforts physiques, à la chaleur et au froid = manuel, au jugement du MJ <Src de="Règle LDB" /></li>
+          <li>Armes magiques : bonus +N = niveau N de l&apos;objet (ex. Arme niv. 2 → +2 ; niv. 1 → +1 sans propriété) <Src de="Règle LDB" /></li>
+          <li>Armes magiques 11-12 : deux tirages 1-10 (pas de récursion), fusionnés en propriété doublée si identiques <Src de="Règle LDB" /></li>
+          <li>Parade : +N DEF (= bonus de l&apos;arme), simple et cumulable (bouclier, armure), niveau += N ; tirée en plus à 10 % (d100) <Src de="Règle LDB" /><Src de="Supposition" /></li>
+          <li>Armes à distance : mêmes propriétés qu&apos;au contact, Affûtée → de précision (crit +1, +1d4°, niveau +1) <Src de="Règle LDB" /></li>
         </ul>
       </Section>
 
       <Section id="personnage" titre="Personnage">
         <p>Caractéristiques : AGI, CON, FOR, PER, CHA, INT, VOL (modificateurs, ex. +4/-1). Idéal héroïque et travers : narratifs, aucun bonus.<Src de="Fiches" /></p>
-        <Formule>INIT = 10 + PER (+3 Vivacité, +rang archer) · DEF = 10 + AGI + Équipement + Mod + talents (os +3, bouclier/dur/rempart/parade +1, tactiques +N)<Src de="Fiches" /><Src de="Règle" /></Formule>
-        <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle" /></p>
+        <Formule>INIT = 10 + PER (+3 Vivacité, +rang archer) · DEF = 10 + AGI + Équipement + Mod + talents (os +3, bouclier/dur/rempart/parade +1, tactiques +N)<Src de="Fiches" /><Src de="Règle LDB" /></Formule>
+        <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle LDB" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Famille</th><th className="text-left px-2 py-1">Base niv. 1</th><th className="text-left px-2 py-1">Gain / niveau</th></tr></thead>
@@ -121,27 +158,27 @@ export default function ReglesPage() {
             </tbody>
           </table>
         </div>
-        <Formule>Chance = 2 + CHA (+1 si Aventurier, soit 3 + CHA) · 1 PC = +10 à un test, après le résultat, même sur un 1 naturel<Src de="Tableau" /><Src de="Règle" /></Formule>
-        <p>Dés de récupération : type selon famille ({FAMILLES.map((f) => `${f} ${DE_RECUP_PAR_FAMILLE[f]}${f === "Mystique" ? "+1" : ""}`).join(" · ")}), nombre 2 + CON (+1 si Mystique), réserve initiale sans le CON : 2 dés (3 si Mystique).<Src de="Tableau" /><Src de="Règle" /></p>
+        <Formule>Chance = 2 + CHA (+1 si Aventurier, soit 3 + CHA) · 1 PC = +10 à un test, après le résultat, même sur un 1 naturel<Src de="Tableau" /><Src de="Règle LDB" /></Formule>
+        <p>Dés de récupération : type selon famille ({FAMILLES.map((f) => `${f} ${DE_RECUP_PAR_FAMILLE[f]}${f === "Mystique" ? "+1" : ""}`).join(" · ")}), nombre 2 + CON (+1 si Mystique), réserve initiale sans le CON : 2 dés (3 si Mystique).<Src de="Tableau" /><Src de="Règle LDB" /></p>
         <Formule>Contact = niv + FOR · Distance = niv + AGI · Magique = niv + VOL (attaques capées niv. 10, sorts : niv + VOL)<Src de="Fiches" /></Formule>
-        <Formule>Mana = VOL + sorts connus · coût d&apos;un sort = son rang (Rune de garde : 3 PM)<Src de="Règle" /></Formule>
+        <Formule>Mana = VOL + sorts connus · coût d&apos;un sort = son rang (Rune de garde : 3 PM)<Src de="Règle LDB" /></Formule>
       </Section>
 
       <Section id="creation" titre="Création niveau 1">
         <ul className="list-disc pl-5 space-y-1">
-          <li><b>2 points</b> → 2 capacités de rang 1 parmi les voies du profil (1 pt chacune).<Src de="Règle" /></li>
-          <li><b>+ gratuit</b> : le rang 1 de la voie du peuple (ni point, ni remplacement des 2 choix). Standard : 3 capacités (2 profil + 1 peuple).<Src de="Règle" /></li>
-          <li><b>Mages</b> (Ensorceleur, Forgesort, Magicien, Sorcier) : +1 capacité de rang 2 gratuite (voie du profil ou Maîtrise de la magie) <b>avec</b> la Voie du mage adoptée — sans elle, création standard sans R2 gratuit.<Src de="Règle" /></li>
-          <li>Voie du mage : remplace la voie du peuple (garde son rang 1, bloque ses rangs 2-5), définitif, avant le rang 2 — et débloque le R2 gratuit.<Src de="Règle" /></li>
+          <li><b>2 points</b> → 2 capacités de rang 1 parmi les voies du profil (1 pt chacune).<Src de="Règle LDB" /></li>
+          <li><b>+ gratuit</b> : le rang 1 de la voie du peuple (ni point, ni remplacement des 2 choix). Standard : 3 capacités (2 profil + 1 peuple).<Src de="Règle LDB" /></li>
+          <li><b>Mages</b> (Ensorceleur, Forgesort, Magicien, Sorcier) : +1 capacité de rang 2 gratuite (voie du profil ou Maîtrise de la magie) <b>avec</b> la Voie du mage adoptée — sans elle, création standard sans R2 gratuit.<Src de="Règle LDB" /></li>
+          <li>Voie du mage : remplace la voie du peuple (garde son rang 1, bloque ses rangs 2-5), définitif, avant le rang 2 — et débloque le R2 gratuit.<Src de="Règle LDB" /></li>
         </ul>
         <p className="text-xs text-zinc-500">Exceptions configurables par profil, jamais codées en dur (CREATION_PROFILS).</p>
       </Section>
 
       <Section id="progression" titre="Progression">
         <ul className="list-disc pl-5 space-y-1">
-          <li><b>Niveau +1</b> : PV +gain+CON, attaques +1 (max niv. 10), +2 points à dépenser aussitôt, mana via les nouveaux sorts.<Src de="Règle" /></li>
+          <li><b>Niveau +1</b> : PV +gain+CON, attaques +1 (max niv. 10), +2 points à dépenser aussitôt, mana via les nouveaux sorts.<Src de="Règle LDB" /></li>
           <li><b>Niveau −1</b> (erreur) : inverse le gain (plancher PV 1, niv. 1 min), alertes à corriger.</li>
-          <li>Coûts : R1-2 = 1 pt, R3-5 = 2 pts. Rangs précédents requis, pas de saut, pas de mise de côté, désapprentissage du haut vers le bas.<Src de="Règle" /></li>
+          <li>Coûts : R1-2 = 1 pt, R3-5 = 2 pts. Rangs précédents requis, pas de saut, pas de mise de côté, désapprentissage du haut vers le bas.<Src de="Règle LDB" /></li>
           <li>Niveaux min par rang : R1→1, R2→2, R3→3, R4→5, R5→7 (puis 9/11/13).<Src de="Tableau" /></li>
           <li>Dé évolutif (d4°) : d4 (niv. 1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+).<Src de="DRS" /></li>
         </ul>
@@ -168,7 +205,7 @@ export default function ReglesPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-zinc-500">Voie du mage : option spéciale (pas un peuple), famille Mage uniquement.<Src de="Règle" /></p>
+        <p className="text-xs text-zinc-500">Voie du mage : option spéciale (pas un peuple), famille Mage uniquement.<Src de="Règle LDB" /></p>
       </Section>
 
       <Section id="armures" titre="Armures (échelle et limites par profil)">
@@ -201,119 +238,166 @@ export default function ReglesPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-zinc-500">Druide et Prêtre : petit bouclier. Dépassement signalé en avertissement (jamais bloqué) dans Inventaire et sur la fiche.<Src de="Règle" /></p>
+        <p className="text-xs text-zinc-500">Druide et Prêtre : petit bouclier. Dépassement signalé en avertissement (jamais bloqué) dans Inventaire et sur la fiche.<Src de="Règle LDB" /></p>
       </Section>
 
       <Section id="sorts" titre="Sorts et grimoire">
         <ul className="list-disc pl-5 space-y-1">
           <li>{NB_SORTS} sorts transcrits du DRS (Prêtre, Sorcier, Barde, Druide, Ensorceleur, Forgesort, Magicien + voie du mage). Guerrier, Rôdeur, Voleur, Moine : aucun sort à PM.<Src de="DRS" /></li>
-          <li>Les voies sont des arbres de talents ; seuls les sorts (capacités à PM, *) vont au grimoire.<Src de="Règle" /></li>
-          <li>Talent connu ≠ lançable : apprendre un talent-sort crée l&apos;entrée lançable (+ mana).<Src de="Règle" /></li>
+          <li>Dégâts au rang de voie : certains sorts grandissent avec le rang du lanceur dans la voie (ex. Arc de feu 1d4°+INT, 2d4°+INT au rang 4 ; Destruction du mal 3d4° au rang 5).<Src de="Règle LDB" /></li>
+          <li>Sauvegardes paramétrées : difficulté en formule (ex. AGI diff 10+INT), moitié des DM si réussie au lieu d&apos;annuler (ex. Explosion de feu, Foudre).<Src de="Règle LDB" /></li>
+          <li>Cibles multiples : ×N cibles ou cibles au choix (ex. Arc de feu ×3, Appel de la foudre) — résoudre une fois par cible.<Src de="Règle LDB" /></li>
+          <li>Les voies sont des arbres de talents ; seuls les sorts (capacités à PM, *) vont au grimoire.<Src de="Règle LDB" /></li>
+          <li>Talent connu ≠ lançable : apprendre un talent-sort crée l&apos;entrée lançable (+ mana).<Src de="Règle LDB" /></li>
           <li>Familles par sort = profils pouvant l&apos;apprendre (vide = toutes classes).</li>
         </ul>
       </Section>
 
       <Section id="lancement" titre="Lancement des sorts (3 options)">
         <ul className="list-disc pl-5 space-y-1">
-          <li><b>Incantation classique</b> : paie le coût du sort en mana (coût = rang), avant le jet. Sans mana suffisante, le sort ne part pas.<Src de="Règle" /></li>
-          <li><b>Brûlure de mana</b> : à 0 PM, le lanceur peut sacrifier son énergie vitale pour continuer à lancer — <b>1 DR par PM</b> du sort en PV perdus (ex. 2 PM au d6 = 2d6 PV), <b>sans RD</b>, KO possible. <b>Impossible pour lancer un sort de soins.</b> En combat (panneaux Attaque/Soutien) comme hors combat.<Src de="Règle" /></li>
-          <li><b>Concentration accrue</b> : un sort qui nécessite une action d&apos;attaque (A) peut être lancé en action <b>limitée (L) pour −2 PM</b> (plancher 0) — le lanceur se prive de déplacement. Les sorts (L/M/G) et ceux sans action d&apos;attaque gardent le coût de leur rang, non réductible. En combat uniquement (pas d&apos;économie d&apos;action hors combat).<Src de="Règle" /></li>
+          <li><b>Incantation classique</b> : paie le coût du sort en mana (coût = rang), avant le jet. Sans mana suffisante, le sort ne part pas.<Src de="Règle LDB" /></li>
+          <li><b>Brûlure de mana</b> : à 0 PM, le lanceur peut sacrifier son énergie vitale pour continuer à lancer — <b>1 DR par PM</b> du sort en PV perdus (ex. 2 PM au d6 = 2d6 PV), <b>sans RD</b>, KO possible. <b>Impossible pour lancer un sort de soins.</b> En combat (panneaux Attaque/Soutien) comme hors combat.<Src de="Règle LDB" /></li>
+          <li><b>Concentration accrue</b> : un sort qui nécessite une action d&apos;attaque (A) peut être lancé en action <b>limitée (L) pour −2 PM</b> (plancher 0) — le lanceur se prive de déplacement. Les sorts (L/M/G) et ceux sans action d&apos;attaque gardent le coût de leur rang, non réductible. En combat uniquement (pas d&apos;économie d&apos;action hors combat).<Src de="Règle LDB" /></li>
         </ul>
       </Section>
 
       <Section id="consommables" titre="Potions et parchemins (usage)">
         <ul className="list-disc pl-5 space-y-1">
-          <li><b>Potion</b> : boire une potion est une action de mouvement (M), utilisable par tout le monde.<Src de="Règle" /></li>
-          <li><b>Parchemin</b> : usage limité (L), consommable unique (le sort est effacé après usage).<Src de="Règle" /></li>
-          <li>Un parchemin est <b>illisible</b> pour un lanceur d&apos;une autre famille de profil (ex. un Magicien ne lit pas un parchemin de Prêtre).<Src de="Règle" /></li>
-          <li><b>Sans test</b> si le sort est issu du profil du PJ et d&apos;un rang qu&apos;il maîtrise (au moins un sort connu de même rang ou supérieur), même sans connaître ce sort précis.<Src de="Règle" /></li>
-          <li>Rang supérieur au maîtrisé : test d&apos;attaque magique, difficulté 5 × rang du sort (ex. maîtrise rang 1 + parchemin rang 4 → difficulté 20).<Src de="Règle" /></li>
-          <li>Autre profil mais <b>même famille</b> (ex. moine ou druide + sort de prêtre) : difficulté +5 (ex. sort de prêtre rang 3 → 15 + 5 = 20).<Src de="Règle" /></li>
-          <li><b>Échec</b> : le sort n&apos;est pas lancé ; échec d&apos;au moins 10 points → le sort est effacé et le parchemin devient inutilisable.<Src de="Règle" /></li>
-          <li><b>Baguette</b> : lanceurs de sorts uniquement (bardes, druides et prêtres inclus), de niveau au moins égal au rang du sort. Activer une baguette = action d&apos;attaque, un sort par charge (2d20 charges au départ).<Src de="Règle" /></li>
-          <li>Niveau de magie d&apos;une baguette : moitié du rang (arrondi inf.) sous 30 charges, rang du sort à 30 charges et plus.<Src de="Règle" /></li>
+          <li><b>Potion</b> : boire une potion est une action de mouvement (M), utilisable par tout le monde.<Src de="Règle LDB" /></li>
+          <li><b>Parchemin</b> : usage limité (L), consommable unique (le sort est effacé après usage).<Src de="Règle LDB" /></li>
+          <li>Un parchemin est <b>illisible</b> pour un lanceur d&apos;une autre famille de profil (ex. un Magicien ne lit pas un parchemin de Prêtre).<Src de="Règle LDB" /></li>
+          <li><b>Sans test</b> si le sort est issu du profil du PJ et d&apos;un rang qu&apos;il maîtrise (au moins un sort connu de même rang ou supérieur), même sans connaître ce sort précis.<Src de="Règle LDB" /></li>
+          <li>Rang supérieur au maîtrisé : test d&apos;attaque magique, difficulté 5 × rang du sort (ex. maîtrise rang 1 + parchemin rang 4 → difficulté 20).<Src de="Règle LDB" /></li>
+          <li>Autre profil mais <b>même famille</b> (ex. moine ou druide + sort de prêtre) : difficulté +5 (ex. sort de prêtre rang 3 → 15 + 5 = 20).<Src de="Règle LDB" /></li>
+          <li><b>Échec</b> : le sort n&apos;est pas lancé ; échec d&apos;au moins 10 points → le sort est effacé et le parchemin devient inutilisable.<Src de="Règle LDB" /></li>
+          <li><b>Baguette</b> : lanceurs de sorts uniquement (bardes, druides et prêtres inclus), de niveau au moins égal au rang du sort. Activer une baguette = action d&apos;attaque, un sort par charge (2d20 charges au départ).<Src de="Règle LDB" /></li>
+          <li>Niveau de magie d&apos;une baguette : moitié du rang (arrondi inf.) sous 30 charges, rang du sort à 30 charges et plus.<Src de="Règle LDB" /></li>
         </ul>
-        <Formule>Difficulté = 5 × rang du sort (+5 si autre profil de même famille)<Src de="Règle" /></Formule>
+        <Formule>Difficulté = 5 × rang du sort (+5 si autre profil de même famille)<Src de="Règle LDB" /></Formule>
       </Section>
 
       <Section id="defense-magique" titre="Objets magiques défensifs (cumul)">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Un objet magique défensif ajoute son bonus à la DEF, mais un PJ ne retient qu&apos;<b>un seul bonus de DEF magique : le plus haut</b> (pas de cumul).<Src de="Règle" /></li>
-          <li>Objets mundanes (bouclier, mailles…) : cumulés normalement. Talents, Mod et buffs : cumulés.<Src de="Règle" /></li>
-          <li>Bouclier et armure magiques non cumulés en DEF ; si le MJ l&apos;autorise, le bonus inutilisé devient une RD contre les critiques (ex. armure +3 et bouclier +2 → DEF +3, −2 DM aux critiques).<Src de="Règle" /></li>
-          <li>Anneau +2 : +2 DEF, non cumulé à une armure magique, mais cumulé au sort Armure de mage (considéré comme une armure).<Src de="Règle" /></li>
-          <li>Une armure retranche son bonus aux pénalités qu&apos;elle inflige (tests d&apos;AGI), sans changer l&apos;AGI max (ex. cotte +2 : DEF +7, pénalité AGI −3).<Src de="Règle" /></li>
-          <li>Niveau de magie = bonus + propriétés (1 chacune, Défense supérieure +2).<Src de="Règle" /></li>
-          <li>Bonus +N = niveau N de l&apos;objet (comme les armes).<Src de="Règle" /></li>
+          <li>Un objet magique défensif ajoute son bonus à la DEF, mais un PJ ne retient qu&apos;<b>un seul bonus de DEF magique : le plus haut</b> (pas de cumul).<Src de="Règle LDB" /></li>
+          <li>Objets mundanes (bouclier, mailles…) : cumulés normalement. Talents, Mod et buffs : cumulés.<Src de="Règle LDB" /></li>
+          <li>Bouclier et armure magiques non cumulés en DEF ; si le MJ l&apos;autorise, le bonus inutilisé devient une RD contre les critiques (ex. armure +3 et bouclier +2 → DEF +3, −2 DM aux critiques).<Src de="Règle LDB" /></li>
+          <li>Anneau +2 : +2 DEF, non cumulé à une armure magique, mais cumulé au sort Armure de mage (considéré comme une armure).<Src de="Règle LDB" /></li>
+          <li>Une armure retranche son bonus aux pénalités qu&apos;elle inflige (tests d&apos;AGI), sans changer l&apos;AGI max (ex. cotte +2 : DEF +7, pénalité AGI −3).<Src de="Règle LDB" /></li>
+          <li>Niveau de magie = bonus + propriétés (1 chacune, Défense supérieure +2).<Src de="Règle LDB" /></li>
+          <li>Bonus +N = niveau N de l&apos;objet (comme les armes).<Src de="Règle LDB" /></li>
         </ul>
-        <Formule>DEF magique retenue = max des bonus (bouclier et armure non cumulés)<Src de="Règle" /></Formule>
+        <Formule>DEF magique retenue = max des bonus (bouclier et armure non cumulés)<Src de="Règle LDB" /></Formule>
       </Section>
 
       <Section id="pouvoir-puissance" titre="Objets de pouvoir et de puissance">
         <ul className="list-disc pl-5 space-y-1">
-          <li><b>Pouvoir</b> : pouvoirs calqués sur des capacités de lanceur, utilisables 1/jour en général, parfois permanents (ex. sac sans fond = rang 3 des artefacts du forgesort) ; forme en rapport avec son pouvoir.<Src de="Règle" /></li>
-          <li><b>Puissance</b> : +caractéristique (ceinture FOR, bandeau INT/VOL, gantelets AGI, masque PER, robe CHA, amulette CON) ; mineurs : +DR/PC/PM/PV.<Src de="Règle" /></li>
-          <li>Niveau de magie = bonus × 3 (+2 conseillé en classique, +3 en high fantasy ; ex. cape de charisme +2 → 6). Mineurs : DR/PC 1 par point, PM 1 par tranche de 3, PV 1 par tranche de 5.<Src de="Règle" /></li>
-          <li>Bonus 1-2 au d2, sans lien avec le niveau (mineures : DR/PC 1-2, PM 3/6, PV 5/10).<Src de="Règle" /></li>
+          <li><b>Pouvoir</b> : pouvoirs calqués sur des capacités de lanceur, utilisables 1/jour en général, parfois permanents (ex. sac sans fond = rang 3 des artefacts du forgesort) ; forme en rapport avec son pouvoir.<Src de="Règle LDB" /></li>
+          <li><b>Puissance</b> : +caractéristique (ceinture FOR, bandeau INT/VOL, gantelets AGI, masque PER, robe CHA, amulette CON) ; mineurs : +DR/PC/PM/PV.<Src de="Règle LDB" /></li>
+          <li>Niveau de magie = bonus × 3 (+2 conseillé en classique, +3 en high fantasy ; ex. cape de charisme +2 → 6). Mineurs : DR/PC 1 par point, PM 1 par tranche de 3, PV 1 par tranche de 5.<Src de="Règle LDB" /></li>
+          <li>Bonus 1-2 au d2, sans lien avec le niveau (mineures : DR/PC 1-2, PM 3/6, PV 5/10).<Src de="Règle LDB" /></li>
         </ul>
-        <Formule>Niveau puissance = bonus × 3 (d12 : 1-7 majeures, 8-11 mineures, 12 relancer)<Src de="Règle" /></Formule>
+        <Formule>Niveau puissance = bonus × 3 (d12 : 1-7 majeures, 8-11 mineures, 12 relancer)<Src de="Règle LDB" /></Formule>
       </Section>
 
       <Section id="des" titre="Dés">
         <ul className="list-disc pl-5 space-y-1">
           <li><b>Évolutifs (°)</b> : le dé grandit avec le niveau — ex. 1d4°+INT vaut 1d4+INT au niv. 3, 1d6+INT au niv. 7, 1d10+INT au niv. 12. Table : d4 (1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+). Aucune relance.<Src de="DRS" /></li>
-          <li><b>dE</b> : dé évolutif selon le niveau (attaque et grimoire le substituent).<Src de="Règle" /></li>
-          <li><b>Caracs</b> : <span className="font-mono">1d4°+INT</span> devient <span className="font-mono">1d4°+2</span> avec INT+2 (Un pied dans la tombe).<Src de="Règle" /></li>
+          <li><b>dE</b> : dé évolutif selon le niveau (attaque et grimoire le substituent).<Src de="Règle LDB" /></li>
+          <li><b>Caracs</b> : <span className="font-mono">1d4°+INT</span> devient <span className="font-mono">1d4°+2</span> avec INT+2 (Un pied dans la tombe).<Src de="Règle LDB" /></li>
           <li>Convention moteur : 0 DM = <span className="font-mono">1d1-1</span> (sorts à effet sans dégâts).</li>
         </ul>
       </Section>
 
       <Section id="actions" titre="Actions (A+M ou L) et coûts des sorts">
-        <Formule>Par tour : 1 action (A) + 1 mouvement (M), OU 1 action limitée (L) = tour complet. (G) = gratuit — géré en réel, pas suivi par l&apos;app.<Src de="Règle" /></Formule>
+        <Formule>Par tour : 1 action (A) + 1 mouvement (M), OU 1 action limitée (L) = tour complet. (G) = gratuit — géré en réel, pas suivi par l&apos;app.<Src de="Règle LDB" /></Formule>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Sorts : coût PM = rang, payé avant le jet. Certains sacrifient aussi des PV en dés (Pacte démoniaque, Invocation, Rituel : 1d4°), payés au lancer.<Src de="Règle" /></li>
-          <li>Vol de vie (Baiser du vampire, Succube) : le lanceur récupère autant de PV que de DM infligés.<Src de="Règle" /></li>
-          <li>Limites : 1/combat (Ensevelissement), 1/combat par cible (Malédiction, Briser), 1/jour ≈ 1 combat (Armée). Par cible = au touché, sinon au lancer.<Src de="Règle" /></li>
-          <li>Rituel de sang : sans test (touche auto). Briser les cœurs : moitié des dégâts si raté.<Src de="Règle" /></li>
-          <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle" /></li>
-          <li>Parade (Guerrier, M, bouclier) : la prochaine attaque réussie est bloquée sur test opposé auto (niv+FOR/AGI) ; absorption des sorts pareil, stockée pour Renvoi (G, pas les zones). Énorme/colossale : moitié DM (MJ).<Src de="Règle" /></li>
-          <li>Riposte (G) : un raté au contact est signalé (1/round, MJ : attaque manuelle). Coups spéciaux (panneau Attaque) : Puissante (dé malus +2d4°, L +3d4°), Parfaite (dé bonus +1d4°, prédilection MJ), mod. ±N, +DM (Double/Circulaire −2, prédilection +1, spécialisation +1).<Src de="Règle" /></li>
-          <li>Science du critique : 19-20 avec prédilection (effet à appliquer via Capacités, MJ).<Src de="Règle" /></li>
-          <li>Rôdeur archer : Dans le mille (dé malus +2d4°, L +3d4°), Flèche de mort (dé bonus +1d4° ou état 1 round : aveuglé/affaibli/ralenti/immobilisé, NC inférieur, 1/combat chacun, MJ), Éclair (bonus et DM à l&apos;AGI) — à cocher dans le panneau Attaque ; Double (L) et Tir rapide (L) : mod. −2, 2 lancers.<Src de="Règle" /></li>
-          <li>Compagnon : le loup est ajouté auto en préparation (DEF 12+rang, PV niv×4, alpha auto) ; Double peine +1d4° auto à la 2e touche ; À-suivre et Riposte signalés au raté (MJ) ; Increvable via Capacités (+4d4°+CON, +5 DEF, purge, 1/combat MJ) ; Éclaireur : +1 DR au lieu du +1 PC.<Src de="Règle" /></li>
-          <li>Dé bonus = 2d20 garder le meilleur, dé malus = garder le pire (annulation mutuelle, ex. Malédiction).<Src de="Supposition" /></li>
-          <li>Tests opposés du livre approximés par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Supposition" /></li>
-          <li>Armure d&apos;os : +3 DEF automatiques à l&apos;apprentissage (retirés au désapprentissage). Passifs restants (Exsangue, Pacte ténébreux) et déclenchés (Siphon, Sang mordant) : manuels — Éditer (Équip. DEF, CON) et boutons ±PV.<Src de="Supposition" /></li>
+          <li>Sorts : coût PM = rang, payé avant le jet. Certains sacrifient aussi des PV en dés (Pacte démoniaque, Invocation, Rituel : 1d4°), payés au lancer.<Src de="Règle LDB" /></li>
+          <li>Vol de vie (Baiser du vampire, Succube) : le lanceur récupère autant de PV que de DM infligés.<Src de="Règle LDB" /></li>
+          <li>Limites : 1/combat (Ensevelissement), 1/combat par cible (Malédiction, Briser), 1/jour ≈ 1 combat (Armée). Par cible = au touché, sinon au lancer.<Src de="Règle LDB" /></li>
+          <li>Rituel de sang : sans test (touche auto). Briser les cœurs : moitié des dégâts si raté.<Src de="Règle LDB" /></li>
+          <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle LDB" /></li>
+          <li>Parade (Guerrier, M, bouclier) : la prochaine attaque réussie est bloquée sur test opposé auto (niv+FOR/AGI) ; absorption des sorts pareil, stockée pour Renvoi (G, pas les zones). Énorme/colossale : moitié DM (MJ).<Src de="Règle LDB" /></li>
+          <li>Riposte (G) : un raté au contact est signalé (1/round, MJ : attaque manuelle). Coups spéciaux (panneau Attaque) : Puissante (dé malus +2d4°, L +3d4°), Parfaite (dé bonus +1d4°, prédilection MJ), mod. ±N, +DM (Double/Circulaire −2, prédilection +1, spécialisation +1).<Src de="Règle LDB" /></li>
+          <li>Talents → panneau : Attaque puissante = Puissante, Charge/Charge fantastique/Attaque bondissante = Parfaite à cocher ; Tir de barrage/grenaille, Tourbillon, Frappe du justicier, As de la gâchette = +DM ou division manuelle ; le panneau Capacités affiche la mécanique exacte (coûts PV et soins automatiques : Prouesse, Tour de force, Siphon, Phénix, Feindre la mort).<Src de="Supposition" /></li>
+          <li>Science du critique : 19-20 avec prédilection (effet à appliquer via Capacités, MJ).<Src de="Règle LDB" /></li>
+          <li>Rôdeur archer : Dans le mille (dé malus +2d4°, L +3d4°), Flèche de mort (dé bonus +1d4° ou état 1 round : aveuglé/affaibli/ralenti/immobilisé, NC inférieur, 1/combat chacun, MJ), Éclair (bonus et DM à l&apos;AGI) — à cocher dans le panneau Attaque ; Double (L) et Tir rapide (L) : mod. −2, 2 lancers.<Src de="Règle LDB" /></li>
+          <li>Compagnon : le loup est ajouté auto en préparation (DEF 12+rang, PV niv×4, alpha auto) ; Double peine +1d4° auto à la 2e touche ; À-suivre et Riposte signalés au raté (MJ) ; Increvable via Capacités (+4d4°+CON, +5 DEF, purge, 1/combat MJ) ; Éclaireur : +1 DR au lieu du +1 PC.<Src de="Règle LDB" /></li>
+          <li>Dé bonus : lance 2d20 et garde le meilleur résultat. Dé malus : lance 2d20 et garde le pire résultat. Un dé bonus et un dé malus s&apos;annulent mutuellement (ex. Malédiction).<Src de="Règle LDB" /></li>
+          <li>Test opposé (officiel) : les deux personnages font un test et le meilleur résultat l&apos;emporte — l&apos;assistant l&apos;approxime par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = 0, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Règle LDB" /><Src de="Supposition" /></li>
+          <li>Voie du sang (sorcier) : Armure d&apos;os +3 DEF auto (+1 par rang 4, retirés au désapprentissage) ; Exsangue +2 DEF auto (+3 si rang 5 en Voie du sang, −1 si torse mundane sans Armure d&apos;os — agir à 0 PV : MJ, 1 DM = inconscience) ; Siphon : +NC PV via le panneau Capacités (montant MJ, variante 1 PM manuelle) ; Sang mordant : riposte auto 1d4° d&apos;acide au contact (sorts et distance : MJ) ; Pacte ténébreux : CON +1 auto (PV, DR — tests CON : MJ), coût +2d4° DM via Capacités (bonus +DM manuel).<Src de="Supposition" /></li>
         </ul>
       </Section>
 
       <Section id="combat" titre="Combat">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle" /></li>
-          <li>0 PV = KO. Initiative 1d20+mod, tri décroissant, tours + manches, KO sautés.<Src de="Supposition" /></li>
+          <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle LDB" /></li>
+          <li>0 PV : le personnage tombe inconscient et est hors de combat (sauté dans l&apos;ordre d&apos;initiative) ; des soins arrivés rapidement peuvent le relever.<Src de="Règle LDB" /></li>
+          <li>Initiative 1d20 + mod, tri décroissant, tours + manches : adaptation de D&D (pas une règle officielle), conservée par choix.<Src de="Maison" /></li>
           <li>Objet équipé en cours de route : le staging se resynchronise au lancement (bouton Actualiser) et chaque PJ peut être resynchronisé depuis sa fiche en combat (↻).</li>
-          <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle" /></li>
+          <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle LDB" /></li>
+          <li>Sorts multi-cibles et zones : cases à cocher dans le panneau Attaque (ennemis pré-cochés, MJ ajuste — alliés dans le rayon possibles, ex. Explosion de feu), une résolution par cible, un seul coût mana.</li>
           <li>Sorts à effet sans dégâts (Malédiction, Peur…), dégâts par tour lancés au toucher (Saignements, Ensevelissement…). Les lettres A/M/L des attaques et sorts sont indicatives (économie gérée en réel).</li>
           <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM (+ PV) déduits avant le jet. Soutien : invocations, attaques accordées (griffes, contact). Zone (Armée) : tous les ennemis.</li>
         </ul>
       </Section>
 
       <Section id="effets" titre="Effets (buffs, debuffs, dots)">
-        <p className="text-xs text-zinc-500">Valeurs d&apos;exemple du catalogue, ajustables par le MJ. Badges en combat : vert = buff, rouge = dot/contrôle, violet = neutre, avec tours restants.</p>
+        <p className="text-xs text-zinc-500">Valeurs d&apos;exemple du catalogue, ajustables par le MJ. Badges en combat : vert = buff, rouge = dot/contrôle, violet = neutre, avec tours restants. Colonne Moteur = ce que l&apos;assistant applique vraiment. Dots/soins au début du tour du porteur ; durées consommées à la fin de son tour (un effet « 1 tour » couvre tout le tour, ∞ = permanent).</p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
-            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Effet</th><th className="text-left px-2 py-1">Mécanique</th><th className="text-left px-2 py-1">Durée</th></tr></thead>
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Effet</th><th className="text-left px-2 py-1">Mécanique</th><th className="text-left px-2 py-1">Moteur (exact)</th><th className="text-left px-2 py-1">Durée</th></tr></thead>
             <tbody>
               {EFFECT_CATALOG.map((e) => (
                 <tr key={e.key} className="border-t border-zinc-800">
                   <td className="px-2 py-1 font-semibold">{e.nom}</td>
                   <td className="px-2 py-1">{e.description}</td>
+                  <td className="px-2 py-1 font-mono text-amber-200/90">{decrireModificateurs(e.modificateurs).join(" · ") || "—"}</td>
                   <td className="px-2 py-1 font-mono">{e.dureeDefaut ?? "∞"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </Section>
+
+      <Section id="proprietes-armes" titre="Armes magiques (propriétés exactes)">
+        <p className="text-xs text-zinc-500">Bonus +N en attaque et aux DM (= niveau de l&apos;objet). Propriété si 1d6 &lt; niveau. Doublée (11-12 identiques) : dés et niveau doublés, « intense ».<Src de="Règle LDB" /></p>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Propriété</th><th className="text-left px-2 py-1">Armes</th><th className="text-left px-2 py-1">Effet exact</th><th className="text-left px-2 py-1">Niv.</th></tr></thead>
+            <tbody>
+              {LIGNES_ARMES.map((l) => (
+                <tr key={`${l.nom}-${l.porte}`} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-semibold">{l.nom}</td>
+                  <td className="px-2 py-1">{l.porte}</td>
+                  <td className="px-2 py-1 font-mono text-amber-200/90">{l.mecanique}</td>
+                  <td className="px-2 py-1 font-mono">{l.niveau}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>Exemples : Fléau des morts = <span className="font-mono">+1d4 aux DM contre les morts</span> ; Feu = <span className="font-mono">+1d4 aux DM de feu</span>. Parade : +N DEF (= bonus de l&apos;arme), cumulable, niveau += N, tirée en plus à 10 % (d100).<Src de="Règle LDB" /><Src de="Supposition" /></p>
+      </Section>
+
+      <Section id="proprietes-armures" titre="Armures magiques (propriétés exactes)">
+        <p className="text-xs text-zinc-500">Bonus +N en DEF (= niveau de l&apos;objet), un seul bonus magique retenu (le plus haut). Propriété si 1d6 &lt; niveau (niveau +1 chacune). 12 = deux tirages, doublée ou spéciale (MJ).<Src de="Règle LDB" /></p>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">d12</th><th className="text-left px-2 py-1">Propriété</th><th className="text-left px-2 py-1">Effet exact</th><th className="text-left px-2 py-1">Niv.</th></tr></thead>
+            <tbody>
+              {LIGNES_ARMURES.map((l) => (
+                <tr key={l.sorte} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-mono">{l.d12}</td>
+                  <td className="px-2 py-1 font-semibold">{l.label}{SORTES_RESISTANCE_MAISON.includes(l.sorte) && <Src de="Maison" />}</td>
+                  <td className="px-2 py-1">{l.effet}</td>
+                  <td className="px-2 py-1 font-mono">+{l.niveau}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>Défense supérieure (variante MJ) : RD 4, niveau +2. Doublée : niveau ×2 (« intense »). Résistances feu, froid, électricité, acide : −20 % aux DM du type, total arrondi à l&apos;inférieur — règle maison appliquée par le MJ (les dégâts ne sont pas typés dans le moteur).<Src de="Maison" /></p>
       </Section>
     </div>
   );

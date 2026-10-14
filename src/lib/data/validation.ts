@@ -61,12 +61,13 @@ export const sortSchema = z.object({
   familles: z.array(z.string()).default([]),
   bonus: z.number().optional(),
   degats: z.string().optional(),
+  degatsParRangVoie: z.array(z.string()).optional(),
   soin: z.string().optional(),
   effetCle: z.string().optional(),
-  effetDuree: z.number().int().min(1).nullable().optional(),
+  effetDuree: z.union([z.number().int().min(1), z.string(), z.null()]).optional(),
   effetDegats: z.string().optional(),
   effetMods: z.record(z.string(), z.number()).optional(),
-  effetSauvegarde: z.object({ carac: z.string(), difficulte: z.number().int().min(1) }).optional(),
+  effetSauvegarde: z.object({ carac: z.string(), difficulte: z.union([z.number().int().min(1), z.string()]), moitieDM: z.boolean().optional() }).optional(),
   cout: z.object({ ressource: z.string(), montant: z.number().min(0) }).optional(),
   coutPV: z.string().optional(),
   volDeVie: z.boolean().optional(),
@@ -90,6 +91,8 @@ export const sortSchema = z.object({
     initiative: z.number().optional(),
   }).optional(),
   zone: z.boolean().optional(),
+  ciblesMax: z.number().int().min(2).optional(),
+  ciblesLibres: z.boolean().optional(),
   cibleEspeces: z.array(z.string()).optional(),
 });
 
@@ -246,9 +249,15 @@ const choiceSchema = z.object({
 const sceneSchema = z.object({
   id: z.string(),
   titre: z.string(),
+  type: z.enum(["narration", "exploration", "interaction", "combat", "transition"]).optional(),
   texteMJ: z.string(),
+  narration: z.string().optional(),
+  actionsPossibles: z.array(z.string()).optional(),
   description: z.string().optional(),
   notesMJ: z.string().optional(),
+  infosSecretes: z.string().optional(),
+  consequences: z.string().optional(),
+  indices: z.array(z.string()).optional(),
   rencontreId: z.string().optional(),
   pnjIds: z.array(z.string()).optional(),
   itemIds: z.array(z.string()).optional(),
@@ -262,4 +271,16 @@ export const scenarioSchema = z.object({
   chapitres: z.array(z.object({ id: z.string(), titre: z.string(), sceneDepartId: z.string() })),
   scenes: z.array(sceneSchema),
   exemple: z.boolean(),
+});
+
+export const sessionSchema = z.object({
+  id: z.string(),
+  nom: z.string().min(1),
+  description: z.string().optional(),
+  characterIds: z.array(z.string()),
+  scenarioIds: z.array(z.string()),
+  currentScenarioId: z.string().optional(),
+  terminees: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  updatedAt: z.string().optional(),
 });

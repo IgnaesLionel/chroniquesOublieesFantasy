@@ -5,6 +5,7 @@ import {
   monsterSchema,
   npcSchema,
   scenarioSchema,
+  sessionSchema,
   sortSchema,
 } from "@/src/lib/data/validation";
 import { exportJson } from "@/src/lib/store/repository";
@@ -20,6 +21,7 @@ export const STORAGE_KEYS = {
   items: "cof.items.v2",
   scenarios: "cof.scenarios.v3",
   sorts: "cof.sorts",
+  sessions: "cof.sessions.v1",
 } as const;
 
 export type CollectionName = keyof typeof STORAGE_KEYS;
@@ -31,6 +33,7 @@ const SCHEMAS = {
   items: itemSchema,
   scenarios: scenarioSchema,
   sorts: sortSchema,
+  sessions: sessionSchema,
 } as const;
 
 export interface BackupData {
@@ -48,7 +51,7 @@ export interface ImportReport {
 /** Valide un backup (pur, testable). Les items invalides sont comptés, pas importés. */
 export function validateBackup(obj: unknown): { backup: BackupData | null; report: ImportReport } {
   const empty = (): Record<CollectionName, number> => ({
-    characters: 0, monsters: 0, npcs: 0, items: 0, scenarios: 0, sorts: 0,
+    characters: 0, monsters: 0, npcs: 0, items: 0, scenarios: 0, sorts: 0, sessions: 0,
   });
   const report: ImportReport = { imported: empty(), skipped: empty(), errors: [] };
 
@@ -58,12 +61,12 @@ export function validateBackup(obj: unknown): { backup: BackupData | null; repor
       ? ((obj as { data: Record<string, unknown> }).data ?? {})
       : null;
   if (!raw || typeof raw !== "object") {
-    report.errors.push("Format invalide : attendu { version, data: { characters, monsters, npcs, items, scenarios, sorts } }.");
+    report.errors.push("Format invalide : attendu { version, data: { characters, monsters, npcs, items, scenarios, sorts, sessions } }.");
     return { backup: null, report };
   }
 
   const clean: Record<CollectionName, unknown[]> = {
-    characters: [], monsters: [], npcs: [], items: [], scenarios: [], sorts: [],
+    characters: [], monsters: [], npcs: [], items: [], scenarios: [], sorts: [], sessions: [],
   };
   (Object.keys(SCHEMAS) as CollectionName[]).forEach((name) => {
     const list = (raw as Record<string, unknown>)[name];

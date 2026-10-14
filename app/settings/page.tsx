@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   STORAGE_KEYS,
   applyBackup,
@@ -19,6 +19,7 @@ const LABELS: Record<CollectionName, string> = {
   items: "Objets",
   scenarios: "Scénarios",
   sorts: "Sorts & Capacités",
+  sessions: "Sessions",
 };
 
 function storageInfo(): { counts: Record<CollectionName, number>; bytes: number } {
@@ -37,10 +38,15 @@ function storageInfo(): { counts: Record<CollectionName, number>; bytes: number 
 }
 
 export default function SettingsPage() {
-  const [info, setInfo] = useState(() => (typeof window === "undefined" ? null : storageInfo()));
+  // Rendu initial identique serveur/client, chargement après montage.
+  const [info, setInfo] = useState<{ counts: Record<CollectionName, number>; bytes: number } | null>(null);
   const [pending, setPending] = useState<BackupData | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setInfo(storageInfo());
+  }, []);
 
   const refresh = () => setInfo(storageInfo());
 

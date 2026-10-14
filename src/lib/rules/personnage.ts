@@ -2,7 +2,9 @@
 // Pur TypeScript, sans React. Source de vérité pour les dérivations.
 
 import type { Character, Sort } from "@/src/lib/rules/types";
+import type { InventaireEntree } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
+import { estTorse } from "@/src/lib/rules/world/types";
 import { normaliserBourse } from "@/src/lib/rules/bourse";
 import { CAPACITES, slug } from "@/src/lib/data/capacites";
 import { VOIES_PEUPLE, VOIE_MAGE, adopterVoieMage, traitsInitiaux } from "@/src/lib/data/peuples";
@@ -267,6 +269,17 @@ function nomsConnus(c: Pick<Character, "capacites" | "sorts">): Set<string> {
   return s;
 }
 
+/** Rang max connu dans une voie du profil (0 si voie absente) : dégâts et
+ *  difficultés de sorts au rang de voie, Exsangue +3 au rang 5, etc. */
+export function rangMaxVoie(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">, voie: string): number {
+  const noms = nomsConnus(c);
+  const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+  const v = (CAPACITES[profil] ?? []).find((x) => x.voie === voie);
+  if (!v) return 0;
+  const rangs = v.capacites.filter((x) => noms.has(normaliserNomCapacite(x.nom))).map((x) => x.rang);
+  return rangs.length > 0 ? Math.max(...rangs) : 0;
+}
+
 /** Bonus DEF permanent des talents connus (DRS) :
  * - Armure d'os +3, +1 par rang 4 en voie sorcier
  * - Défense au bouclier +1 (+1 avec Renvoi = rang 5)
@@ -275,16 +288,14 @@ function nomsConnus(c: Pick<Character, "capacites" | "sorts">): Set<string> {
  * - Parade croisée +1 (+1 au rang 5 = Double peine)
  * - Grand pas +1 en nature (+1 au rang 5 = Increvable, MJ : extérieur)
  * - Tactiques +1 par rang 5 en voie du profil. */
-export function bonusDefenseTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
+export function bonusDefenseTalents(
+  c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">,
+  catalogue: Item[] = [],
+  inventaire: InventaireEntree[] = []
+): number {
   const noms = nomsConnus(c);
   const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
   const voies = CAPACITES[profil] ?? [];
-  const rangMax = (nomVoie: string): number => {
-    const v = voies.find((x) => x.voie === nomVoie);
-    if (!v) return 0;
-    const rangs = v.capacites.filter((x) => noms.has(normaliserNomCapacite(x.nom))).map((x) => x.rang);
-    return rangs.length > 0 ? Math.max(...rangs) : 0;
-  };
   const compteRang = (rang: number, prefixeVoie?: string): number => {
     let n = 0;
     for (const v of voies) {
@@ -314,14 +325,37 @@ export function bonusDefenseTalents(c: Pick<Character, "capacites" | "sorts" | "
   }
   if (noms.has(normaliserNomCapacite("Grand pas"))) {
     bonus += 1;
-    if (rangMax("Voie de la survie") >= 5) bonus += 1;
+    if (rangMaxVoie(c, "Voie de la survie") >= 5) bonus += 1;
   }
   if (noms.has(normaliserNomCapacite("Tactiques de meute"))) {
     for (const v of voies) {
       if (v.capacites.some((x) => x.rang === 5 && noms.has(normaliserNomCapacite(x.nom)))) bonus += 1;
     }
   }
+  if (noms.has(normaliserNomCapacite("Exsangue"))) {
+    // Sorcier : +2 DEF (+3 si rang 5 en Voie du sang : Lien de sang).
+    bonus += rangMaxVoie(c, "Voie du sang") >= 5 ? 3 : 2;
+    // −1 si autre armure qu'os : armure d'os = talent (pas d'objet) ;
+    // un torse mundane équipé sans le talent compte comme autre armure.
+    if (!noms.has(normaliserNomCapacite("Armure d'os"))) {
+      const torseMundane = inventaire.some(
+        (e) => e.equipe && torseMundaneEquipe(e.itemId, catalogue)
+      );
+      if (torseMundane) bonus -= 1;
+    }
+  }
   return bonus;
+}
+
+/** Torse mundane équipé (armure de corps à bonus, hors armure d'os qui est un talent). */
+function torseMundaneEquipe(itemId: string, catalogue: Item[]): boolean {
+  const item = catalogue.find((o) => o.id === itemId);
+  return !!item && estTorse(item) && (item.bonusDefense ?? 0) > 0;
+}
+
+/** Bonus CON permanent des talents connus : Pacte ténébreux (Sorcier) +1. */
+export function bonusConTalents(c: Pick<Character, "capacites" | "sorts">): number {
+  return nomsConnus(c).has(normaliserNomCapacite("Pacte ténébreux")) ? 1 : 0;
 }
 
 /** Bonus PV max permanent des talents connus (DRS) : Robustesse (Guerrier) +rang+2
@@ -361,14 +395,17 @@ export function deriverPersonnage(c: Character, catalogue: Item[] = []): DeriveP
   const famille = familleEffective(c);
   const car = c.caracteristiques;
   const nbSorts = c.sorts?.length ?? 0;
+  // CON effective : base + talents (Pacte ténébreux +1). Les tests de CON
+  // et le dé bonus en CON restent au jugement du MJ (comme Robustesse).
+  const con = car.CON + bonusConTalents(c);
   return {
     famille,
     initiative: initiativeBase(car) + bonusInitiativeTalents(c),
-    defense: defenseBase(car, equipementEffectif(c, catalogue) + bonusDefenseTalents(c), modEffectif(c)),
-    pvMax: pvMaxBase(famille, car.CON, c.niveau) + bonusPvTalents(c),
+    defense: defenseBase(car, equipementEffectif(c, catalogue) + bonusDefenseTalents(c, catalogue, c.inventaire ?? []), modEffectif(c)),
+    pvMax: pvMaxBase(famille, con, c.niveau) + bonusPvTalents(c),
     chanceMax: chanceMax(car.CHA, profil, famille, c.capacites ?? []),
     drType: drType(profil, famille),
-    drNombre: drNombre(car.CON, profil, famille, c.capacites ?? [], car.VOL),
+    drNombre: drNombre(con, profil, famille, c.capacites ?? [], car.VOL),
     manaMax: manaMax(car.VOL, nbSorts),
     attaques: attaquesBase(c.niveau, car),
     de: deEvolutif(c.niveau),

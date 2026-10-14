@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deEvolutif, fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerDeEvolutif, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
+import { deEvolutif, evaluerArithmetique, fixedRng, parseDiceExpression, rollDiceExpression, rollDie, substituerDeEvolutif, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 
 describe("moteur de dés", () => {
   it("parse les expressions de base", () => {
@@ -83,5 +83,16 @@ describe("moteur de dés", () => {
     const r = rollDiceExpression("1d20+6", fixedRng([0.66]));
     expect(r.rolls[0]).toBe(14);
     expect(r.total).toBe(20);
+  });
+
+  it("formules arithmétiques (difficultés et durées de sorts)", () => {
+    expect(evaluerArithmetique("10+INT".replace("INT", "2"))).toBe(12);
+    expect(evaluerArithmetique("2*10")).toBe(20);
+    expect(evaluerArithmetique("(10+2)*2")).toBe(24);
+    expect(evaluerArithmetique("7")).toBe(7);
+    expect(evaluerArithmetique("-3+10")).toBe(7);
+    expect(() => evaluerArithmetique("10+")).toThrow(/invalide/);
+    expect(() => evaluerArithmetique("d20")).toThrow(/invalide/);
+    expect(() => evaluerArithmetique("10+alert(1)")).toThrow(/invalide/);
   });
 });

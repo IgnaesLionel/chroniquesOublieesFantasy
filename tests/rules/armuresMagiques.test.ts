@@ -64,6 +64,6 @@ describe("objets magiques défensifs", () => {
   it("résistance : X au choix du MJ", () => {
     const a = genererArmureMagique(2, fixedRng([face(12, 20), face(1, 6), face(7, 12)]));
     expect(a.proprietes).toMatchObject([{ sorte: "resistance-feu", valeur: null, niveau: 1 }]);
-    expect(a.label).toBe("Cotte de mailles +2 (Résistance au feu (X : MJ))");
+    expect(a.label).toBe("Cotte de mailles +2 (Résistance au feu (−20 %, règle maison))");
   });
 });

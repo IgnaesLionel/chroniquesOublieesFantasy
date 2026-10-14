@@ -207,4 +207,189 @@ export const SEED_ITEMS: Item[] = [
     effet: "DEF +7 automatique si équipée.",
     bonusDefense: 7, mains: 0, emplacement: "torse",
   },
+  // Armes du module COF2 (dégâts du module, bonus neutre style fiche, familles conservées).
+  {
+    id: "item-rapiere", nom: "Rapière (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Lame d'estoc fine (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["estoc"], mains: 1,
+  },
+  {
+    id: "item-hachette", nom: "Hachette de lancer (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Petite hache à lancer (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["haches", "jet"], mains: 1,
+  },
+  {
+    id: "item-fleau", nom: "Fléau (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Fléau d'armes (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["masses"], mains: 1,
+  },
+  {
+    id: "item-fleau-2mains", nom: "Fléau à deux mains (1d10)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Grand fléau de guerre (2 mains).",
+    estArme: true, bonusAttaque: 0, degats: "1d10+FOR",
+    familles: ["masses"], mains: 2,
+  },
+  {
+    id: "item-lance", nom: "Lance (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Lance polyvalente (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["lances"], mains: 1,
+  },
+  {
+    id: "item-epieu", nom: "Épieu (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Épieu de chasse (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["lances"], mains: 1,
+  },
+  {
+    id: "item-javelot", nom: "Javelot (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Javelot à lancer (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6",
+    familles: ["lances", "jet"], mains: 1,
+  },
+  {
+    id: "item-fronde", nom: "Fronde (1d4)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Fronde à billes (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d4",
+    familles: ["jet"], mains: 1,
+  },
+  {
+    id: "item-lance-pierre", nom: "Lance-pierre (1d3)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Lance-pierre artisanal (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d3",
+    familles: ["jet"], mains: 1,
+  },
+  {
+    id: "item-mousquet", nom: "Mousquet (2d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Mousquet à poudre (2 mains).",
+    estArme: true, bonusAttaque: 0, degats: "2d6",
+    familles: ["poudre"], mains: 2,
+  },
+  {
+    id: "item-petoire", nom: "Pétoire (1d10)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Pistolet à poudre (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d10",
+    familles: ["poudre"], mains: 1,
+  },
+  {
+    id: "item-arbalete-legere", nom: "Arbalète légère (2d4)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Arbalète légère (2 mains).",
+    estArme: true, bonusAttaque: 0, degats: "2d4",
+    familles: ["arbaletes"], mains: 2,
+  },
+  {
+    id: "item-arbalete-lourde", nom: "Arbalète lourde (2d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Arbalète lourde (2 mains).",
+    estArme: true, bonusAttaque: 0, degats: "2d6",
+    familles: ["arbaletes"], mains: 2,
+  },
+  {
+    id: "item-arbalete-poing", nom: "Arbalète de poing (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Petite arbalète de poing (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6",
+    familles: ["arbaletes"], mains: 1,
+  },
+  {
+    id: "item-epee-courte", nom: "Épée courte (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Épée courte polyvalente (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["epees"], mains: 1,
+  },
+  {
+    id: "item-cimeterre", nom: "Cimeterre (1d8)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Cimeterre courbe (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d8+FOR",
+    familles: ["epees"], mains: 1,
+  },
+  {
+    id: "item-vivelame", nom: "Vivelame (1d10)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Vivelame à deux mains.",
+    estArme: true, bonusAttaque: 0, degats: "1d10+FOR",
+    familles: ["epees"], mains: 2,
+  },
+  {
+    id: "item-epee-batarde", nom: "Épée bâtarde (1d12)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Épée bâtarde versatile (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d12+FOR",
+    familles: ["epees"], mains: 1,
+  },
+  {
+    id: "item-stylet", nom: "Stylet (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Stylet effilé (1 main, DM +AGI).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+AGI",
+    familles: ["dagues"], mains: 1,
+  },
+  {
+    id: "item-couteaux-lancer", nom: "Couteaux de lancer (1d4)", categorie: "arme", quantite: 3, exemple: true,
+    description: "Couteaux équilibrés pour le lancer (1 main, DM +AGI).",
+    estArme: true, bonusAttaque: 0, degats: "1d4+AGI",
+    familles: ["dagues", "jet"], mains: 1,
+  },
+  {
+    id: "item-gourdin", nom: "Gourdin (1d4)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Solide gourdin (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d4+FOR",
+    familles: ["gourdins"], mains: 1,
+  },
+  // Bouclier manquant du module.
+  {
+    id: "item-petit-bouclier", nom: "Petit bouclier (+1 DEF)", categorie: "armure", quantite: 1, exemple: true,
+    description: "Petit bouclier (1 main).",
+    effet: "DEF +1 automatique si équipé.",
+    bonusDefense: 1, mains: 1, emplacement: "bouclier",
+  },
+  // Équipement d'aventure du module (mécanique uniquement, sans texte du livre).
+  {
+    id: "item-corde", nom: "Corde (10 m)", categorie: "outil", quantite: 1, exemple: true,
+    description: "Corde solide de 10 m.",
+  },
+  {
+    id: "item-outils-crochetage", nom: "Outils de crochetage", categorie: "outil", quantite: 1, exemple: true,
+    description: "Rossignols et sondes pour crocheter serrures (MJ : test PER/AGI).",
+  },
+  {
+    id: "item-grappin", nom: "Grappin", categorie: "outil", quantite: 1, exemple: true,
+    description: "Grappin d'escalade, s'utilise avec une corde.",
+  },
+  {
+    id: "item-lanterne", nom: "Lanterne à huile", categorie: "outil", quantite: 1, exemple: true,
+    description: "Lanterne à huile.",
+    effet: "Éclaire 10 m (consomme de l'huile, MJ).",
+  },
+  {
+    id: "item-huile", nom: "Huile pour lanterne", categorie: "outil", quantite: 1, exemple: true,
+    description: "Fiole d'huile pour lanterne.",
+  },
+  {
+    id: "item-grimoire-vierge", nom: "Grimoire vierge", categorie: "outil", quantite: 1, exemple: true,
+    description: "Grimoire vierge pour copier des sorts (MJ).",
+  },
+  {
+    id: "item-parchemin-vierge", nom: "Parchemin vierge", categorie: "outil", quantite: 3, exemple: true,
+    description: "Parchemin vierge pour écrire un sort (MJ).",
+  },
+  {
+    id: "item-ration", nom: "Ration de voyage", categorie: "divers", quantite: 1, exemple: true,
+    description: "Nourriture de voyage.",
+    effet: "Un jour de nourriture (MJ).",
+  },
+  {
+    id: "item-charge-explosive", nom: "Charge explosive", categorie: "outil", quantite: 1, exemple: true,
+    description: "Charge de poudre pour démolition.",
+    effet: "Explosion : 3d4+INT à une structure (RD/2), 2d4 dans 2 m — voir Démolition (MJ).",
+  },
+  {
+    id: "item-piege-explosif", nom: "Piège explosif", categorie: "outil", quantite: 1, exemple: true,
+    description: "Piège à poudre à déclenchement.",
+    effet: "5d4+INT feu, rayon 5 m, moitié si AGI 15 — voir Piège explosif (MJ).",
+  },
+  {
+    id: "item-poison-lent", nom: "Poison lent", categorie: "potion", quantite: 1, exemple: true,
+    description: "Fiole de poison lent pour enduire une arme.",
+    effet: "Empoisonne si TOUCHÉ (arme enduite, MJ).",
+    effetCle: "empoisonne", effetDuree: 3,
+  },
 ];

@@ -3,6 +3,7 @@
 
 import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
 import { itemSchema } from "@/src/lib/data/validation";
+import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import type { ArmeFamille, Item, ItemCategorie } from "@/src/lib/rules/world/types";
 
 export interface SaisieObjetMaison {
@@ -18,6 +19,10 @@ export interface SaisieObjetMaison {
   bonusDefense?: number;
   emplacement?: "torse" | "bouclier" | "accessoire";
   magique?: boolean;
+  /** Clé d'effet de combat (catalogue : empoisonne, etourdi…). */
+  effetCle?: string;
+  /** Durée en tours (appliquée seulement si effetCle présent). */
+  effetDuree?: number | null;
 }
 
 const intPositif = (v: unknown, defaut: number): number => {
@@ -48,6 +53,18 @@ export function construireObjetMaison(saisie: SaisieObjetMaison, id?: string): I
   const effet = texte(saisie.effet);
   if (description) objet.description = description;
   if (effet) objet.effet = effet;
+  const effetCle = texte(saisie.effetCle);
+  if (effetCle) {
+    if (!EFFECT_CATALOG.some((e) => e.key === effetCle)) {
+      throw new Error(`Effet de combat inconnu : "${effetCle}".`);
+    }
+    objet.effetCle = effetCle;
+    if (saisie.effetDuree !== undefined && saisie.effetDuree !== null) {
+      const duree = Math.floor(saisie.effetDuree);
+      if (!Number.isFinite(duree) || duree < 1) throw new Error("Durée d'effet invalide (≥ 1 tour).");
+      objet.effetDuree = duree;
+    }
+  }
   if (saisie.magique) objet.magique = true;
   if (saisie.categorie === "arme") {
     const degats = (saisie.degats ?? "").trim() || "1d6";

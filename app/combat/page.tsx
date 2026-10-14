@@ -9,7 +9,7 @@ import type { Character, MonsterTemplate } from "@/src/lib/rules/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, appliquerResultatsCombat, castSoutien, depenserChanceApresCoup, frapperZone, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, appliquerResultatsCombat, castSoutien, depenserChanceApresCoup, frapperCibles, frapperZone, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/rules/combat/staging";
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
@@ -146,6 +146,33 @@ export default function CombatPage() {
       setCombat(state);
       setLast(resolution);
       setLastAttaque({ attackerId, targetId, attackId: aid });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Attaque impossible.";
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+      );
+    }
+  };
+
+  const rollMulti = (lanceurId: string, sortId: string, cibleIds: string[], opts?: AttaqueOpts, paiement?: PaiementSort) => {
+    if (!combat) return;
+    const atk = combat.participants.find((p) => p.instanceId === lanceurId);
+    const sort = atk?.sorts.find((x) => `sort:${x.id}` === sortId);
+    if (!atk || !sort) return;
+    try {
+      if (sort.zone) {
+        const { state } = frapperZone(combat, lanceurId, sort, Math.random, paiement, cibleIds);
+        setCombat(state);
+        setLast(null);
+      } else {
+        const { state, resolutions } = frapperCibles(combat, lanceurId, sort, sortId, cibleIds, Math.random, DEFAULT_COMBAT_OPTIONS, opts, paiement);
+        setCombat(state);
+        const lastRes = resolutions[resolutions.length - 1];
+        if (lastRes) {
+          setLast(lastRes);
+          setLastAttaque({ attackerId: lanceurId, targetId: lastRes.cibleId, attackId: sortId });
+        }
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Attaque impossible.";
       setCombat((c) =>
@@ -390,6 +417,7 @@ export default function CombatPage() {
             onAttack={(id) => setAttackId(id)}
             onTarget={(id) => setTargetId(id)}
             onRoll={rollAttack}
+            onMulti={(lanceurId, sortId, cibleIds, opts, paiement) => rollMulti(lanceurId, sortId, cibleIds, opts, paiement)}
             onChance={useChance}
           />
           <EquipementPanel
@@ -431,6 +459,7 @@ export default function CombatPage() {
                       mods: opts.mods,
                       coutPV: opts.coutPV,
                       soin: opts.soin,
+                      soinFixe: opts.soinFixe,
                       nettoie: opts.nettoie,
                     });
                 setCombat(state);

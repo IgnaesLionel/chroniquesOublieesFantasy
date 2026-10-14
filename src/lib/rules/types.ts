@@ -67,8 +67,9 @@ export interface AttackDef {
     degatsParTour?: string;
     /** Modificateurs supplémentaires fusionnés (ex: { deMalus: 1 }). */
     mods?: Record<string, number>;
-    /** Jet de sauvegarde (ex: CON 10 du Pied) : réussi = pas d'effet. */
-    sauvegarde?: { carac: string; difficulte: number };
+    /** Jet de sauvegarde (ex: CON 10 du Pied) : réussi = pas d'effet.
+     *  moitieDM : réussi = DM divisés par 2 au lieu d'annuler (ex: Explosion de feu). */
+    sauvegarde?: { carac: string; difficulte: number; moitieDM?: boolean };
   };
   /** Familles d'arme (ex: ["arcs"]) : talents liés (Archer émérite). */
   familles?: ArmeFamille[];
@@ -113,17 +114,25 @@ export interface Sort {
   bonus?: number;
   /** Sort offensif : dégâts (ex: "2d6"). */
   degats?: string;
+  /**
+   * Dégâts selon le rang du lanceur dans la voie du sort (index rang−1,
+   * plafonné au dernier : ex. Arc de feu ["1d4°+INT", "1d4°+INT", "1d4°+INT", "2d4°+INT", "2d4°+INT"]).
+   */
+  degatsParRangVoie?: string[];
   /** Sort défensif : soin (ex: "1d8+2"). */
   soin?: string;
   /** Effet appliqué (cible si offensif et TOUCHÉ, allié si défensif). Clé du catalogue. */
   effetCle?: string;
-  effetDuree?: number | null;
+  /** Durée en tours, ou formule ("INT", "INT*10", caracs + RANG substitués). */
+  effetDuree?: number | string | null;
   /** Dégâts par tour de l'effet, lancés au toucher (ex: "1d4", Saignements) -> pvParTour. */
   effetDegats?: string;
   /** Modificateurs supplémentaires de l'effet (ex: { deMalus: 1 }, Strangulation). */
   effetMods?: Record<string, number>;
-  /** Jet de sauvegarde de l'effet (ex: CON 10 du Pied) : réussi = pas d'effet. */
-  effetSauvegarde?: { carac: string; difficulte: number };
+  /** Jet de sauvegarde de l'effet (ex: CON 10 du Pied) : réussi = pas d'effet.
+   *  Difficulté fixe ou formule ("10+INT", caracs + RANG du lanceur).
+   *  moitieDM : réussi = DM divisés par 2 au lieu d'annuler (ex: Explosion de feu). */
+  effetSauvegarde?: { carac: string; difficulte: number | string; moitieDM?: boolean };
   /** Coût en ressource (ex: { ressource: "mana", montant: 2 }). */
   cout?: { ressource: string; montant: number };
   /** Sacrifice de PV du lanceur au lancer, en dés (ex: "1d4", Pacte démoniaque). Min 0 (KO possible). */
@@ -153,6 +162,10 @@ export interface Sort {
   };
   /** Frappe de zone : dégâts + effet à tous les ennemis actifs (ex: Armée des morts). */
   zone?: boolean;
+  /** Cibles multiples au choix (ex: Arc de feu ×3 : résoudre une fois par cible). */
+  ciblesMax?: number;
+  /** Plusieurs cibles au choix sans nombre fixé (ex: Appel de la foudre : résoudre une fois par cible). */
+  ciblesLibres?: boolean;
   /**
    * Restriction d'espèce : le sort ne blesse que ces espèces (libellés
    * comparés via normaliserCategorie, ex: Destruction du mal -> ["Mort-vivant"]).

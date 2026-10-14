@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { itemSchema, npcSchema } from "@/src/lib/data/validation";
 import { SEED_ITEMS, SEED_NPCS } from "@/src/lib/data/worldSeeds";
+import { fusionnerCatalogue } from "@/src/lib/store/useCatalogueObjets";
 
 describe("PNJ et objets", () => {
   it("PNJ d'exemple valides", () => {
@@ -37,5 +38,16 @@ describe("PNJ et objets", () => {
     }
     expect(epee.familles).toEqual(["epees"]);
     expect(hache.familles).toEqual(["haches"]);
+  });
+
+  it("catalogue fusionné : ids uniques même si le stockage contient déjà un seed", () => {
+    const doublon = { ...SEED_ITEMS.find((o) => o.id === "item-cle")!, nom: "Clé (maison)" };
+    const catalogue = fusionnerCatalogue(SEED_ITEMS, [doublon]);
+    const cles = catalogue.filter((o) => o.id === "item-cle");
+    expect(cles).toHaveLength(1);
+    // La version maison gagne, sans dupliquer la clé React.
+    expect(cles[0].nom).toBe("Clé (maison)");
+    const ids = catalogue.map((o) => o.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

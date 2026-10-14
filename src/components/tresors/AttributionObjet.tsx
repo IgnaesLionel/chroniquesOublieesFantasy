@@ -2,13 +2,14 @@
 import { useState } from "react";
 import { useCharacters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
+import { ajouterAInventaire } from "@/src/lib/rules/equipement";
 import { objetTresorVersItem, type ObjetMagiqueTire } from "@/src/lib/rules/objetsMagiques";
 
 interface Props {
   objet: ObjetMagiqueTire;
 }
 
-/** Attribue un objet du trésor à un personnage (inventaire, non équipé, modifiable dans Objets). */
+/** Attribue un objet du trésor à un personnage (inventaire, non équipé, modifiable dans le catalogue). */
 export function AttributionObjet({ objet }: Props) {
   const { items: characters, setItems: setCharacters } = useCharacters();
   const { setMaison } = useCatalogueObjets();
@@ -27,14 +28,10 @@ export function AttributionObjet({ objet }: Props) {
     setCharacters((prev) =>
       prev.map((c) => {
         if (c.id !== beneficiaireId) return c;
-        const inv = [...(c.inventaire ?? [])];
-        const i = inv.findIndex((e) => e.itemId === item.id);
-        if (i >= 0) inv[i] = { ...inv[i], quantite: inv[i].quantite + item.quantite };
-        else inv.push({ itemId: item.id, quantite: item.quantite, equipe: false });
-        return { ...c, inventaire: inv };
+        return { ...c, inventaire: ajouterAInventaire(c.inventaire ?? [], item.id, item.quantite) };
       })
     );
-    setMessage(`${item.nom} → ${cible.nom} (inventaire, non équipé ; ajustable dans Objets).`);
+    setMessage(`${item.nom} → ${cible.nom} (inventaire, non équipé ; ajustable dans le catalogue).`);
   };
 
   return (

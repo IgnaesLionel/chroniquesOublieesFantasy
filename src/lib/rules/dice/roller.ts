@@ -3,6 +3,79 @@
 
 export type Rng = () => number;
 
+/**
+ * Évalue une formule arithmétique simple (nombres, + − × ÷, parenthèses).
+ * Sert aux difficultés et durées paramétrées ("10+INT", "INT*10", après
+ * substitution des caracs). Nombres seuls acceptés. Erreur explicite sinon.
+ * Pur, sans eval : analyseur récursif (pas d'exécution de code).
+ */
+export function evaluerArithmetique(input: string): number {
+  const s = input.replace(/\s+/g, "");
+  if (s === "" || /[^0-9+\-*/().]/.test(s)) {
+    throw new Error(`Formule invalide : "${input}" (attendu : nombres, + − × ÷, parenthèses).`);
+  }
+  let i = 0;
+  const lireExpression = (): number => {
+    let v = lireTerme();
+    while (i < s.length && (s[i] === "+" || s[i] === "-")) {
+      const op = s[i++];
+      const t = lireTerme();
+      v = op === "+" ? v + t : v - t;
+    }
+    return v;
+  };
+  const lireTerme = (): number => {
+    let v = lireFacteur();
+    while (i < s.length && (s[i] === "*" || s[i] === "/")) {
+      const op = s[i++];
+      const f = lireFacteur();
+      v = op === "*" ? v * f : v / f;
+    }
+    return v;
+  };
+  const lireFacteur = (): number => {
+    if (s[i] === "(") {
+      i++;
+      const v = lireExpression();
+      if (s[i] !== ")") throw new Error(`Formule invalide : "${input}" (parenthèse non fermée).`);
+      i++;
+      return v;
+    }
+    if (s[i] === "-") {
+      i++;
+      return -lireFacteur();
+    }
+    const m = /^[0-9]+(?:\.[0-9]+)?/.exec(s.slice(i));
+    if (!m) throw new Error(`Formule invalide : "${input}" (nombre attendu).`);
+    i += m[0].length;
+    return Number(m[0]);
+  };
+  const v = lireExpression();
+  if (i !== s.length) throw new Error(`Formule invalide : "${input}" (reste : "${s.slice(i)}").`);
+  if (!Number.isFinite(v)) throw new Error(`Formule invalide : "${input}" (résultat non fini).`);
+  return v;
+}
+
+/**
+ * Résout une difficulté/durée de sort : nombre tel quel, ou formule
+ * ("10+INT") substituée avec le contexte (caracs + RANG) puis évaluée.
+ */
+export function resoudreFormuleSort(valeur: number | string, contexte: Record<string, number>): number {
+  if (typeof valeur === "number") return valeur;
+  return Math.floor(evaluerArithmetique(substituerStats(valeur, contexte)));
+}
+
+/** Durée d'effet d'un sort (formules plancher 1 tour) : null = permanent. */
+export function dureeEffetSort(
+  duree: number | string | null | undefined,
+  caracs: Record<string, number> = {},
+  rangVoie = 1
+): number | null {
+  if (duree === undefined || duree === null) return null;
+  if (typeof duree === "number") return duree;
+  return Math.max(1, resoudreFormuleSort(duree, { ...caracs, RANG: Math.max(1, Math.floor(rangVoie)) }));
+}
+
 export interface DiceExpression {
   count: number;
   sides: number;
@@ -43,9 +116,9 @@ export function parseDiceExpression(input: string): DiceExpression {
   return { count, sides, modifier, evolutif, normalized: `${count}d${sides}${evolutif ? "°" : ""}${sign}` };
 }
 
-/** Remplace les caracs (INT, CHA, FOR...) par leurs valeurs : "1d4°+INT" + {INT:2} -> "1d4°+2". */
+/** Remplace les caracs (INT, CHA, FOR...) et RANG par leurs valeurs : "1d4°+INT" + {INT:2} -> "1d4°+2". */
 export function substituerStats(expr: string, caracs: Record<string, number> = {}): string {
-  return expr.replace(/\b(AGI|CON|FOR|PER|CHA|INT|VOL)\b/g, (nom) => String(caracs[nom] ?? 0));
+  return expr.replace(/\b(AGI|CON|FOR|PER|CHA|INT|VOL|RANG)\b/g, (nom) => String(caracs[nom] ?? 0));
 }
 
 /** Remplace le dé évolutif (dE) par sa valeur au niveau donné : "1dE+1" niv. 9 -> "1d8+1". */

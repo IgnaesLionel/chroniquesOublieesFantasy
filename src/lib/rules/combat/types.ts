@@ -128,4 +128,6 @@ export interface AttackResolution {
   pvAvant: number;
   pvApres: number;
   cibleTombe: boolean;
+  /** Riposte Sang mordant (null si non déclenchée). */
+  sangMordant?: { degats: number; pvAttaquantApres: number } | null;
 }

@@ -58,7 +58,7 @@ export interface ProprieteArmure {
   valeur?: number | null;
   /** Niveau de magie apporté. */
   niveau: number;
-  /** "Protection", "Défense supérieure (RD 4)", "Résistance au feu (X : MJ)", … */
+  /** "Protection", "Défense supérieure (RD 4)", "Résistance au feu (−20 %)", … */
   label: string;
   effet: string;
 }
@@ -89,17 +89,17 @@ export const PROPRIETES_ARMURES: { de: 12; plages: PlageProprieteArmure[] } = {
   ],
 };
 
-const EFFETS_PROPRIETE_ARMURE: Record<Exclude<SorteProprieteArmure, "double">, string> = {
+export const EFFETS_PROPRIETE_ARMURE: Record<Exclude<SorteProprieteArmure, "double">, string> = {
   "action-libre": "Ni ralenti, immobilisé ou paralysé par magie ; +5 pour résister (contrainte physique)",
   defense: "RD 2 (Défense supérieure : RD 4)",
   natation: "+5 aux tests de natation ; l'armure flotte",
   ombre: "+5 aux tests de discrétion (AGI)",
   protection: "DM des critiques et attaques sournoises divisés par 2",
   "resistance-magie": "+5 en DEF ou aux tests contre la magie",
-  "resistance-feu": "Retranche X aux DM de feu (X : MJ)",
-  "resistance-froid": "Retranche X aux DM de froid (X : MJ)",
-  "resistance-electricite": "Retranche X aux DM d'électricité (X : MJ)",
-  "resistance-acide": "Retranche X aux DM d'acide (X : MJ)",
+  "resistance-feu": "−20 % aux DM de feu (arrondi inférieur, règle maison)",
+  "resistance-froid": "−20 % aux DM de froid (arrondi inférieur, règle maison)",
+  "resistance-electricite": "−20 % aux DM d'électricité (arrondi inférieur, règle maison)",
+  "resistance-acide": "−20 % aux DM d'acide (arrondi inférieur, règle maison)",
   mobile: "Malus d'armure réduit de 4",
 };
 
@@ -126,7 +126,7 @@ function construireProprieteArmure(
                   ? "Résistance à la magie"
                   : sorte === "mobile"
                     ? "Mobile"
-                    : `Résistance ${sorte === "resistance-feu" ? "au feu" : sorte === "resistance-froid" ? "au froid" : sorte === "resistance-electricite" ? "à l'électricité" : "à l'acide"} (X : MJ)`;
+                    : `Résistance ${sorte === "resistance-feu" ? "au feu" : sorte === "resistance-froid" ? "au froid" : sorte === "resistance-electricite" ? "à l'électricité" : "à l'acide"} (−20 %, règle maison)`;
   const estResistanceSubstance =
     sorte === "resistance-feu" ||
     sorte === "resistance-froid" ||
@@ -141,6 +141,11 @@ function construireProprieteArmure(
     label: doublee ? `${label} intense` : label,
     effet: EFFETS_PROPRIETE_ARMURE[sorte],
   };
+}
+
+/** Exemple simple d'une propriété (Défense simple) pour affichage MJ. */
+export function exempleProprieteArmure(sorte: Exclude<SorteProprieteArmure, "double">): ProprieteArmure {
+  return construireProprieteArmure(sorte, false);
 }
 
 /** Tirage 1-11 d'une propriété concrète (un 12 imbriqué n'a pas de sens). */
@@ -191,6 +196,28 @@ function resoudreProprietesArmure(
     ],
     detail: `d12 = ${jet} → ${plage.label}${noteVariante}`,
   };
+}
+
+/** Options du créateur manuel : les 12 propriétés (12 = tirage MJ, pas un choix direct). */
+export function optionsProprieteArmure(): { valeur: SorteProprieteArmure; label: string }[] {
+  return PROPRIETES_ARMURES.plages
+    .filter((p) => p.sorte !== "double")
+    .map((p) => ({ valeur: p.sorte, label: `${p.min} — ${p.label}` }));
+}
+
+/** Libellé + texte d'effet MJ pour une propriété d'armure. */
+export function decrireProprieteArmure(
+  sorte: Exclude<SorteProprieteArmure, "double">,
+  variante: "simple" | "superieure" = "simple"
+): { label: string; effet: string } {
+  const p = construireProprieteArmure(sorte, false, variante);
+  return { label: p.label, effet: `${p.label} : ${p.effet}` };
+}
+
+/** Règle maison : −20 % sur les DM du type protégé, total arrondi à l'inférieur. */
+export function reduireDegatsResistance(dm: number): number {
+  if (!Number.isFinite(dm) || dm <= 0) return 0;
+  return Math.floor(dm * 0.8);
 }
 
 export interface TirageArmureMagique {

@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ArmeFamille, Item, ItemCategorie } from "@/src/lib/rules/world/types";
 import { ARME_FAMILLES, ITEM_CATEGORIES } from "@/src/lib/rules/world/types";
 import { ECHELLE_ARMURES } from "@/src/lib/rules/limitesArmures";
+import { optionsProprieteArme, texteEffetProprieteArme } from "@/src/lib/rules/armesMagiques";
+import { decrireProprieteArmure, optionsProprieteArmure, type SorteProprieteArmure } from "@/src/lib/rules/armuresMagiques";
+import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { construireObjetMaison } from "@/src/lib/rules/objetsMaison";
 
 interface Props {
@@ -27,8 +30,19 @@ export function CreateurObjet({ initial, onEnregistrer, onAnnuler }: Props) {
   const [bonusDefense, setBonusDefense] = useState(String(initial?.bonusDefense ?? 0));
   const [emplacement, setEmplacement] = useState<"torse" | "bouclier" | "accessoire">(initial?.emplacement ?? "torse");
   const [magique, setMagique] = useState(!!initial?.magique);
+  // Propriétés prédéfinies (remplissent l'effet + cochent Magique ; "" = libre).
+  const [propArme, setPropArme] = useState("");
+  const [paradeDef, setParadeDef] = useState("1");
+  const [propArmure, setPropArmure] = useState("");
+  const [armureVariante, setArmureVariante] = useState<"simple" | "superieure">("simple");
+  // Effet de combat au toucher (catalogue d'effets).
+  const [effetCle, setEffetCle] = useState(initial?.effetCle ?? "");
+  const [effetDuree, setEffetDuree] = useState(initial?.effetDuree != null ? String(initial.effetDuree) : "");
   const [erreur, setErreur] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const optsArme = useMemo(() => optionsProprieteArme(), []);
+  const optsArmure = useMemo(() => optionsProprieteArmure(), []);
 
   /** Pré-remplit nom / DEF / description depuis un modèle de la table des armures. */
   const appliquerModeleArmure = (defTexte: string) => {
@@ -38,6 +52,21 @@ export function CreateurObjet({ initial, onEnregistrer, onAnnuler }: Props) {
     setBonusDefense(String(modele.def));
     setNom((n) => (n.trim() ? n : `${modele.nom} (+${modele.def} DEF)`));
     setDescription((d) => (d.trim() ? d : modele.note));
+  };
+
+  const appliquerPropArme = (valeur: string, defParade: string) => {
+    if (valeur === "") return;
+    const t = texteEffetProprieteArme(valeur, Number(defParade));
+    if (!t) return;
+    setEffet(t.effet);
+    setMagique(true);
+  };
+
+  const appliquerPropArmure = (valeur: string, variante: "simple" | "superieure") => {
+    if (valeur === "") return;
+    const d = decrireProprieteArmure(valeur as Exclude<SorteProprieteArmure, "double">, variante);
+    setEffet(d.effet);
+    setMagique(true);
   };
 
   const basculerFamille = (f: ArmeFamille) =>
@@ -59,17 +88,23 @@ export function CreateurObjet({ initial, onEnregistrer, onAnnuler }: Props) {
           bonusDefense: Number(bonusDefense),
           emplacement,
           magique,
+          effetCle: effetCle || undefined,
+          effetDuree: effetCle && effetDuree.trim() !== "" ? Number(effetDuree) : undefined,
         },
         initial?.id
       );
       onEnregistrer(item);
       setErreur(null);
       if (!initial) {
-        setMessage(`Créé : ${item.nom} (visible dans Objets, Personnages, Combat).`);
+        setMessage(`Créé : ${item.nom} (visible dans le catalogue, Personnages, Combat).`);
         setNom("");
         setDescription("");
         setEffet("");
         setFamilles([]);
+        setPropArme("");
+        setPropArmure("");
+        setEffetCle("");
+        setEffetDuree("");
       }
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Objet invalide.");
@@ -125,6 +160,59 @@ export function CreateurObjet({ initial, onEnregistrer, onAnnuler }: Props) {
               </select>
             </label>
           </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <label className="block text-sm">Propriété magique (tables existantes)
+              <select
+                value={propArme}
+                onChange={(e) => { setPropArme(e.target.value); appliquerPropArme(e.target.value, paradeDef); }}
+                className={input}
+              >
+                <option value="">Libre (saisie manuelle de l&apos;effet)</option>
+                <optgroup label="Contact">
+                  {optsArme.filter((o) => o.groupe === "contact").map((o) => (
+                    <option key={o.valeur} value={o.valeur}>{o.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Distance">
+                  {optsArme.filter((o) => o.groupe === "distance").map((o) => (
+                    <option key={o.valeur} value={o.valeur}>{o.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Commun">
+                  {optsArme.filter((o) => o.groupe === "commun").map((o) => (
+                    <option key={o.valeur} value={o.valeur}>{o.label}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            {propArme === "parade" && (
+              <label className="block text-sm">DEF de parade (N au choix du MJ)
+                <input
+                  type="number" min={0} value={paradeDef}
+                  onChange={(e) => { setParadeDef(e.target.value); appliquerPropArme("parade", e.target.value); }}
+                  className={input}
+                />
+              </label>
+            )}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <label className="block text-sm">Effet au toucher (combat, optionnel)
+              <select value={effetCle} onChange={(e) => setEffetCle(e.target.value)} className={input}>
+                <option value="">Aucun</option>
+                {EFFECT_CATALOG.map((fx) => (
+                  <option key={fx.key} value={fx.key} title={fx.description}>
+                    {fx.nom} (durée {fx.dureeDefaut ?? "—"})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {effetCle && (
+              <label className="block text-sm">Durée (tours)
+                <input type="number" min={1} value={effetDuree} onChange={(e) => setEffetDuree(e.target.value)} placeholder="Défaut du catalogue" className={input} />
+              </label>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500">Choisir une propriété remplit l&apos;effet ci-dessus et coche Magique. Champ Effet reste modifiable.</p>
           <div className="text-sm">
             <div className="mb-1 text-zinc-400">Familles (talents liés)</div>
             <div className="flex flex-wrap gap-1.5">
@@ -149,6 +237,33 @@ export function CreateurObjet({ initial, onEnregistrer, onAnnuler }: Props) {
               ))}
             </select>
           </label>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <label className="block text-sm">Propriété (tirage 1d12)
+              <select
+                value={propArmure}
+                onChange={(e) => { setPropArmure(e.target.value); appliquerPropArmure(e.target.value, armureVariante); }}
+                className={input}
+              >
+                <option value="">Libre (saisie manuelle de l&apos;effet)</option>
+                {optsArmure.map((o) => (
+                  <option key={o.valeur} value={o.valeur}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+            {propArmure === "defense" && (
+              <label className="block text-sm">Variante Défense (MJ)
+                <select
+                  value={armureVariante}
+                  onChange={(e) => { const v = e.target.value as "simple" | "superieure"; setArmureVariante(v); appliquerPropArmure("defense", v); }}
+                  className={input}
+                >
+                  <option value="simple">Défense (RD 2)</option>
+                  <option value="superieure">Défense supérieure (RD 4)</option>
+                </select>
+              </label>
+            )}
+          </div>
+          <p className="text-xs text-zinc-500">Choisir une propriété remplit l&apos;effet ci-dessus et coche Magique. Résistances : −20 % fixes (règle maison). 12 = tirage MJ (saisie libre).</p>
           <div className="grid sm:grid-cols-2 gap-2">
           <label className="block text-sm">Bonus DEF
             <input type="number" min={0} value={bonusDefense} onChange={(e) => setBonusDefense(e.target.value)} className={input} />

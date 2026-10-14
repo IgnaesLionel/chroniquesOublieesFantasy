@@ -304,7 +304,7 @@ export function formaterPlage(min: number, max: number): string {
   return min === max ? `${min}` : `${min}-${max}`;
 }
 
-/** Dégâts mundanes connus par base (défaut 1d6, à vérifier dans Objets). */
+/** Dégâts mundanes connus par base (défaut 1d6, à vérifier dans le catalogue). */
 const DEGATS_BASES: Record<string, string> = {
   "Bâton": "1d6",
   "Dague": "1d4",
@@ -337,8 +337,8 @@ function emplacementArmureTresor(base: string): "torse" | "bouclier" | "accessoi
 /**
  * Convertit un objet du trésor en objet d'inventaire (maison, magique),
  * prêt à attribuer : bonus d'attaque +N, DM pré-remplis (base mundane +
- * FOR du bénéficiaire au contact + bonus — à vérifier dans Objets, objets
- * modifiables). Familles : à compléter dans Objets (talents liés).
+ * FOR du bénéficiaire au contact + bonus — à vérifier dans le catalogue, objets
+ * modifiables). Familles : à compléter dans le catalogue (talents liés).
  */
 export function objetTresorVersItem(objet: ObjetMagiqueTire, forBeneficiaire = 0, id?: string): Item {
   const FOR = Math.trunc(forBeneficiaire) || 0;
@@ -395,7 +395,7 @@ export function objetTresorVersItem(objet: ObjetMagiqueTire, forBeneficiaire = 0
       const notes = [
         ...(props ? [props] : []),
         ...(sceptre ? ["bonus en attaque magique et aux DM des sorts"] : []),
-        `+${bonus} aux DM (pré-remplis ${de}+${total} : vérifiez dans Objets)`,
+        `+${bonus} aux DM (pré-remplis ${de}+${total} : vérifiez dans le catalogue)`,
       ];
       return construireObjetMaison(
         {

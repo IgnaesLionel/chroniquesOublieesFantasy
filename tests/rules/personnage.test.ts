@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { characterSchema } from "@/src/lib/data/validation";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import {
@@ -462,5 +463,41 @@ describe("complétion des sorts depuis le grimoire", () => {
   it("sort déjà complet : référence inchangée", () => {
     const sorts = [{ ...stale, toucheAuto: true as const, cibleEspeces: ["Mort-vivant"] }];
     expect(completerSortsDepuisGrimoire(sorts)).toBe(sorts);
+  });
+});
+
+describe("voie du sang : Exsangue et Pacte ténébreux automatisés", () => {
+  const sorcier = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
+  const depouille = { ...sorcier, capacites: [] as string[], inventaire: [] as typeof sorcier.inventaire };
+  const cuir = SEED_ITEMS.find((o) => o.id === "item-cuir")!;
+  const cuirEquipe = [{ itemId: "item-cuir", quantite: 1, equipe: true }] as typeof sorcier.inventaire;
+
+  it("Exsangue seule : +2 DEF", () => {
+    const avec = deriverPersonnage({ ...depouille, capacites: ["Exsangue"] }, []);
+    expect(avec.defense - deriverPersonnage(depouille, []).defense).toBe(2);
+  });
+
+  it("Exsangue + rang 5 en Voie du sang (Lien de sang) : +3 DEF", () => {
+    const avec = deriverPersonnage({ ...depouille, capacites: ["Exsangue", "Lien de sang"] }, []);
+    expect(avec.defense - deriverPersonnage(depouille, []).defense).toBe(3);
+  });
+
+  it("Exsangue + torse mundane sans Armure d'os : +2 −1 = +1", () => {
+    const sans = { ...depouille, inventaire: cuirEquipe };
+    const avec = { ...sans, capacites: ["Exsangue"] };
+    expect(deriverPersonnage(avec, [cuir]).defense - deriverPersonnage(sans, [cuir]).defense).toBe(1);
+  });
+
+  it("Exsangue + Armure d'os : +3 +2, pas de −1 même avec torse équipé", () => {
+    const sans = { ...depouille, inventaire: cuirEquipe };
+    const avec = { ...sans, capacites: ["Exsangue", "Armure d'os"] };
+    expect(deriverPersonnage(avec, [cuir]).defense - deriverPersonnage(sans, [cuir]).defense).toBe(5);
+  });
+
+  it("Pacte ténébreux : CON +1 (PV max +niveau, DR +1)", () => {
+    const avec = deriverPersonnage({ ...depouille, capacites: ["Pacte ténébreux"] }, []);
+    const ref = deriverPersonnage(depouille, []);
+    expect(avec.pvMax - ref.pvMax).toBe(depouille.niveau);
+    expect(avec.drNombre - ref.drNombre).toBe(1);
   });
 });

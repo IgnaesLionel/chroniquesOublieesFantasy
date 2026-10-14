@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { sortSchema } from "@/src/lib/data/validation";
 import { SEED_SORTS, VOIES_SORTS } from "@/src/lib/data/sorts";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
-import { PROFILS_PAR_FAMILLE, apprendreSort, manaMax } from "@/src/lib/rules/personnage";
+import { PROFILS_PAR_FAMILLE, apprendreSort, manaMax, rangMaxVoie } from "@/src/lib/rules/personnage";
+import { parseDiceExpression, substituerStats } from "@/src/lib/rules/dice/roller";
+import { attaqueFromSort, degatsSortAuRangVoie } from "@/src/lib/rules/combat/factory";
+import { resoudreFormuleSort } from "@/src/lib/rules/dice/roller";
 
 const PROFILS = new Set(Object.values(PROFILS_PAR_FAMILLE).flat());
 
@@ -98,5 +101,56 @@ describe("grimoire des sorts (DRS)", () => {
     const r2 = apprendreSort(r, SEED_SORTS.find((s) => s.id === "sort-benediction")!);
     expect(r2.sorts).toHaveLength(4);
     expect(r2.ressources.mana).toEqual({ max: 6, actuel: 6 });
+  });
+});
+
+describe("sorts fonctionnels : rang de voie, saves et durées formulaires", () => {
+  const CARACS = { AGI: 1, CON: 0, FOR: 0, PER: 0, CHA: 2, INT: 3, VOL: 1, RANG: 3 };
+
+  it("seeds : dégâts par rang, saves et durées tous évaluables", () => {
+    for (const s of SEED_SORTS) {
+      for (const expr of s.degatsParRangVoie ?? []) {
+        expect(() => parseDiceExpression(substituerStats(expr, CARACS)), `${s.nom} : palier invalide`).not.toThrow();
+      }
+      const dif = s.effetSauvegarde?.difficulte;
+      if (typeof dif === "string") {
+        expect(() => resoudreFormuleSort(dif, CARACS), `${s.nom} : save invalide`).not.toThrow();
+      }
+      const duree = s.effetDuree;
+      if (typeof duree === "string") {
+        expect(() => resoudreFormuleSort(duree, CARACS), `${s.nom} : durée invalide`).not.toThrow();
+      }
+    }
+  });
+
+  it("degatsSortAuRangVoie : palier au rang, plafonné", () => {
+    const arc = SEED_SORTS.find((s) => s.id === "sort-arc-feu")!;
+    expect(degatsSortAuRangVoie(arc, 1)).toBe("1d4°+INT");
+    expect(degatsSortAuRangVoie(arc, 4)).toBe("2d4°+INT");
+    expect(degatsSortAuRangVoie(arc, 9)).toBe("2d4°+INT");
+    expect(degatsSortAuRangVoie({} as never, 3)).toBeUndefined();
+  });
+
+  it("rangMaxVoie : rang connu dans la voie du sort", () => {
+    const caps = ["Saignements", "Lien de sang"];
+    expect(rangMaxVoie({ capacites: caps, sorts: [], profil: "Sorcier", classe: "" }, "Voie du sang")).toBe(5);
+    expect(rangMaxVoie({ capacites: caps, sorts: [], profil: "Sorcier", classe: "" }, "Voie de la mort")).toBe(0);
+  });
+
+  it("attaqueFromSort : Arc de feu R1 vs R4, save résolue", () => {
+    const arc = SEED_SORTS.find((s) => s.id === "sort-arc-feu")!;
+    const caracs = { AGI: 1, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 2, VOL: 3 };
+    const r1 = attaqueFromSort(arc, 4, caracs, 1, 1)!;
+    expect(r1.degats).toBe("1d4+2");
+    const r4 = attaqueFromSort(arc, 4, caracs, 1, 4)!;
+    expect(r4.degats).toBe("2d4+2");
+    expect(r1.effetTouche?.sauvegarde).toMatchObject({ carac: "AGI", difficulte: 12, moitieDM: true });
+  });
+
+  it("attaqueFromSort : Asphyxie = dot nommé, durée résolue, sans dégâts directs", () => {
+    const asphyxie = SEED_SORTS.find((s) => s.id === "sort-asphyxie")!;
+    const a = attaqueFromSort(asphyxie, 4, { INT: 3 }, 1, 1)!;
+    expect(a.degats).toBe("1d1-1");
+    expect(a.effetTouche).toMatchObject({ cle: "Asphyxie", duree: 3, degatsParTour: "1d4°" });
   });
 });

@@ -329,6 +329,58 @@ export function genererArmeMagique(bonus: number, rng: Rng = Math.random): Tirag
   };
 }
 
+/** Options du créateur manuel : propriétés existantes des tables 1d12 + parade. */
+export interface OptionProprieteArme {
+  /** "affutee", "fleau:demons", "element:feu", "parade". */
+  valeur: string;
+  label: string;
+  groupe: "contact" | "distance" | "commun";
+}
+
+export function optionsProprieteArme(): OptionProprieteArme[] {
+  const options: OptionProprieteArme[] = [];
+  const push = (table: TableProprietes, groupe: "contact" | "distance") => {
+    for (const p of table.plages) {
+      if (p.sorte === "double") continue; // tirage MJ, pas un choix direct
+      options.push({
+        valeur: p.sorte === "affutee" || p.sorte === "precision" ? p.sorte : `${p.sorte}:${p.objet}`,
+        label: p.label,
+        groupe,
+      });
+    }
+  };
+  push(PROPRIETES_CONTACT, "contact");
+  push(PROPRIETES_DISTANCE, "distance");
+  options.push({ valeur: "parade", label: "Parade (+N DEF, N au choix)", groupe: "commun" });
+  return options;
+}
+
+/** Texte d'effet MJ pour une propriété choisie au créateur (null si valeur inconnue). */
+export function texteEffetProprieteArme(valeur: string, defenseParade?: number): { label: string; effet: string } | null {
+  if (valeur === "parade") {
+    const def = Math.max(0, Math.floor(defenseParade ?? 0));
+    return { label: `Parade (+${def} DEF)`, effet: `Parade : +${def} DEF, cumulable` };
+  }
+  if (valeur === "affutee") return { label: "Affûtée", effet: "Affûtée : +1 critique, +1d4 aux DM" };
+  if (valeur === "precision") return { label: "De précision", effet: "De précision : +1 critique, +1d4 aux DM" };
+  const [sorte, objet] = valeur.split(":");
+  if (sorte === "fleau" && objet) {
+    const table = [...PROPRIETES_CONTACT.plages, ...PROPRIETES_DISTANCE.plages].find(
+      (p) => p.sorte === "fleau" && p.objet === objet
+    );
+    if (!table) return null;
+    return { label: table.label, effet: `${table.label} : +1d4 aux DM contre les ${objet}` };
+  }
+  if (sorte === "element" && objet) {
+    const table = [...PROPRIETES_CONTACT.plages, ...PROPRIETES_DISTANCE.plages].find(
+      (p) => p.sorte === "element" && p.objet === objet
+    );
+    if (!table) return null;
+    return { label: table.label, effet: `${table.label} : +1d4 aux DM de ${objet}` };
+  }
+  return null;
+}
+
 /** Règle des projectiles magiques (rappel affiché au MJ). */
 export const REGLE_PROJECTILES =
   "Consommables : perdent leur enchantement ou se brisent après usage. " +

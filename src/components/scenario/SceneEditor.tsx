@@ -1,5 +1,6 @@
 "use client";
-import type { Condition, Scene } from "@/src/lib/rules/scenario/types";
+import type { Condition, Scene, SceneType } from "@/src/lib/rules/scenario/types";
+import { SCENE_TYPES, SCENE_TYPE_LABEL, narrationOf, secretsOf } from "@/src/lib/rules/scenario/types";
 import type { Item, Npc } from "@/src/lib/rules/world/types";
 import { describeCondition } from "@/src/lib/rules/scenario/conditions";
 
@@ -20,6 +21,10 @@ function condKind(c: Condition | undefined): string {
   return "avance";
 }
 
+function linesToArr(v: string): string[] {
+  return v.split("\n").map((l) => l.trim()).filter(Boolean);
+}
+
 export function SceneEditor({ scene, allScenes, allNpcs = [], allItems = [], onUpdate, onDelete }: Props) {
   const addChoice = () => {
     const dest = allScenes.find((s) => s.id !== scene.id)?.id ?? scene.id;
@@ -30,7 +35,8 @@ export function SceneEditor({ scene, allScenes, allNpcs = [], allItems = [], onU
     const choix = scene.choix.map((x, j) => {
       if (j !== i) return x;
       if (kind === "toujours") {
-        const { condition: _omit, ...rest } = x;
+        const rest = { ...x };
+        delete rest.condition;
         return rest;
       }
       if (kind === "siVrai") return { ...x, condition: { type: "flag", flag, op: "estVrai" } as Condition };
@@ -40,21 +46,88 @@ export function SceneEditor({ scene, allScenes, allNpcs = [], allItems = [], onU
     onUpdate({ ...scene, choix });
   };
 
+  const narration = narrationOf(scene);
+  const secrets = secretsOf(scene);
+
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2">
         <h3 className="font-bold">Éditer la scène</h3>
         <button onClick={onDelete} className="text-xs px-2.5 py-1 rounded bg-red-900 hover:bg-red-800">Supprimer</button>
       </div>
-      <label className="block text-sm">Titre
-        <input value={scene.titre} onChange={(e) => onUpdate({ ...scene, titre: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2" />
+
+      <div className="grid sm:grid-cols-2 gap-2">
+        <label className="block text-sm">Titre
+          <input value={scene.titre} onChange={(e) => onUpdate({ ...scene, titre: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2" />
+        </label>
+        <label className="block text-sm">Type de scène
+          <select
+            value={scene.type ?? "narration"}
+            onChange={(e) => onUpdate({ ...scene, type: e.target.value as SceneType })}
+            className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+          >
+            {SCENE_TYPES.map((t) => (
+              <option key={t} value={t}>{SCENE_TYPE_LABEL[t]}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="block text-sm">Narration — texte lu aux joueurs
+        <textarea
+          value={narration}
+          onChange={(e) => onUpdate({ ...scene, narration: e.target.value, texteMJ: e.target.value })}
+          rows={4}
+          className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+        />
       </label>
-      <label className="block text-sm">Texte MJ (lu pendant la partie)
-        <textarea value={scene.texteMJ} onChange={(e) => onUpdate({ ...scene, texteMJ: e.target.value })} rows={4} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2" />
+
+      <label className="block text-sm">Actions possibles — une par ligne (facultatif)
+        <textarea
+          value={(scene.actionsPossibles ?? []).join("\n")}
+          onChange={(e) => onUpdate({ ...scene, actionsPossibles: linesToArr(e.target.value) })}
+          rows={3}
+          placeholder={"Exemple :\nFouiller la pièce\nInterroger le PNJ"}
+          className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+        />
       </label>
-      <label className="block text-sm">Notes privées MJ
-        <textarea value={scene.notesMJ ?? ""} onChange={(e) => onUpdate({ ...scene, notesMJ: e.target.value })} rows={2} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2" />
+
+      <label className="block text-sm">Informations secrètes — MJ seul (facultatif)
+        <textarea
+          value={secrets}
+          onChange={(e) => onUpdate({ ...scene, infosSecretes: e.target.value, notesMJ: e.target.value })}
+          rows={2}
+          className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+        />
       </label>
+
+      <label className="block text-sm">Conséquences — résultats possibles (facultatif)
+        <textarea
+          value={scene.consequences ?? ""}
+          onChange={(e) => onUpdate({ ...scene, consequences: e.target.value })}
+          rows={2}
+          className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+        />
+      </label>
+
+      <label className="block text-sm">Indices disponibles — un par ligne (facultatif)
+        <textarea
+          value={(scene.indices ?? []).join("\n")}
+          onChange={(e) => onUpdate({ ...scene, indices: linesToArr(e.target.value) })}
+          rows={2}
+          className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+        />
+      </label>
+
+      <div className="grid sm:grid-cols-2 gap-2 text-sm">
+        <label className="block">Description courte (facultatif)
+          <input value={scene.description ?? ""} onChange={(e) => onUpdate({ ...scene, description: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2" />
+        </label>
+        <label className="block">Rencontre liée (facultatif)
+          <input value={scene.rencontreId ?? ""} onChange={(e) => onUpdate({ ...scene, rencontreId: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2" />
+        </label>
+      </div>
+
       {(allNpcs.length > 0 || allItems.length > 0) && (
         <div className="grid sm:grid-cols-2 gap-2 text-sm">
           {allNpcs.length > 0 && (
@@ -104,7 +177,7 @@ export function SceneEditor({ scene, allScenes, allNpcs = [], allItems = [], onU
         </div>
       )}
       <div className="space-y-2">
-        <div className="text-sm font-semibold">Choix ({scene.choix.length})</div>
+        <div className="text-sm font-semibold">Scènes liées — choix ({scene.choix.length})</div>
         {scene.choix.map((c, i) => {
           const kind = condKind(c.condition);
           const flagVal = c.condition?.type === "flag" ? c.condition.flag : "cle";
@@ -149,8 +222,8 @@ export function SceneEditor({ scene, allScenes, allNpcs = [], allItems = [], onU
             </div>
           );
         })}
-        <button onClick={addChoice} className="text-sm px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700">+ Ajouter un choix</button>
-        <p className="text-xs text-zinc-500">ET/OU/NON : exportez le JSON et éditez la condition manuellement.</p>
+        <button onClick={addChoice} className="text-sm px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700">+ Ajouter un lien / choix</button>
+        <p className="text-xs text-zinc-500">Les liens créent les connexions du graphe. Les joueurs peuvent ignorer une scène : la navigation reste libre en partie.</p>
       </div>
     </div>
   );

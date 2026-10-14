@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createEffect, getModifier, canAct, tickEffects } from "@/src/lib/rules/effects/effects";
+import { createEffect, decrireModificateurs, getModifier, canAct, tickEffects } from "@/src/lib/rules/effects/effects";
+import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { addParticipantEffect, createCombat, nextTurn, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
 import { resolveAttack } from "@/src/lib/rules/combat/attack";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
@@ -158,5 +159,26 @@ describe("effets temporaires", () => {
     const def = { ...participant("Def"), camp: "monstre" as const };
     const s = createCombat([atk, def]);
     expect(() => resolveAttack(s, "Att", "Def", "a", fixedRng([0.9]))).toThrow(/ne peut pas agir/);
+  });
+});
+
+describe("description exacte des modificateurs (règles)", () => {
+  it("chaque clé moteur a un libellé", () => {
+    expect(decrireModificateurs({ attaque: -3 })).toEqual(["-3 aux jets d'attaque"]);
+    expect(decrireModificateurs({ defense: 2 })).toEqual(["+2 en DEF"]);
+    expect(decrireModificateurs({ pvParTour: -2 })).toEqual(["-2 PV au début de son tour"]);
+    expect(decrireModificateurs({ empecheAgir: 1 })).toEqual(["ne peut pas agir (tour sauté)"]);
+    expect(decrireModificateurs({ deBonus: 1 })).toEqual(["dé bonus (2d20, garder le meilleur)"]);
+    expect(decrireModificateurs({ deMalus: 1 })).toEqual(["dé malus (2d20, garder le pire)"]);
+    expect(decrireModificateurs({ seuilCrit: 19 })).toEqual(["critique dès 19 naturel"]);
+    expect(decrireModificateurs({})).toEqual([]);
+  });
+
+  it("catalogue : chaque état a une description moteur (sauf marqueur neutre)", () => {
+    for (const e of EFFECT_CATALOG) {
+      const lignes = decrireModificateurs(e.modificateurs);
+      if (Object.keys(e.modificateurs).length === 0) expect(lignes).toEqual([]);
+      else expect(lignes.length).toBeGreaterThan(0);
+    }
   });
 });
