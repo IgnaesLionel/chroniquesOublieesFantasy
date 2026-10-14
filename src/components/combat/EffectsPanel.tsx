@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
-import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
+import { canAct, decrireModificateurs } from "@/src/lib/rules/effects/effects";
 
 interface Props {
   participant: CombatParticipant | null;
@@ -15,7 +15,14 @@ export function EffectsPanel({ participant, onAdd, onRemove }: Props) {
   const [duree, setDuree] = useState("3");
 
   if (!participant) return null;
-  const mods = ["attaque", "defense"].map((k) => ({ k, v: getModifier(participant.effets, k) })).filter((m) => m.v !== 0);
+  // Tous les modificateurs fusionnés (attaque, DEF, dés, paralysie, marqueurs MJ...).
+  const modsFusionnes: Record<string, number> = {};
+  for (const e of participant.effets) {
+    for (const [k, v] of Object.entries(e.modificateurs)) {
+      if (typeof v === "number") modsFusionnes[k] = (modsFusionnes[k] ?? 0) + v;
+    }
+  }
+  const lignesMods = decrireModificateurs(modsFusionnes);
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
@@ -23,8 +30,8 @@ export function EffectsPanel({ participant, onAdd, onRemove }: Props) {
       {!canAct(participant.effets) && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">Ne peut pas agir (Étourdi/Paralysé/Surpris)</div>
       )}
-      {mods.length > 0 && (
-        <div className="text-xs text-amber-300">Modificateurs : {mods.map((m) => `${m.k} ${m.v > 0 ? "+" : ""}${m.v}`).join(" · ")}</div>
+      {lignesMods.length > 0 && (
+        <div className="text-xs text-amber-300">Modificateurs : {lignesMods.join(" · ")}</div>
       )}
       {participant.effets.length === 0 && <p className="text-xs text-zinc-500">Aucun effet actif.</p>}
       <div className="space-y-1.5">

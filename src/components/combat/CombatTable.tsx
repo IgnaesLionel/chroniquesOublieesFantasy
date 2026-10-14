@@ -1,5 +1,6 @@
 "use client";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import { getModifier } from "@/src/lib/rules/effects/effects";
 import { pvBarreColor } from "@/src/lib/ui/pv";
 
 function tonEffet(e: { modificateurs: Record<string, number> }): string {
@@ -37,6 +38,8 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
           {combat.participants.map((p, i) => {
             const active = i === combat.tourIndex;
             const isAttacker = p.instanceId === attackerId;
+            // DEF effective : base (armure comprise) + effets (surpris, renversé...).
+            const modDef = getModifier(p.effets, "defense");
             return (
               <tr
                 key={p.instanceId}
@@ -83,7 +86,9 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                       {onSync && syncIds?.includes(p.instanceId) && (<button onClick={() => onSync(p.instanceId)} title="Resynchroniser depuis la fiche (attaques, sorts, talents)" className="px-1.5 rounded bg-zinc-700 text-xs">↻</button>)}
                   </div>
                 </td>
-                <td className="px-3 py-2 font-mono">{p.defense}</td>
+                <td className="px-3 py-2 font-mono" title={modDef !== 0 ? `Base ${p.defense} (${modDef > 0 ? "+" : ""}${modDef} effets)` : "Défense (armure comprise)"}>
+                  {p.defense + modDef}{modDef !== 0 && <span className="text-xs text-zinc-500"> ({p.defense})</span>}
+                </td>
                 <td className="px-3 py-2">
                   <span className={`text-xs px-2 py-0.5 rounded ${p.statut === "actif" ? "bg-green-900 text-green-200" : "bg-zinc-800 text-zinc-400"}`}>
                     {p.statut === "actif" ? "actif" : "KO"}

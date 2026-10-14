@@ -215,6 +215,32 @@ describe("états préjudiciables (LDB)", () => {
     expect(resolution.jetNaturel).toBe(3);
   });
 
+  it("étourdi : bloque et −5 DEF", () => {
+    const atk = participant("Att");
+    const def = { ...participant("Def"), camp: "monstre" as const, defense: 15, effets: [createEffect("etourdi")] };
+    expect(canAct(def.effets)).toBe(false);
+    const { resolution } = resolveAttack(createCombat([atk, def]), "Att", "Def", "a", fixedRng([0.5, 0.5]));
+    expect(resolution.defenseCible).toBe(10);
+  });
+
+  it("immobilisé : agit toujours, mais dé malus aux attaques", () => {
+    const atk = { ...participant("Att"), effets: [createEffect("immobilise")] };
+    expect(canAct(atk.effets)).toBe(true);
+    const def = { ...participant("Def"), camp: "monstre" as const, defense: 10 };
+    // 3 puis 19 : dé malus garde 3.
+    const { resolution } = resolveAttack(createCombat([atk, def]), "Att", "Def", "a", fixedRng([0.1, 0.9, 0.5]));
+    expect(resolution.desAvantage).toBe("malus");
+    expect(resolution.jetNaturel).toBe(3);
+  });
+
+  it("essoufflé / invalide / ralenti : marqueurs MJ, n'empêchent pas d'agir", () => {
+    for (const cle of ["essouffle", "invalide", "ralenti"] as const) {
+      const e = createEffect(cle);
+      expect(canAct([e])).toBe(true);
+      expect(decrireModificateurs(e.modificateurs).some((l) => l.includes("(MJ)"))).toBe(true);
+    }
+  });
+
   it("paralysé : touché automatiquement, critique subi (même sur un jet raté)", () => {
     const atk = participant("Att");
     const def = { ...participant("Def"), camp: "monstre" as const, defense: 15, effets: [createEffect("paralyse")] };
@@ -223,6 +249,17 @@ describe("états préjudiciables (LDB)", () => {
     expect(resolution.touche).toBe(true);
     expect(resolution.critique).toBe(true);
     expect(state.log.some((l) => l.message.includes("paralysé"))).toBe(true);
+  });
+
+  it("surpris : −5 DEF sur le total, armure comprise", () => {
+    const atk = participant("Att");
+    // DEF 18 = 10 + AGI 2 + armure 6, surpris avant l'initiative.
+    const def = { ...participant("Def"), camp: "monstre" as const, defense: 18, effets: [createEffect("surpris")] };
+    const { resolution, state } = resolveAttack(createCombat([atk, def]), "Att", "Def", "a", fixedRng([0.9, 0.5]));
+    expect(resolution.defenseCible).toBe(13);
+    expect(state.log.some((l) => l.message.includes("Défense Def : 18 (-5 effets)"))).toBe(true);
+    // Bloqué en plus (pas d'action au premier round).
+    expect(canAct(def.effets)).toBe(false);
   });
 
   it("renversé : -5 attaque et -5 DEF appliqués des deux côtés", () => {

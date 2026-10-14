@@ -263,7 +263,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
                   disabled={!ciblesAffichees.includes(p.instanceId) && maxCibles != null && ciblesAffichees.length >= maxCibles}
                   onChange={() => basculerCible(p.instanceId)}
                 />
-                <span className="flex-1">{p.nom} — Déf {p.defense} — {p.pv}/{p.pvMax} PV</span>
+                <span className="flex-1">{p.nom} — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</span>
                 {attacker && p.camp !== attacker.camp && <span className="text-xs text-red-400">ennemi</span>}
               </label>
             ))}
@@ -272,7 +272,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         ) : (
           <select value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
             {vivants.filter((p) => p.instanceId !== attackerId).map((p) => (
-              <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense} — {p.pv}/{p.pvMax} PV</option>
+              <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</option>
             ))}
           </select>
         )}
