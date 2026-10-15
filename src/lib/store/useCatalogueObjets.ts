@@ -20,10 +20,10 @@ export function fusionnerCatalogue(seeds: Item[], maison: Item[]): Item[] {
   return [...byId.values()];
 }
 
-// Catalogue d'objets : seeds en dur + créations du MJ (persistées en
-// localStorage, sauvegardées via le backup comme les autres collections).
+// Catalogue d'objets : seeds en dur + créations du MJ (mémoire seule,
+// perdues au rechargement — comme les autres données de jeu).
 export function useCatalogueObjets() {
-  const { items: maison, setItems: setMaison } = useLocalCollection<Item>(STORAGE_KEYS.items, []);
+  const { items: maison, setItems: setMaison } = useLocalCollection<Item>(STORAGE_KEYS.items, [], { persist: false });
   const catalogue = useMemo(() => fusionnerCatalogue(SEED_ITEMS, maison), [maison]);
   const idsMaison = useMemo(() => new Set(maison.map((o) => o.id)), [maison]);
   return { catalogue, maison, setMaison, idsMaison };

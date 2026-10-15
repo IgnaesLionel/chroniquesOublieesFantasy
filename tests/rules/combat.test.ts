@@ -8,10 +8,11 @@ import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkE
 import { monsterInstances, nomBaseInstance, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { fixedRng, parseDiceExpression, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
+import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { CAPACITES_USABLES } from "@/src/lib/data/capacites-usables";
-import { createEffect } from "@/src/lib/rules/effects/effects";
+import { createEffect, pvParTourTotal } from "@/src/lib/rules/effects/effects";
 import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
 
 function pj(nom = "Guerrier", defense = 18): CombatParticipant {
@@ -1246,11 +1247,11 @@ describe("restriction d'espèce (Destruction du mal -> morts-vivants et démons)
     expect(resolution.degatsTotal).toBe(0);
     expect(state.participants[1].pv).toBe(koboldTpl.pv);
     expect(state.log.some((l) => l.message.includes("Sans effet"))).toBe(true);
-    // ...mais toujours 2d4 automatiques sur squelette.
+    // ...mais dégâts du grimoire au rang de voie (2d4°+CHA, CHA 4) sur squelette.
     const s2 = createCombat([pretre, squelette()]);
     const r2 = resolveAttack(s2, s2.participants[0].instanceId, s2.participants[1].instanceId, atkId, fixedRng([0.5, 0.5]));
-    expect(r2.resolution.degatsTotal).toBe(6);
-    expect(r2.state.participants[1].pv).toBe(3);
+    expect(r2.resolution.degatsTotal).toBe(10);
+    expect(r2.state.participants[1].pv).toBe(0);
   });
 
   it("sort à jet restreint : touché sur mort-vivant = dégâts, sur vivant = 0", () => {
@@ -1494,5 +1495,76 @@ describe("fusion capacités : usages valides et exécutables", () => {
     const r = utiliserCapacite(s, a, t, "Phénix", { effetCle: null, soin: "2d4°+CHA" }, fixedRng([0.5, 0.5]));
     expect(r.resolution.soinTotal).toBe(6);
     expect(r.state.participants[1].pv).toBe(16);
+  });
+});
+
+describe("options tactiques (LDB)", () => {
+  it("assurée : +5 en attaque (armes), DM divisés par 2", () => {
+    const s = createCombat([pj("Att"), gobelin()]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 11 naturel : 11+6+5 = 22 vs 15 -> touche ; 1d8+3 : 5+3 = 8 -> 4.
+    const r = resolveAttack(s, a, t, "epee", fixedRng([0.5, 0.5]), DEFAULT_COMBAT_OPTIONS, {
+      modAttaque: 5, diviseDM: 2, tactique: "assuree",
+    });
+    expect(r.resolution.jetTotal).toBe(22);
+    expect(r.resolution.degatsTotal).toBe(4);
+    expect(r.state.log.some((l) => l.message.includes("Assurée"))).toBe(true);
+    expect(r.state.log.some((l) => l.message.includes("divisés par 2"))).toBe(true);
+  });
+
+  it("précise : −3 en attaque, +1d4° DM", () => {
+    const s = createCombat([pj("Att"), gobelin()]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 19 naturel : 19+6-3 = 22 vs 15 -> touche ; 1d8+3 : 8, +1d4° : 3 -> 11.
+    const r = resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS, {
+      modAttaque: -3, degatsBonus: ["1d4°"], tactique: "precise",
+    });
+    expect(r.resolution.jetTotal).toBe(22);
+    expect(r.resolution.degatsTotal).toBe(11);
+    expect(r.state.log.some((l) => l.message.includes("Précise"))).toBe(true);
+  });
+
+  it("violente : −7 en attaque, +2d4° DM", () => {
+    const s = createCombat([pj("Att"), gobelin()]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 19 naturel : 19+6-7 = 18 vs 15 -> touche ; 1d8+3 : 8, +2d4° : 3+3 -> 14.
+    const r = resolveAttack(s, a, t, "epee", fixedRng([0.9, 0.5, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS, {
+      modAttaque: -7, degatsBonus: ["2d4°"], tactique: "violente",
+    });
+    expect(r.resolution.jetTotal).toBe(18);
+    expect(r.resolution.degatsTotal).toBe(14);
+    expect(r.state.log.some((l) => l.message.includes("Violente"))).toBe(true);
+  });
+
+  it("Saignements de Mirabel (seed) : DoT 1d4° pendant INT (2) rounds, sans dégâts immédiats", () => {
+    const mirabel = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
+    const lanceur = participantFromCharacter(mirabel, SEED_ITEMS);
+    const s = createCombat([lanceur, gobelin()]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Difficulté fixe 10+CON (gobelin de test sans caracs : CON 0 = 10, DEF 15 ignorée) :
+    // 11 naturel : 11+5 = 16 >= 10 -> touche ; pas de dégâts immédiats.
+    // DoT 1d4° (niv. 1 -> d4) : 3 PV/round.
+    const r = resolveAttack(s, a, t, "sort:mirabel-saignements", fixedRng([0.5, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    expect(r.resolution.defenseCible).toBe(10);
+    expect(r.resolution.touche).toBe(true);
+    expect(r.resolution.degatsTotal).toBe(0);
+    const effet = r.state.participants[1].effets.find((e) => e.nom === "Saignement");
+    expect(effet).toBeTruthy();
+    expect(effet?.toursRestants).toBe(2);
+    expect(pvParTourTotal(r.state.participants[1].effets)).toBe(-3);
+    expect(r.state.log.some((l) => l.message.includes("Difficulté 10+CON"))).toBe(true);
+    expect(r.state.log.some((l) => l.message.includes("Saignement"))).toBe(true);
+  });
+
+  it("difficulté fixe : la DEF est ignorée (cible blindée mais frêle touchée)", () => {
+    const mirabel = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
+    const lanceur = participantFromCharacter(mirabel, SEED_ITEMS);
+    // DEF 20 mais CON 0 -> seuil 10 ; 5 naturel : 5+5 = 10 -> touche (raté vs DEF).
+    const cible = { ...gobelin(), defense: 20, caracs: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 } };
+    const s = createCombat([lanceur, cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const r = resolveAttack(s, a, t, "sort:mirabel-saignements", fixedRng([0.2, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    expect(r.resolution.defenseCible).toBe(10);
+    expect(r.resolution.touche).toBe(true);
   });
 });

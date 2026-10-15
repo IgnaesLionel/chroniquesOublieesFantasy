@@ -659,24 +659,33 @@ export function apprendreSort<T extends Character>(c: T, modele: Sort): T {
  * Champs mécaniques de sort complétés depuis le grimoire quand la fiche ne
  * les connaît pas (sort appris avant leur introduction : champ undefined).
  * Seuls les champs ABSENTS sont remplis, jamais les valeurs définies
- * (personnalisation MJ préservée : un `toucheAuto: false` ou des
- * `cibleEspeces` maison restent intacts). Appariement par nom (les copies
- * de fiche ont un id unique), sans muter l'entrée.
+ * (personnalisation MJ préservée : un `toucheAuto: false`, des dégâts ou
+ * des `cibleEspeces` maison restent intacts). En contrepartie, un homebrew
+ * qui partage le NOM d'un sort du grimoire hérite des mécaniques manquantes.
+ * Appariement par nom (les copies de fiche ont un id unique), sans muter
+ * l'entrée (copie des tableaux et objets).
  */
-const CHAMPS_SORTS_COMPLETABLES = ["toucheAuto", "cibleEspeces"] as const;
+const CHAMPS_SORTS_COMPLETABLES = [
+  "toucheAuto", "cibleEspeces",
+  "effetCle", "effetDuree", "effetDegats", "effetMods", "effetSauvegarde",
+  "degats", "degatsParRangVoie", "demiDegatsSiRate", "difficulteAttaque",
+  "limiteCombat", "limiteParCible", "zone", "ciblesMax", "ciblesLibres",
+  "invocation", "attaqueAccordee", "coutPV", "action", "bonus", "soin", "cout",
+] as const;
 
 export function completerSortsDepuisGrimoire(sorts: Sort[], grimoire: Sort[] = SEED_SORTS): Sort[] {
   const refs = new Map(grimoire.map((s) => [s.nom.trim().toLowerCase(), s]));
   let touche = false;
   const complete = sorts.map((s) => {
-    if (s.toucheAuto !== undefined && s.cibleEspeces !== undefined) return s;
+    if (CHAMPS_SORTS_COMPLETABLES.every((ch) => s[ch] !== undefined)) return s;
     const ref = refs.get(s.nom.trim().toLowerCase());
     if (!ref) return s;
     let out = s;
     for (const champ of CHAMPS_SORTS_COMPLETABLES) {
       if (out[champ] === undefined && ref[champ] !== undefined) {
-        const v = ref[champ];
-        out = { ...out, [champ]: Array.isArray(v) ? [...v] : v };
+        const v = ref[champ] as unknown;
+        const copie = Array.isArray(v) ? [...v] : (typeof v === "object" && v !== null ? { ...v } : v);
+        out = { ...out, [champ]: copie } as Sort;
         touche = true;
       }
     }

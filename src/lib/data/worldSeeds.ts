@@ -34,6 +34,21 @@ export const SEED_NPCS: Npc[] = [
     secret: "Connaît l'existence de la salle secrète.",
     notesMJ: "Donne l'indice X si les PJ l'aident.",
   },
+  {
+    id: "npc-anselme-verdepied", nom: "Anselme Verdepied", role: "Négociant en artefacts magiques", exemple: false,
+    description: "Homme en robe grise et chapeau de magicien assorti, sur une carriole tirée par un cheval nerveux.",
+    personnalite: "Volubile et reconnaissant, un peu froussard.",
+    statistiques: "Niv. 2, PV 16, Déf 11.",
+    dialogues: [
+      "« Un grand merci jeunes gens ! Enchanté, je suis Anselme Verdepied. Vous m’avez sauvé la vie ! »",
+      "« Je reviens de Clairval et je pars faire des affaires dans le sud, quelques babioles à acheter. »",
+      "« J’aimerais vous offrir cette potion de soin pour vous remercier. J’ai aussi une carte qui pourrait vous aider. »",
+      "« Sans trop abuser de votre gentillesse, pourriez-vous m’aider à remettre la roue ? J’ai une boîte à outils. »",
+    ],
+    secret: "Ses potions sont bien des potions de soin (Test INT 5 pour s’en assurer). Sa carte est correcte mais approximative (Test PER 5).",
+    relations: "Croise la route des PJ sur la route de Clairval, puis repart vers le sud.",
+    notesMJ: "Donne 1 potion de soin (item-potion) et la carte de Clairval (item-carte-clairval, flags potion_anselme / carte_anselme). Coup de main pour la roue : 3 PJ soulèvent (FOR 10, −1 PV si échec), 1 PJ remet la roue (AGI 10, −1 PV si échec) — flag roue_remise.",
+  },
 ];
 
 export const SEED_ITEMS: Item[] = [
@@ -59,6 +74,11 @@ export const SEED_ITEMS: Item[] = [
     description: "Coffret cabossé de la salle secrète.",
     effet: "Récompense de fin : 150 po à partager (exemple).",
     valeur: 150,
+  },
+  {
+    id: "item-carte-clairval", nom: "Carte approximative de Clairval", categorie: "quete", quantite: 1, exemple: false,
+    description: "Carte donnée par Anselme Verdepied : les axes les plus connus y sont bien inscrits, mais elle reste approximative.",
+    effet: "Aide à s’orienter vers Clairval (Test PER 5 pour valider, flag : carte_anselme).",
   },
   {
     id: "item-epee", nom: "Épée longue", categorie: "arme", quantite: 1, exemple: true,

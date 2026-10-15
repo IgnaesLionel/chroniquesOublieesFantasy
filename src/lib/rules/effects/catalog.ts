@@ -29,6 +29,11 @@ export const EFFECT_CATALOG: EffectTemplate[] = [
   { key: "ralenti", nom: "Ralenti", description: "Une seule action par round, d'attaque ou de mouvement (MJ).", dureeDefaut: 2, modificateurs: { actionUnique: 1 } },
   { key: "renverse", nom: "Renversé", description: "−5 en attaque et en DEF ; se relever exige une action d'attaque (MJ).", dureeDefaut: 2, modificateurs: { attaque: -5, defense: -5 } },
   { key: "surpris", nom: "Surpris", description: "Pas d'action et −5 en DEF au premier round de combat.", dureeDefaut: 1, modificateurs: { empecheAgir: 1, defense: -5 } },
+  // Options tactiques officielles (LDB) : postures déclarées au lieu d'attaquer (MJ : économie d'actions).
+  { key: "defense-partielle", nom: "Défense partielle", description: "LDB (A) : +3 en DEF et aux tests opposés pour résister (MJ) pendant 1 round. Générale : contact, distance et magie.", dureeDefaut: 1, modificateurs: { defense: 3 } },
+  { key: "defense-totale", nom: "Défense totale", description: "LDB (L) : +5 en DEF et aux tests opposés pour résister (MJ) pendant 1 round. Générale : contact, distance et magie.", dureeDefaut: 1, modificateurs: { defense: 5 } },
+  { key: "riposte-posture", nom: "Posture de riposte", description: "LDB (L ou A, au contact) : déclarée en début de round ; si attaqué au contact, riposte immédiate sur son tour (1/round — avant sa propre initiative : attaque seule). Le MJ fait jouer la riposte (sélectionner le riposteur comme attaquant).", dureeDefaut: 1, modificateurs: { ripostePosture: 1 } },
+  { key: "soutien-tactique", nom: "Soutien", description: "LDB (L) : sacrifie toutes ses actions — +5 en attaque au contact à un allié contre la créature désignée, jusqu’au tour de l’allié au round suivant. Au contact de la créature, action offensive (MJ).", dureeDefaut: 1, modificateurs: { attaque: 5 } },
   // Effets génériques (assistant, ajustables par le MJ).
   { key: "empoisonne", nom: "Empoisonné", description: "−2 aux jets d'attaque (générique).", dureeDefaut: 3, modificateurs: { attaque: -2 } },
   { key: "saignement", nom: "Saignement", description: "Perd 2 PV au début de son tour (générique).", dureeDefaut: 3, modificateurs: { pvParTour: -2 } },

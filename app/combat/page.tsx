@@ -22,6 +22,7 @@ import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
 import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
+import { TactiquePanel } from "@/src/components/combat/TactiquePanel";
 
 export default function CombatPage() {
   const { items: characters, setItems: setCharacters } = useCharacters();
@@ -529,6 +530,13 @@ export default function CombatPage() {
             }
             onRemove={(effetId) =>
               setCombat((c) => (c && attackerId ? removeParticipantEffect(c, attackerId, effetId) : c))
+            }
+          />
+          <TactiquePanel
+            participants={combat.participants}
+            acteurId={attackerId}
+            onAppliquer={(cibleId, cle, duree) =>
+              setCombat((c) => (c ? addParticipantEffect(c, cibleId, createEffect(cle, { dureeTours: duree, source: "Tactique" })) : c))
             }
           />
           {opponentsOf.length > 0 && attackerId && (

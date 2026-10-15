@@ -26,6 +26,15 @@ export const STORAGE_KEYS = {
 
 export type CollectionName = keyof typeof STORAGE_KEYS;
 
+/** Collections mémoire seule (données de jeu depuis le code) : l'import ne les écrit pas. */
+export const MEMOIRE_SEULE: ReadonlySet<CollectionName> = new Set([
+  "monsters",
+  "npcs",
+  "items",
+  "scenarios",
+  "sorts",
+]);
+
 const SCHEMAS = {
   characters: characterSchema,
   monsters: monsterSchema,
@@ -109,9 +118,10 @@ export function buildBackup(): BackupData {
   return { version: 1, exportedAt: new Date().toISOString(), data };
 }
 
-/** Écrit les collections validées puis recharge (les hooks chargent au montage). */
+/** Écrit les collections validées puis recharge (les hooks chargent au montage). Les collections mémoire seule sont ignorées (données du code). */
 export function applyBackup(backup: BackupData): void {
   (Object.keys(STORAGE_KEYS) as CollectionName[]).forEach((name) => {
+    if (MEMOIRE_SEULE.has(name)) return;
     window.localStorage.setItem(STORAGE_KEYS[name], JSON.stringify(backup.data[name] ?? []));
   });
 }

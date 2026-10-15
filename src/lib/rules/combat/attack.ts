@@ -1,4 +1,4 @@
-import { parseDiceExpression, rollDiceExpression, substituerDesEvolutifs, substituerStats, dureeEffetSort, type Rng } from "@/src/lib/rules/dice/roller";
+import { parseDiceExpression, rollDiceExpression, resoudreFormuleSort, substituerDesEvolutifs, substituerStats, dureeEffetSort, type Rng } from "@/src/lib/rules/dice/roller";
 import { canAct, createEffect, getModifier, marquerPose } from "@/src/lib/rules/effects/effects";
 import { cibleEspeceAcceptee } from "@/src/lib/rules/categories";
 import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
@@ -162,7 +162,14 @@ export function resolveAttack(
   const modDefense = getModifier(cible.effets, "defense");
   const bonusBase = attaqueOpts.bonusOverride ?? attaque.bonus;
   const bonusEffectif = bonusBase + modAttaque + modDistance;
-  const defenseEffective = cible.defense + modDefense;
+  // Attaque assurée : DM divisés (après le critique, plancher entier).
+  const diviseDM = attaqueOpts.diviseDM && attaqueOpts.diviseDM > 1 ? Math.floor(attaqueOpts.diviseDM) : 1;
+  // Difficulté fixe du sort (ex: Saignements diff 10+CON de la cible) :
+  // remplace le seuil de DEF (le jet garde son bonus). Sinon : DEF + effets.
+  const difficulteSort = sort?.difficulteAttaque
+    ? { formule: sort.difficulteAttaque, seuil: resoudreFormuleSort(sort.difficulteAttaque, cible.caracs ?? {}) }
+    : null;
+  const defenseEffective = difficulteSort ? difficulteSort.seuil : cible.defense + modDefense;
   // Dés évolutifs (°) résolus au niveau de l'attaquant (d4 1-5 ... d12 15+).
   const nivAttaquant = niveauEffectif(attaquant);
   const degatsExpr = substituerDesEvolutifs(attaqueOpts.degatsOverride ?? attaque.degats, nivAttaquant);
@@ -297,6 +304,7 @@ export function resolveAttack(
       bonusLog = `+${parties.join(" + ")}${bonusDetails.length > 0 || attaqueOpts.bonusDM ? " (coup spécial)" : ""}`;
     }
     degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
+    if (diviseDM > 1 && degatsTotal > 0) degatsTotal = Math.floor(degatsTotal / diviseDM);
   } else if (attaque.demiDegatsSiRate && especeCibleOk) {
     const roll = rollDiceExpression(parseDiceExpression(degatsExpr), rng);
     degatsDetails = roll.rolls;
@@ -402,8 +410,16 @@ export function resolveAttack(
     const des = avantage && jetSecondaire != null ? `${d1}, ${jetSecondaire} (dé ${avantage} -> ${jetNaturel}) + ` : `${jetNaturel} + `;
     log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${bonusBase}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque})` : ""}${modDistance !== 0 ? ` (${modDistance} à distance)` : ""} = ${jetTotal}` });
   }
-  log.push({ id: id("def"), at: stamp(), manche: s.manche, message: `Défense ${cible.nom} : ${cible.defense}${modDefense !== 0 ? ` (${modDefense > 0 ? "+" : ""}${modDefense} effets)` : ""}` });
+  if (difficulteSort) {
+    log.push({ id: id("dif"), at: stamp(), manche: s.manche, message: `Difficulté ${difficulteSort.formule} pour ${cible.nom} : ${difficulteSort.seuil}` });
+  } else {
+    log.push({ id: id("def"), at: stamp(), manche: s.manche, message: `Défense ${cible.nom} : ${cible.defense}${modDefense !== 0 ? ` (${modDefense > 0 ? "+" : ""}${modDefense} effets)` : ""}` });
+  }
   log.push({ id: id("hit"), at: stamp(), manche: s.manche, message: toucheVraie ? (critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ" });
+  if (attaqueOpts.tactique) {
+    const label = { assuree: "Assurée (+5 en attaque, DM/2)", precise: "Précise (−3 en attaque, +1d4° DM)", violente: "Violente (−7 en attaque, +2d4° DM)" }[attaqueOpts.tactique];
+    log.push({ id: id("tac"), at: stamp(), manche: s.manche, message: `Option tactique : ${label}` });
+  }
   if (paralyseLog) log.push({ id: id("paral"), at: stamp(), manche: s.manche, message: paralyseLog });
   if (paradeLog) log.push({ id: id("par"), at: stamp(), manche: s.manche, message: paradeLog });
   if (!toucheVraie && estAttaqueArme(attaque) && talentConnu(cible, "Riposte")) {
@@ -413,7 +429,7 @@ export function resolveAttack(
     log.push({ id: id("suivre"), at: stamp(), manche: s.manche, message: `Attaque à suivre (G) : ${attaquant.nom} peut attaquer de la 2e main (dague, hachette, épée courte, 1/round — MJ)` });
   }
   if ((toucheVraie || moitie) && !pare) {
-    log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${degatsExpr}${bonusLog ? ` ${bonusLog}` : ""} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${moitie ? " (moitié, raté)" : ""}` });
+    log.push({ id: id("dmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${degatsExpr}${bonusLog ? ` ${bonusLog}` : ""} -> [${degatsDetails.join(", ")}] = ${degatsTotal}${diviseDM > 1 ? ` (divisés par ${diviseDM})` : ""}${moitie ? " (moitié, raté)" : ""}` });
     if (doublePeineLog) log.push({ id: id("dbl"), at: stamp(), manche: s.manche, message: doublePeineLog });
     log.push({ id: id("pv"), at: stamp(), manche: s.manche, message: `${cible.nom} : ${pvAvant} -> ${pvApres} PV` });
     if (effetTouche) log.push({ id: id("eff"), at: stamp(), manche: s.manche, message: `Effet "${effetTouche.nom}" (${effetTouche.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
@@ -464,10 +480,13 @@ export function depenserChanceApresCoup(
   if (!canAct(attaquant.effets)) throw new Error(`${attaquant.nom} ne peut pas agir (Étourdi/Immobilisé).`);
 
   const modDefense = getModifier(cible.effets, "defense");
-  const defenseEffective = cible.defense + modDefense;
+  const sortChance = sortDeAttaque(attaquant, attaque.id);
+  const seuilChance = sortChance?.difficulteAttaque
+    ? resoudreFormuleSort(sortChance.difficulteAttaque, cible.caracs ?? {})
+    : null;
+  const defenseEffective = seuilChance ?? cible.defense + modDefense;
   const jetTotal = last.jetTotal + 10;
   const touche = jetTotal >= defenseEffective;
-  const sortChance = sortDeAttaque(attaquant, attaque.id);
   // Restriction d'espèce : pas de contournement via la chance.
   const especeCibleOk = cibleEspeceAcceptee(sortChance, cible);
 
@@ -852,6 +871,10 @@ export interface AttaqueOpts {
   deBonus?: boolean;
   /** Effet supplémentaire au toucher (ex: Flèche statut {cle: "aveugle", duree: 1}). */
   effetSupp?: { cle: string; duree: number | null };
+  /** Divise les DM (ex: Attaque assurée = 2). Appliqué après le critique. */
+  diviseDM?: number;
+  /** Option tactique (A) : assurée / précise / violente — journalisée, jamais sur attaque magique. */
+  tactique?: "assuree" | "precise" | "violente";
   /** Remplace le bonus au jet (ex: Attaque éclair = niv+AGI). */
   bonusOverride?: number;
   /** Remplace les dégâts (ex: Attaque éclair = dés de l'arme + AGI). */

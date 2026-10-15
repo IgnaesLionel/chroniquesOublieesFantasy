@@ -43,12 +43,13 @@ export function decrireModificateurs(mods: Record<string, number>): string[] {
   if ((mods["deMalus"] ?? 0) > 0) lignes.push("dé malus (2d20, garder le pire)");
   if ((mods["pasDeDeplacement"] ?? 0) > 0) lignes.push("pas de déplacement (MJ)");
   if ((mods["actionUnique"] ?? 0) > 0) lignes.push("une seule action par round (MJ)");
+  if ((mods["ripostePosture"] ?? 0) > 0) lignes.push("posture de riposte (MJ : riposte immédiate si attaqué au contact, 1/round)");
   if (typeof mods["deplacementMax"] === "number") lignes.push(`déplacement max ${mods["deplacementMax"]} m par action de mouvement (MJ)`);
   if (typeof mods["seuilCrit"] === "number") lignes.push(`critique dès ${mods["seuilCrit"]} naturel`);
   if ((mods["parade"] ?? 0) > 0) lignes.push("parade (test opposé, capacité)");
   if ((mods["absorption"] ?? 0) > 0) lignes.push("absorption de sort (capacité)");
   for (const cle of Object.keys(mods).sort()) {
-    if (["attaque", "attaqueDistance", "defense", "pvParTour", "empecheAgir", "paralyse", "deBonus", "deMalus", "pasDeDeplacement", "actionUnique", "deplacementMax", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
+    if (["attaque", "attaqueDistance", "defense", "pvParTour", "empecheAgir", "paralyse", "deBonus", "deMalus", "pasDeDeplacement", "actionUnique", "ripostePosture", "deplacementMax", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
     lignes.push(`${cle} ${mods[cle]}`);
   }
   return lignes;

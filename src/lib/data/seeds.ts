@@ -55,9 +55,11 @@ export const SEED_CHARACTERS: Character[] = [
       {
         id: "mirabel-saignements", nom: "Saignements", type: "offensif",
         voie: "Voie du sang", rang: 1,
-        description: "Test d'attaque magique diff 10+CON (10 m) : 1d4 DM par round pendant INT rounds.",
+        description: "Test d'attaque magique (10 m) diff 10+CON : 1d4° DM par round pendant INT rounds (pas de dégâts immédiats).",
         familles: ["Sorcier"],
-        degats: "1d4", cout: { ressource: "mana", montant: 1 },
+        difficulteAttaque: "10+CON",
+        effetCle: "Saignement", effetDuree: "INT", effetDegats: "1d4°",
+        cout: { ressource: "mana", montant: 1 },
       },
     ],
   },

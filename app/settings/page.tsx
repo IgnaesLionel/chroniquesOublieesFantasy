@@ -11,6 +11,8 @@ import {
   type CollectionName,
   type ImportReport,
 } from "@/src/lib/store/backup";
+import { useCharacters, useMonsters, useNpcs, useScenarios, useSessions, useSorts } from "@/src/lib/store/collections";
+import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 
 const LABELS: Record<CollectionName, string> = {
   characters: "Personnages",
@@ -22,33 +24,44 @@ const LABELS: Record<CollectionName, string> = {
   sessions: "Sessions",
 };
 
-function storageInfo(): { counts: Record<CollectionName, number>; bytes: number } {
-  const counts = {} as Record<CollectionName, number>;
+function storageBytes(): number {
   let bytes = 0;
-  (Object.keys(STORAGE_KEYS) as CollectionName[]).forEach((name) => {
-    const raw = window.localStorage.getItem(STORAGE_KEYS[name]) ?? "[]";
-    bytes += raw.length;
-    try {
-      counts[name] = (JSON.parse(raw) as unknown[]).length;
-    } catch {
-      counts[name] = 0;
-    }
+  (Object.values(STORAGE_KEYS) as string[]).forEach((k) => {
+    bytes += (window.localStorage.getItem(k) ?? "").length;
   });
-  return { counts, bytes };
+  return bytes;
 }
 
 export default function SettingsPage() {
   // Rendu initial identique serveur/client, chargement après montage.
-  const [info, setInfo] = useState<{ counts: Record<CollectionName, number>; bytes: number } | null>(null);
+  const [bytes, setBytes] = useState<number | null>(null);
   const [pending, setPending] = useState<BackupData | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [error, setError] = useState("");
+  // Compteurs réels (persisté + mémoire) : le stockage local ne contient
+  // que personnages, sessions et progression.
+  const { items: characters } = useCharacters();
+  const { items: monsters } = useMonsters();
+  const { items: npcs } = useNpcs();
+  const { catalogue } = useCatalogueObjets();
+  const { items: scenarios } = useScenarios();
+  const { items: sorts } = useSorts();
+  const { items: sessions } = useSessions();
+  const counts: Record<CollectionName, number> = {
+    characters: characters.length,
+    monsters: monsters.length,
+    npcs: npcs.length,
+    items: catalogue.length,
+    scenarios: scenarios.length,
+    sorts: sorts.length,
+    sessions: sessions.length,
+  };
 
   useEffect(() => {
-    setInfo(storageInfo());
+    setBytes(storageBytes());
   }, []);
 
-  const refresh = () => setInfo(storageInfo());
+  const refresh = () => setBytes(storageBytes());
 
   const onFile = async (f: File | undefined) => {
     setError("");
@@ -69,16 +82,17 @@ export default function SettingsPage() {
     <div className="space-y-4 max-w-2xl">
       <h1 className="text-2xl font-bold">Paramètres — Sauvegarde</h1>
       <p className="text-sm text-zinc-400">
-        Stockage local du navigateur (remplaçable par SQLite/Postgres via le Repository).
+        Persistés en local : personnages, sessions et progression des scénarios.
+        Monstres, PNJ, objets, sorts et scénarios viennent du code (mémoire seule, perdus au rechargement si modifiés).
         Combat en cours et jets de dés non sauvegardés (volatils).
       </p>
 
-      {info && (
+      {bytes !== null && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-          <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Contenu actuel ({(info.bytes / 1024).toFixed(1)} Ko)</h2>
+          <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Contenu actuel ({(bytes / 1024).toFixed(1)} Ko en local)</h2>
           <div className="flex gap-2 flex-wrap text-sm">
             {(Object.keys(LABELS) as CollectionName[]).map((k) => (
-              <span key={k} className="px-2.5 py-1 rounded bg-zinc-800">{LABELS[k]} : <b>{info.counts[k]}</b></span>
+              <span key={k} className="px-2.5 py-1 rounded bg-zinc-800">{LABELS[k]} : <b>{counts[k]}</b></span>
             ))}
           </div>
         </div>
@@ -96,6 +110,7 @@ export default function SettingsPage() {
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
         <h2 className="font-bold text-sm uppercase text-zinc-400">Import (validé)</h2>
+        <p className="text-xs text-zinc-500">Seuls les personnages et les sessions sont importés (le reste vient du code).</p>
         <input
           type="file" accept="application/json,.json"
           onChange={(e) => onFile(e.target.files?.[0])}
@@ -132,13 +147,13 @@ export default function SettingsPage() {
         <h2 className="font-bold text-sm uppercase text-red-400">Zone dangereuse</h2>
         <button
           onClick={() => {
-            if (!confirm("Tout effacer ? Les seeds d'exemple seront rechargés au prochain refresh.")) return;
+            if (!confirm("Tout effacer ? Les personnages et sessions reviendront aux graines au prochain refresh.")) return;
             (Object.values(STORAGE_KEYS) as string[]).forEach((k) => window.localStorage.removeItem(k));
             window.location.reload();
           }}
           className="px-4 py-2 rounded bg-zinc-800 text-sm hover:bg-red-900"
         >
-          Tout effacer (retour aux exemples)
+          Tout effacer (personnages/sessions → graines)
         </button>
         <button onClick={refresh} className="ml-2 px-4 py-2 rounded bg-zinc-800 text-sm">Actualiser l'affichage</button>
       </div>

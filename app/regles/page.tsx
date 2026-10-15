@@ -142,6 +142,7 @@ export default function ReglesPage() {
 
       <Section id="personnage" titre="Personnage">
         <p>Caractéristiques : AGI, CON, FOR, PER, CHA, INT, VOL (modificateurs, ex. +4/-1). Idéal héroïque et travers : narratifs, aucun bonus.<Src de="Fiches" /></p>
+        <p>Conversion officielle V1 → V2 (blocs 6 stats) : FOR, DEX→AGI, CON, INT et CHA inchangés ; <b>1 Sagesse = 1 Perception ET 1 Volonté</b> (la même valeur aux deux).<Src de="Règle LDB" /></p>
         <Formule>INIT = 10 + PER (+3 Vivacité, +rang archer) · DEF = 10 + AGI + Équipement + Mod + talents (os +3, bouclier/dur/rempart/parade +1, tactiques +N)<Src de="Fiches" /><Src de="Règle LDB" /></Formule>
         <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle LDB" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
@@ -328,13 +329,26 @@ export default function ReglesPage() {
         </ul>
       </Section>
 
+      <Section id="options-tactiques" titre="Options tactiques (au lieu d’une attaque normale)">
+        <p className="text-xs text-zinc-500">Alternatives LDB à l’attaque normale. Assurée/précise/violente : à cocher dans le panneau Attaque (armes au contact ou à distance, jamais sur attaque magique). Défenses, riposte et soutien : postures du panneau Tactique (effets 1 round, économie d’actions gérée en réel par le MJ).<Src de="Règle LDB" /></p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li><b>Attaque assurée (A)</b> : attaquer au contact ou à distance avec <b>+5 en attaque</b> (pas sur attaque magique), mais <b>DM divisés par 2</b>.<Src de="Règle LDB" /></li>
+          <li><b>Attaque précise/violente (A)</b> : attaquer au contact ou à distance avec <b>−3 en attaque</b> (pas sur attaque magique), <b>+1d4° DM</b> (ou <b>−7 pour +2d4° DM</b> en violente).<Src de="Règle LDB" /></li>
+          <li><b>Défense partielle (A)</b> : <b>+3 en DEF</b> et aux tests opposés pour résister à une attaque ou un effet pendant 1 round.<Src de="Règle LDB" /></li>
+          <li><b>Défense totale (L)</b> : <b>+5 en DEF</b> et aux tests opposés pour résister à une attaque ou un effet pendant 1 round. Générales : fonctionnent contre n’importe quel type d’attaque (contact, distance ou magique).<Src de="Règle LDB" /></li>
+          <li><b>Riposte (L ou A)</b> : se préparer à riposter à une attaque, au contact (voir ci-après).<Src de="Règle LDB" /></li>
+          <li><b>Soutenir (L)</b> : sacrifiez toutes vos actions pour donner <b>+5 en attaque au contact</b> à un allié lors de sa prochaine attaque contre la créature désignée. Il faut être au contact de la créature désignée et cela compte comme une action offensive. Le bonus ne dure pas plus d’un round (jusqu’au tour du personnage, au round suivant).<Src de="Règle LDB" /></li>
+        </ul>
+        <p className="text-xs text-zinc-400 mt-2"><b>Riposte (détail)</b> : au début du round (avant le tour des protagonistes), le personnage déclare se mettre en posture de riposte. Durant ce round, si une créature l’attaque au contact, il peut prendre son tour pour riposter immédiatement (action normale, une seule fois par round). Toutefois, si cela l’amène à agir avant sa propre valeur d’initiative, il ne peut utiliser qu’une action d’attaque. Exemple : une créature en vol effectue une attaque en vol (déplacement, attaque puis nouveau déplacement) et n’est plus au contact du PJ quand vient son tour — en posture dès le début du round, il peut attaquer juste après elle, avant qu’elle ne s’éloigne (par exemple avec une action limitée) ; s’il agit avant son initiative, attaque seule.<Src de="Règle LDB" /></p>
+      </Section>
+
       <Section id="combat" titre="Combat">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Toucher : 1d20 + bonus ≥ DEF. 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle LDB" /></li>
+          <li>Toucher : 1d20 + bonus ≥ DEF — sauf sort à difficulté fixe (ex. Saignements : 1d20 + attaque magique ≥ 10 + CON de la cible, armure ignorée). 20 naturel = touche auto + critique ×{DEFAULT_COMBAT_OPTIONS.critique.multiplicateur} (bonus inclus, physique et magique), 1 naturel = échec auto — sauf +10 de chance, utilisable même sur un 1.<Src de="Règle LDB" /></li>
           <li>0 PV : le personnage tombe inconscient et est hors de combat (sauté dans l&apos;ordre d&apos;initiative) ; des soins arrivés rapidement peuvent le relever.<Src de="Règle LDB" /></li>
           <li>Initiative 1d20 + mod, tri décroissant, tours + manches : adaptation de D&D (pas une règle officielle), conservée par choix.<Src de="Maison" /></li>
           <li>Objet équipé en cours de route : le staging se resynchronise au lancement (bouton Actualiser) et chaque PJ peut être resynchronisé depuis sa fiche en combat (↻).</li>
-          <li>Effets : tick en début de tour (dots/soins, expiration). Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle LDB" /></li>
+          <li>Effets : dégâts/soins par tour à la fin du tour du porteur, puis expiration. Soutien : soin + effet, coût mana. Capacités utilisables : effet auto ou usage narratif.<Src de="Règle LDB" /></li>
           <li>Sorts multi-cibles et zones : cases à cocher dans le panneau Attaque (ennemis pré-cochés, MJ ajuste — alliés dans le rayon possibles, ex. Explosion de feu), une résolution par cible, un seul coût mana.</li>
           <li>Sorts à effet sans dégâts (Malédiction, Peur…), dégâts par tour lancés au toucher (Saignements, Ensevelissement…). Les lettres A/M/L des attaques et sorts sont indicatives (économie gérée en réel).</li>
           <li>Attaques de sorts : bonus niv+VOL sauf bonus explicite, PM (+ PV) déduits avant le jet. Soutien : invocations, attaques accordées (griffes, contact). Zone (Armée) : tous les ennemis.</li>
@@ -359,7 +373,7 @@ export default function ReglesPage() {
       </Section>
 
       <Section id="effets" titre="Effets (buffs, debuffs, dots)">
-        <p className="text-xs text-zinc-500">Les 10 états préjudiciables ci-dessus reprennent les valeurs officielles ; les autres entrées du catalogue sont génériques (assistant), ajustables par le MJ. Badges en combat : vert = buff, rouge = dot/contrôle, violet = neutre, avec tours restants. Colonne Moteur = ce que l&apos;assistant applique vraiment. Dots/soins au début du tour du porteur ; durées consommées à la fin de son tour (un effet « 1 tour » couvre tout le tour, ∞ = permanent).</p>
+        <p className="text-xs text-zinc-500">Les 10 états préjudiciables ci-dessus reprennent les valeurs officielles ; les autres entrées du catalogue sont génériques (assistant), ajustables par le MJ. Badges en combat : vert = buff, rouge = dot/contrôle, violet = neutre, avec tours restants. Colonne Moteur = ce que l&apos;assistant applique vraiment. Dots/soins à la fin du tour du porteur (un effet posé pendant son tour ne blesse qu’à partir du suivant) ; durées consommées à la fin de son tour (un effet « 1 tour » couvre tout le tour, ∞ = permanent).</p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Effet</th><th className="text-left px-2 py-1">Mécanique</th><th className="text-left px-2 py-1">Moteur (exact)</th><th className="text-left px-2 py-1">Durée</th></tr></thead>

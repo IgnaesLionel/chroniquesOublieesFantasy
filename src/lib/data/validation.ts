@@ -60,6 +60,7 @@ export const sortSchema = z.object({
   /** Profils pouvant apprendre le sort ; vide = toutes classes. */
   familles: z.array(z.string()).default([]),
   bonus: z.number().optional(),
+  difficulteAttaque: z.string().optional(),
   degats: z.string().optional(),
   degatsParRangVoie: z.array(z.string()).optional(),
   soin: z.string().optional(),
@@ -167,6 +168,11 @@ export const monsterSchema = z.object({
   niveau: z.number().min(0),
   pv: z.number().int().min(0),
   pvMax: z.number().int().min(1),
+  caracteristiques: z.object({
+    AGI: z.number().int(), CON: z.number().int(), FOR: z.number().int(),
+    PER: z.number().int(), CHA: z.number().int(), INT: z.number().int(),
+    VOL: z.number().int(),
+  }).optional(),
   defense: z.number().int(),
   initMod: z.number().int(),
   attaques: z.array(attackSchema),
@@ -182,6 +188,8 @@ export const monsterSchema = z.object({
   deplacement: z.number().nullable().optional(),
   initiativeFiche: z.number().optional(),
   sourceUrl: z.string().optional(),
+  drsSlug: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  v1: z.boolean().optional(),
   notes: z.string().optional(),
   exemple: z.boolean(),
 });

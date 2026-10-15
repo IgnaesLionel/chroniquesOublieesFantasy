@@ -23,7 +23,7 @@ describe("sauvegarde import/export", () => {
     expect(backup).not.toBeNull();
     expect(report.errors).toEqual([]);
     expect(report.imported.characters).toBe(4);
-    expect(report.imported.scenarios).toBe(1);
+    expect(report.imported.scenarios).toBe(SEED_SCENARIOS.length);
     expect(report.imported.sorts).toBe(SEED_SORTS.length);
     expect(report.skipped.npcs).toBe(0);
   });
@@ -39,8 +39,8 @@ describe("sauvegarde import/export", () => {
 
   it("scénario avec condition récursive accepté, lien cassé détecté par validateScenario", async () => {
     const { backup, report } = validateBackup({ data: { scenarios: SEED_SCENARIOS } });
-    expect(report.imported.scenarios).toBe(1);
-    expect(backup!.data.scenarios).toHaveLength(1);
+    expect(report.imported.scenarios).toBe(SEED_SCENARIOS.length);
+    expect(backup!.data.scenarios).toHaveLength(SEED_SCENARIOS.length);
   });
 
   it("format inconnu = erreur explicite", () => {

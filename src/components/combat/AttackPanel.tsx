@@ -49,6 +49,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const estZoneTop = !!selSortTop?.zone;
   const maxCibles = selSortTop?.ciblesMax ?? null;
   const estMultiTop = !!selSortTop && !estZoneTop && ((maxCibles ?? 1) > 1 || !!selSortTop.ciblesLibres);
+  // Options tactiques (assurée/précise/violente) : armes uniquement, jamais sur attaque magique.
+  const estMagiqueTop = !!selAttaqueTop?.id.startsWith("sort:");
   const choixMultiples = !!onMulti && (estZoneTop || estMultiTop);
   const ennemisTop = (attacker ? participants.filter((p) => p.statut === "actif" && p.camp !== attacker.camp && p.instanceId !== attacker.instanceId) : []).map((p) => p.instanceId);
   // Pré-sélection : ennemis (plafonnée pour ×N). null = auto ; réinitialisée
@@ -63,6 +65,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   }
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
+  const [tactique, setTactique] = useState<"normale" | "assuree" | "precise" | "violente">("normale");
   const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
   const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
   const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
@@ -115,6 +118,21 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     const coutEff = concOk ? Math.max(0, selCout - 2) : selCout;
     const burnOk = !!selSort && !selSort.soin && coutEff > 0 && (attacker?.ressources["mana"]?.actuel ?? 0) === 0
       && !!attacker?.deRecuperation && modeLancement === "brulure";
+    // Option tactique (A) : armes au contact ou à distance, jamais sur attaque magique.
+    const tactiqueEff = selSort ? "normale" : tactique;
+    if (tactiqueEff === "assuree") {
+      opts.modAttaque = (opts.modAttaque ?? 0) + 5;
+      opts.diviseDM = 2;
+      opts.tactique = "assuree";
+    } else if (tactiqueEff === "precise") {
+      opts.modAttaque = (opts.modAttaque ?? 0) - 3;
+      opts.degatsBonus = [...(opts.degatsBonus ?? []), "1d4°"];
+      opts.tactique = "precise";
+    } else if (tactiqueEff === "violente") {
+      opts.modAttaque = (opts.modAttaque ?? 0) - 7;
+      opts.degatsBonus = [...(opts.degatsBonus ?? []), "2d4°"];
+      opts.tactique = "violente";
+    }
     const paiement: PaiementSort = {
       mode: burnOk ? "brulure" : "mana",
       concentration: concOk,
@@ -331,6 +349,15 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           )}
         </div>
       )}
+      <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
+        <div className="text-xs uppercase text-zinc-500 font-bold">Option tactique (A){estMagiqueTop ? " — indisponible (attaque magique)" : ""}</div>
+        {( [["normale", "Normale"], ["assuree", "Assurée (+5 en attaque, DM/2)"], ["precise", "Précise (−3 en attaque, +1d4° DM)"], ["violente", "Violente (−7 en attaque, +2d4° DM)"]] as const ).map(([v, label]) => (
+          <label key={v} className={`flex items-center gap-2 ${estMagiqueTop && v !== "normale" ? "opacity-40" : ""}`} title={v === "normale" ? "Attaque normale" : "Armes au contact ou à distance uniquement — jamais sur attaque magique"}>
+            <input type="radio" checked={(estMagiqueTop ? "normale" : tactique) === v} disabled={estMagiqueTop && v !== "normale"} onChange={() => setTactique(v)} />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Prédilection +1, Double/Circulaire −2…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
         <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>

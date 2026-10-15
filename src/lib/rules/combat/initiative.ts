@@ -47,11 +47,11 @@ export function getActive(state: CombatState): CombatParticipant | null {
 
 /**
  * Prochain tour (saute KO/morts si sauterKO). Manche++ à chaque boucle.
- * Effets : les durées sont consommées à la FIN du tour de leur porteur
- * (l'ancien actif est décrémenté en partant) et les dégâts/soins par tour
- * sont appliqués au DÉBUT du tour du nouvel actif (sans décrément).
- * Ainsi un malus "1 tour" posé sur un ennemi couvre tout son tour et
- * n'expire qu'à la fin de celui-ci.
+ * Effets : à la FIN du tour de leur porteur (l'ancien actif en partant),
+ * on applique les dégâts/soins par tour PUIS on consomme les durées.
+ * Ainsi un DoT "N tours" blesse N fois à la fin des tours de sa victime,
+ * et un malus "1 tour" posé sur un ennemi couvre tout son tour avant
+ * d'expirer à la fin de celui-ci.
  */
 export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   if (state.termine || state.participants.length === 0) return state;
@@ -67,30 +67,32 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   }
   const log = [...state.log];
   let participants = state.participants;
-  // 1) Fin de tour de l'ancien actif : on consomme ses durées d'effets.
-  // Un effet posé pendant ce même tour est épargné (il doit encore couvrir
-  // un tour complet, ex. auto-buff "1 tour" lancé pendant son propre tour).
+  // 1) Fin de tour de l'ancien actif : dégâts/soins par tour (ex: Saignement),
+  // puis durées consommées. Un effet posé pendant ce même tour est épargné
+  // (il doit encore couvrir un tour complet).
   const ancien = participants[state.tourIndex];
   if (ancien && ancien.effets.length > 0) {
+    // Un effet posé pendant ce même tour ne blesse pas encore (tour complet à venir).
+    const prets = ancien.effets.filter(
+      (e) => !(e.pose != null && e.pose.manche === state.manche && e.pose.tourIndex === state.tourIndex)
+    );
+    const pvDelta = ancien.statut === "actif" ? pvParTourTotal(prets) : 0;
+    if (pvDelta !== 0) {
+      const pv = Math.max(0, Math.min(ancien.pvMax, ancien.pv + pvDelta));
+      participants = participants.map((p, i) => (
+        i === state.tourIndex
+          ? { ...p, pv, statut: pv <= 0 ? ("ko" as const) : p.statut }
+          : p
+      ));
+      log.push(entry(manche, `${ancien.nom} : effet (${pvDelta > 0 ? "+" : ""}${pvDelta} PV) -> ${pv}/${ancien.pvMax} PV`));
+      if (pv <= 0 && ancien.statut === "actif") log.push(entry(manche, `${ancien.nom} est hors combat`));
+    }
     const { restants, expires } = decrementerFinDeTour(ancien.effets, state.manche, state.tourIndex);
     participants = participants.map((p, i) => (i === state.tourIndex ? { ...p, effets: restants } : p));
     for (const e of expires) log.push(entry(manche, `Effet "${e.nom}" expiré sur ${ancien.nom} (fin de tour).`));
   }
-  // 2) Début de tour du nouvel actif : dégâts/soins par tour, sans décrément.
+  // 2) Tour du nouvel actif (aucun tick : déjà appliqué en fin de tour).
   const actif = participants[idx];
-  if (actif && actif.effets.length > 0) {
-    const pvDelta = pvParTourTotal(actif.effets);
-    let pv = actif.pv;
-    if (pvDelta !== 0 && actif.statut === "actif") {
-      pv = Math.max(0, Math.min(actif.pvMax, actif.pv + pvDelta));
-      log.push(entry(manche, `${actif.nom} : effet (${pvDelta > 0 ? "+" : ""}${pvDelta} PV) -> ${pv}/${actif.pvMax} PV`));
-    }
-    const statut = pv <= 0 ? ("ko" as const) : actif.statut;
-    if (pv <= 0 && actif.statut === "actif") log.push(entry(manche, `${actif.nom} est hors combat`));
-    if (pv !== actif.pv || statut !== actif.statut) {
-      participants = participants.map((p, i) => (i === idx ? { ...p, pv, statut } : p));
-    }
-  }
   log.push(entry(manche, `Tour de ${actif?.nom ?? "—"} (manche ${manche}).`));
   return checkEnd({ ...state, participants, tourIndex: idx, manche, log });
 }

@@ -2,6 +2,7 @@
  {
   "id": "notion-araignee-moyenne",
   "kind": "monstre",
+  "v1": true,
   "nom": "Araignée géante",
   "type": "Créature",
   "niveau": 1,
@@ -9,6 +10,15 @@
   "pvMax": 18,
   "defense": 16,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-araignee-moyenne-a0",
@@ -42,6 +52,15 @@
   "pvMax": 4,
   "defense": 13,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-compagnon-loup-a0",
@@ -79,6 +98,15 @@
   "pvMax": 4,
   "defense": 16,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-compagnon-loup-alpha-a0",
@@ -116,6 +144,15 @@
   "pvMax": 20,
   "defense": 14,
   "initMod": -2,
+  "caracteristiques": {
+   "AGI": -2,
+   "CON": 3,
+   "FOR": 3,
+   "PER": -2,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 0
+  },
   "attaques": [],
   "capacites": [],
   "capacitesPartagees": [],
@@ -141,6 +178,15 @@
   "pvMax": 3,
   "defense": 13,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 2,
+   "FOR": -3,
+   "PER": 4,
+   "CHA": 0,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-0-5-aigle-a0",
@@ -178,6 +224,7 @@
   "deplacement": 10,
   "initiativeFiche": 16,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-0-5-Aigle-2eed3d06b09880d7a5f1ebfb51b8f150",
+  "drsSlug": "aigle-commun",
   "notes": "",
   "exemple": false
  },
@@ -191,6 +238,15 @@
   "pvMax": 9,
   "defense": 12,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 0,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": -1
+  },
   "attaques": [
    {
     "id": "notion-nc-0-5-bandit-de-base-a0",
@@ -230,6 +286,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-0-5-Bandit-de-base-2eed3d06b09881808317c2f08794da01",
+  "drsSlug": "bandit-de-base",
   "notes": "",
   "exemple": false
  },
@@ -243,6 +300,15 @@
   "pvMax": 9,
   "defense": 13,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 0,
+   "FOR": 0,
+   "PER": 0,
+   "CHA": -1,
+   "INT": -1,
+   "VOL": -1
+  },
   "attaques": [
    {
     "id": "notion-nc-0-5-gobelin-d-elite-a0",
@@ -276,12 +342,14 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-0-5-Gobelin-d-lite-2eed3d06b098815c8bbddc44a36ce235",
+  "drsSlug": "gobelin-elite",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-0-5-rat-geant",
   "kind": "monstre",
+  "v1": true,
   "nom": "Rat géant",
   "type": "Créature",
   "niveau": 0.5,
@@ -289,6 +357,15 @@
   "pvMax": 4,
   "defense": 13,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-0-5-rat-geant-a0",
@@ -323,6 +400,7 @@
  {
   "id": "notion-nc-0-5-strige",
   "kind": "monstre",
+  "v1": true,
   "nom": "Strige",
   "type": "Créature",
   "niveau": 0.5,
@@ -330,6 +408,15 @@
   "pvMax": 2,
   "defense": 15,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": -3,
+   "FOR": -3,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-0-5-strige-a0",
@@ -363,6 +450,15 @@
   "pvMax": 1,
   "defense": 13,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": -4,
+   "FOR": -4,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-0-animal-minuscule-a0",
@@ -396,6 +492,7 @@
   "deplacement": 10,
   "initiativeFiche": 16,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-0-Animal-Minuscule-2eed3d06b098807e94e0e907c1e24419",
+  "drsSlug": "animal-minuscule",
   "notes": "",
   "exemple": false
  },
@@ -409,6 +506,15 @@
   "pvMax": 3,
   "defense": 13,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": -2,
+   "FOR": -2,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-0-animal-petit-chien-a0",
@@ -440,6 +546,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-0-Animal-Petit-chien-2eed3d06b0988053bd7cc8e43d6e0902",
+  "drsSlug": "animal-petit",
   "notes": "",
   "exemple": false
  },
@@ -453,6 +560,15 @@
   "pvMax": 2,
   "defense": 13,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": -3,
+   "FOR": -3,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-0-animal-tres-petit-chat-a0",
@@ -484,6 +600,7 @@
   "deplacement": 10,
   "initiativeFiche": 16,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-0-Animal-tr-s-petit-Chat-2eed3d06b09880a2862fda356d427b4d",
+  "drsSlug": "animal-tres-petit",
   "notes": "",
   "exemple": false
  },
@@ -497,6 +614,15 @@
   "pvMax": 3,
   "defense": 12,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": -1,
+   "FOR": -1,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-0-gobelin-de-base-a0",
@@ -533,6 +659,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-0-Gobelin-de-base-2eed3d06b0988197b28aed76daf3fe89",
+  "drsSlug": "gobelin-de-base",
   "notes": "",
   "exemple": false
  },
@@ -546,6 +673,15 @@
   "pvMax": 3,
   "defense": 12,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": -1,
+   "FOR": -1,
+   "PER": 1,
+   "CHA": -2,
+   "INT": 0,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-0-kobold-a0",
@@ -575,6 +711,7 @@
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-0-Kobold-2eed3d06b0988168b24cc33bb74800aa",
+  "drsSlug": "kobold-de-base",
   "notes": "",
   "exemple": false
  },
@@ -588,6 +725,15 @@
   "pvMax": 9,
   "defense": 14,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 0,
+   "CHA": 0,
+   "INT": -1,
+   "VOL": -1
+  },
   "attaques": [
    {
     "id": "notion-nc-0-milicien-a0",
@@ -610,19 +756,29 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-0-Milicien-2eed3d06b09881679cacffd58906b94c",
+  "drsSlug": "milicien",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-0-orc",
   "kind": "monstre",
-  "nom": "Orc",
+  "nom": "Orc de base",
   "type": "Humanoïde",
   "niveau": 0.0,
   "pv": 12,
   "pvMax": 12,
   "defense": 13,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 2,
+   "FOR": 2,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": -1
+  },
   "attaques": [
    {
     "id": "notion-nc-0-orc-a0",
@@ -655,6 +811,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-0-Orc-2eed3d06b098813f972ef7251bbdd41e",
+  "drsSlug": "orc-de-base",
   "notes": "",
   "exemple": false
  },
@@ -668,6 +825,15 @@
   "pvMax": 15,
   "defense": 14,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 3,
+   "FOR": 2,
+   "PER": 0,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-1-bandit-veteran-a0",
@@ -707,6 +873,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Bandit-v-t-ran-2eed3d06b09881bb9055fe80e17fe8aa",
+  "drsSlug": "bandit-veteran",
   "notes": "",
   "exemple": false
  },
@@ -720,6 +887,15 @@
   "pvMax": 15,
   "defense": 13,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 0,
+   "FOR": 0,
+   "PER": 1,
+   "CHA": 1,
+   "INT": 0,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-1-chef-kobold-a0",
@@ -752,6 +928,7 @@
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Chef-Kobold-2eed3d06b09881158f02cd45f79d0be1",
+  "drsSlug": "kobold-chef",
   "notes": "",
   "exemple": false
  },
@@ -765,6 +942,15 @@
   "pvMax": 14,
   "defense": 11,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 5,
+   "PER": 0,
+   "CHA": -1,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-1-cheval-de-guerre-a0",
@@ -793,6 +979,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-1-Cheval-de-guerre-2eed3d06b098804ab326e4b94c6ab649",
+  "drsSlug": "cheval-de-guerre",
   "notes": "",
   "exemple": false
  },
@@ -806,6 +993,15 @@
   "pvMax": 14,
   "defense": 11,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": -1,
+   "INT": -4,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-1-cheval-de-selle-a0",
@@ -834,6 +1030,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-1-Cheval-de-selle-2eed3d06b0988013b424c2c2e69cd4ac",
+  "drsSlug": "cheval-de-selle",
   "notes": "",
   "exemple": false
  },
@@ -847,6 +1044,15 @@
   "pvMax": 15,
   "defense": 16,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 1,
+   "FOR": 2,
+   "PER": 0,
+   "CHA": 0,
+   "INT": -1,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-1-garde-de-la-ville-a0",
@@ -876,6 +1082,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Garde-de-la-ville-2eed3d06b098814ab370dca5c7932820",
+  "drsSlug": "garde-de-la-ville",
   "notes": "",
   "exemple": false
  },
@@ -889,6 +1096,15 @@
   "pvMax": 15,
   "defense": 14,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-1-gnoll-a0",
@@ -933,12 +1149,14 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Gnoll-2eed3d06b0988133b924d0f2602efc87",
+  "drsSlug": "gnoll-de-base",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-1-homme-lezard",
   "kind": "monstre",
+  "v1": true,
   "nom": "Homme-lézard",
   "type": "Créature",
   "niveau": 1.0,
@@ -946,6 +1164,15 @@
   "pvMax": 15,
   "defense": 15,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-1-homme-lezard-a0",
@@ -986,6 +1213,15 @@
   "pvMax": 9,
   "defense": 13,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-1-loup-a0",
@@ -1023,6 +1259,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-1-Loup-2eed3d06b0988043bfe6fff7fb96506a",
+  "drsSlug": "loup",
   "notes": "",
   "exemple": false
  },
@@ -1036,6 +1273,15 @@
   "pvMax": 15,
   "defense": 15,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-1-orc-noir-a0",
@@ -1058,6 +1304,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Orc-noir-2eed3d06b098817b81d2f31bb93b2d15",
+  "drsSlug": "orc-noir",
   "notes": "",
   "exemple": false
  },
@@ -1071,6 +1318,15 @@
   "pvMax": 2,
   "defense": 15,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 0,
+   "FOR": -3,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-1-serpent-venimeux-crotale-vipere-a0",
@@ -1114,6 +1370,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-1-Serpent-Venimeux-crotale-Vipere-2eed3d06b098809d824beb2c5c81d141",
+  "drsSlug": "serpent-venimeux",
   "notes": "",
   "exemple": false
  },
@@ -1127,6 +1384,15 @@
   "pvMax": 9,
   "defense": 13,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 1,
+   "FOR": 0,
+   "PER": 0,
+   "CHA": 1,
+   "INT": 1,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-1-shaman-gobelin-a0",
@@ -1166,6 +1432,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Shaman-Gobelin-2eed3d06b0988104b510f06f53633c82",
+  "drsSlug": "gobelin-shaman",
   "notes": "",
   "exemple": false
  },
@@ -1179,6 +1446,15 @@
   "pvMax": 9,
   "defense": 13,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": -1,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-nc-1-squelette-a0",
@@ -1226,6 +1502,7 @@
   "deplacement": 10,
   "initiativeFiche": 9,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Squelette-2eed3d06b09881beb470d7d5e9271803",
+  "drsSlug": "squelette-de-base",
   "notes": "",
   "exemple": false
  },
@@ -1239,6 +1516,15 @@
   "pvMax": 18,
   "defense": 10,
   "initMod": -2,
+  "caracteristiques": {
+   "AGI": -1,
+   "CON": 1,
+   "FOR": 2,
+   "PER": -2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-nc-1-zombie-humain-a0",
@@ -1276,6 +1562,7 @@
   "deplacement": 0,
   "initiativeFiche": 8,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-1-Zombie-Humain-2eed3d06b09881ef8f3ac68d964b54ac",
+  "drsSlug": "zombie-humain",
   "notes": "",
   "exemple": false
  },
@@ -1289,6 +1576,15 @@
   "pvMax": 140,
   "defense": 24,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 8,
+   "FOR": 8,
+   "PER": 3,
+   "CHA": -2,
+   "INT": 2,
+   "VOL": 5
+  },
   "attaques": [
    {
     "id": "notion-nc-10-dragon-des-forets-a0",
@@ -1353,6 +1649,7 @@
   "deplacement": 10,
   "initiativeFiche": 16,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-10-Dragon-des-forets-2eed3d06b09880619c60dfcbcc07fbb8",
+  "drsSlug": "dragon-des-forets",
   "notes": "",
   "exemple": false
  },
@@ -1366,6 +1663,15 @@
   "pvMax": 160,
   "defense": 24,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -2,
+   "INT": 3,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-nc-10-momie-auguste-a0",
@@ -1446,6 +1752,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-10-Momie-Auguste-2eed3d06b098814493bbf86f9a7b82a2",
+  "drsSlug": "momie-auguste",
   "notes": "",
   "exemple": false
  },
@@ -1459,6 +1766,15 @@
   "pvMax": 150,
   "defense": 23,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 8,
+   "FOR": 8,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-11-cryohydre-a-10-tetes-a0",
@@ -1503,6 +1819,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-11-CryoHydre-10-t-tes-2eed3d06b098813da95fc1b895a158ad",
+  "drsSlug": "cryohydre-a-dix-tetes",
   "notes": "",
   "exemple": false
  },
@@ -1516,6 +1833,15 @@
   "pvMax": 180,
   "defense": 28,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 12,
+   "FOR": 12,
+   "PER": 4,
+   "CHA": 4,
+   "INT": 4,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-12-dragon-rouge-a0",
@@ -1556,6 +1882,15 @@
   "pvMax": 160,
   "defense": 25,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 4,
+   "CHA": 4,
+   "INT": 4,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-13-vampire-ancien-a0",
@@ -1628,6 +1963,7 @@
   "deplacement": 10,
   "initiativeFiche": 17,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-13-Vampire-Ancien-2eed3d06b09881bc9f32e6e19bdbe43a",
+  "drsSlug": "vampire-ancien",
   "notes": "",
   "exemple": false
  },
@@ -1641,6 +1977,15 @@
   "pvMax": 15,
   "defense": 13,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-2-berserk-orc-a0",
@@ -1675,6 +2020,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-Berserk-Orc-2eed3d06b09881e287f0cd0e1653965a",
+  "drsSlug": "orc-berserker",
   "notes": "",
   "exemple": false
  },
@@ -1688,6 +2034,15 @@
   "pvMax": 30,
   "defense": 14,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-nc-2-bison-a0",
@@ -1720,12 +2075,14 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-2-Bison-2eed3d06b0988061a296f13fef3fac53",
+  "drsSlug": "bison",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-2-chef-bandit",
   "kind": "monstre",
+  "v1": true,
   "nom": "Chef bandit",
   "type": "Humanoïde",
   "niveau": 2.0,
@@ -1733,6 +2090,15 @@
   "pvMax": 25,
   "defense": 16,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": 2,
+   "INT": 0,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-2-chef-bandit-a0",
@@ -1798,6 +2164,15 @@
   "pvMax": 22,
   "defense": 16,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 0,
+   "CHA": 1,
+   "INT": 0,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-2-chef-goblin-a0",
@@ -1831,12 +2206,14 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-Chef-Goblin-2eed3d06b09881f291aed3fcfe34517d",
+  "drsSlug": "gobelin-chef",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-2-crocodile",
   "kind": "monstre",
+  "v1": true,
   "nom": "Crocodile",
   "type": "Animal",
   "niveau": 2.0,
@@ -1844,6 +2221,15 @@
   "pvMax": 15,
   "defense": 15,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 4,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-2-crocodile-a0",
@@ -1895,6 +2281,15 @@
   "pvMax": 15,
   "defense": 15,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": -2,
+   "FOR": -2,
+   "PER": 2,
+   "CHA": 0,
+   "INT": 1,
+   "VOL": -1
+  },
   "attaques": [
    {
     "id": "notion-nc-2-demonet-a0",
@@ -1994,19 +2389,30 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-D-monet-2eed3d06b098816db760f7c26828e532",
+  "drsSlug": "demonet",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-2-elfe-noir",
   "kind": "monstre",
-  "nom": "NC 2 Elfe Noir",
+  "v1": true,
+  "nom": "Elfe noir",
   "type": "Créature",
   "niveau": 2.0,
   "pv": 16,
   "pvMax": 16,
   "defense": 17,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 0,
+   "FOR": 0,
+   "PER": 2,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-2-elfe-noir-a0",
@@ -2047,6 +2453,15 @@
   "pvMax": 19,
   "defense": 15,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 2,
+   "CHA": -4,
+   "INT": 0,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-2-goule-a0",
@@ -2096,6 +2511,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-Goule-2eed3d06b09881549586fe5fee12579f",
+  "drsSlug": "goule",
   "notes": "",
   "exemple": false
  },
@@ -2109,6 +2525,15 @@
   "pvMax": 15,
   "defense": 15,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-2-loup-alpha-a0",
@@ -2141,6 +2566,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-2-Loup-Alpha-2eed3d06b09880dbb32de5d57b4a1cdc",
+  "drsSlug": "loup-male-alpha",
   "notes": "",
   "exemple": false
  },
@@ -2154,6 +2580,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-2-ours-brun-a0",
@@ -2193,6 +2628,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-2-Ours-Brun-2eed3d06b098808aa01fca64d60cef71",
+  "drsSlug": "ours-brun",
   "notes": "",
   "exemple": false
  },
@@ -2206,6 +2642,15 @@
   "pvMax": 35,
   "defense": 17,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-2-ours-noir-a0",
@@ -2228,6 +2673,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-2-Ours-noir-2eed3d06b098800fa1daf0222494434d",
+  "drsSlug": "ours-noir",
   "notes": "",
   "exemple": false
  },
@@ -2241,6 +2687,15 @@
   "pvMax": 15,
   "defense": 16,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 2,
+   "FOR": 2,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-2-panthere-a0",
@@ -2279,6 +2734,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-2-Panth-re-2eed3d06b09880b7afcef63e8e0da1f0",
+  "drsSlug": "panthere",
   "notes": "",
   "exemple": false
  },
@@ -2292,6 +2748,15 @@
   "pvMax": 30,
   "defense": 15,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": -1,
+   "FOR": -1,
+   "PER": 1,
+   "CHA": 1,
+   "INT": 0,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-2-pretre-kobold-a0",
@@ -2321,6 +2786,7 @@
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-Pr-tre-Kobold-2eed3d06b0988143a5d0c6fa6df94767",
+  "drsSlug": "kobold-pretre",
   "notes": "",
   "exemple": false
  },
@@ -2334,6 +2800,15 @@
   "pvMax": 25,
   "defense": 16,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": -1,
+   "INT": -1,
+   "VOL": -1
+  },
   "attaques": [
    {
     "id": "notion-nc-2-sergent-gnoll-a0",
@@ -2374,6 +2849,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-Sergent-Gnoll-2eed3d06b09881b7959ee7a46067c525",
+  "drsSlug": "gnoll-sergent",
   "notes": "",
   "exemple": false
  },
@@ -2387,6 +2863,15 @@
   "pvMax": 25,
   "defense": 17,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 2,
+   "FOR": 2,
+   "PER": 0,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-2-veteran-a0",
@@ -2433,12 +2918,14 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-2-V-t-ran-2eed3d06b09881079b7ad18ba159673e",
+  "drsSlug": "veteran-ou-garde-du-palais-ducal",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-3-araignee-geante",
   "kind": "monstre",
+  "v1": true,
   "nom": "Araignée géante",
   "type": "Créature",
   "niveau": 3.0,
@@ -2446,6 +2933,15 @@
   "pvMax": 30,
   "defense": 17,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-3-araignee-geante-a0",
@@ -2513,6 +3009,15 @@
   "pvMax": 30,
   "defense": 17,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 2,
+   "CHA": -1,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-3-basilic-a0",
@@ -2556,6 +3061,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Basilic-2eed3d06b09881819847efefc54c5721",
+  "drsSlug": "basilic",
   "notes": "",
   "exemple": false
  },
@@ -2569,6 +3075,15 @@
   "pvMax": 45,
   "defense": 20,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-3-garde-du-corps-a0",
@@ -2603,6 +3118,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Garde-du-corps-2eed3d06b09881438999cf5054c326d0",
+  "drsSlug": "garde-du-corps",
   "notes": "",
   "exemple": false
  },
@@ -2616,6 +3132,15 @@
   "pvMax": 30,
   "defense": 18,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -3,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-3-gorille-a0",
@@ -2653,6 +3178,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-3-Gorille-2eed3d06b09880d1965cccfb13f019c6",
+  "drsSlug": "gorille",
   "notes": "",
   "exemple": false
  },
@@ -2666,6 +3192,15 @@
   "pvMax": 40,
   "defense": 15,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-3-grand-bison-a0",
@@ -2702,6 +3237,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-3-Grand-Bison-2eed3d06b098805e8ce7eb2d8f427380",
+  "drsSlug": "bison-grand-male",
   "notes": "",
   "exemple": false
  },
@@ -2715,6 +3251,15 @@
   "pvMax": 35,
   "defense": 18,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 4,
+   "CHA": 4,
+   "INT": 0,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-3-licorne-a0",
@@ -2761,6 +3306,7 @@
   "deplacement": 10,
   "initiativeFiche": 17,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Licorne-2eed3d06b0988197a920f75d44a6e967",
+  "drsSlug": "licorne",
   "notes": "",
   "exemple": false
  },
@@ -2774,6 +3320,15 @@
   "pvMax": 30,
   "defense": 17,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -3,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-3-lion-a0",
@@ -2818,6 +3373,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-3-Lion-2eed3d06b098803f9859c178f5299179",
+  "drsSlug": "lion",
   "notes": "",
   "exemple": false
  },
@@ -2831,6 +3387,15 @@
   "pvMax": 40,
   "defense": 17,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-3-ogre-a0",
@@ -2873,6 +3438,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Ogre-2eed3d06b09881e29fd6ec324aa95c4f",
+  "drsSlug": "ogre-de-base",
   "notes": "",
   "exemple": false
  },
@@ -2886,6 +3452,15 @@
   "pvMax": 20,
   "defense": 16,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 1,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-3-sanglier-a0",
@@ -2930,6 +3505,7 @@
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-3-Sanglier-2eed3d06b09880f99325fb9091779871",
+  "drsSlug": "sanglier",
   "notes": "",
   "exemple": false
  },
@@ -2943,6 +3519,15 @@
   "pvMax": 40,
   "defense": 18,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": -1,
+   "INT": -1,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-3-sergent-orc-a0",
@@ -2975,6 +3560,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Sergent-Orc-2eed3d06b09881e3a733fa89938e5719",
+  "drsSlug": "orc-sergent",
   "notes": "",
   "exemple": false
  },
@@ -2988,6 +3574,15 @@
   "pvMax": 30,
   "defense": 15,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-3-serpent-constricteur-a0",
@@ -3026,6 +3621,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-3-Serpent-Constricteur-2eed3d06b098800887b5f8e9189137a6",
+  "drsSlug": "serpent-constricteur",
   "notes": "",
   "exemple": false
  },
@@ -3039,6 +3635,15 @@
   "pvMax": 40,
   "defense": 17,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 3,
+   "FOR": 1,
+   "PER": 3,
+   "CHA": -1,
+   "INT": 0,
+   "VOL": 3
+  },
   "attaques": [
    {
     "id": "notion-nc-3-shaman-orc-a0",
@@ -3079,6 +3684,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Shaman-Orc-2eed3d06b09881a68f17f82d106abd77",
+  "drsSlug": "orc-shaman",
   "notes": "",
   "exemple": false
  },
@@ -3092,6 +3698,15 @@
   "pvMax": 30,
   "defense": 17,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-3-skrambler-a0",
@@ -3135,12 +3750,14 @@
   "deplacement": 10,
   "initiativeFiche": 14,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-3-Skrambler-2eed3d06b09881b9bcafcb932362c8f7",
+  "drsSlug": "skrambler",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-3-worg",
   "kind": "monstre",
+  "v1": true,
   "nom": "Worg",
   "type": "Créature",
   "niveau": 3.0,
@@ -3148,6 +3765,15 @@
   "pvMax": 35,
   "defense": 17,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-3-worg-a0",
@@ -3194,6 +3820,15 @@
   "pvMax": 40,
   "defense": 17,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 3,
+   "FOR": 2,
+   "PER": 2,
+   "CHA": 1,
+   "INT": 1,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-assassin-a0",
@@ -3233,6 +3868,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-4-Assassin-2eed3d06b09880bfb07dc535959c88ec",
+  "drsSlug": "assassin",
   "notes": "",
   "exemple": false
  },
@@ -3246,6 +3882,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 2,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": 2,
+   "INT": 1,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-capitaine-a0",
@@ -3280,6 +3925,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-4-Capitaine-2eed3d06b09881f2a57fc2bc587ab15b",
+  "drsSlug": "capitaine",
   "notes": "",
   "exemple": false
  },
@@ -3293,6 +3939,15 @@
   "pvMax": 50,
   "defense": 17,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": -1,
+   "INT": -1,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-4-chef-gnoll-a0",
@@ -3341,6 +3996,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-4-Chef-Gnoll-2eed3d06b0988109b6afd6d5cfb4a4a9",
+  "drsSlug": "gnoll-chef",
   "notes": "",
   "exemple": false
  },
@@ -3354,6 +4010,15 @@
   "pvMax": 35,
   "defense": 17,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 2,
+   "CHA": -4,
+   "INT": 1,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-4-ghoule-abomination-a0",
@@ -3404,6 +4069,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-4-Ghoule-Abomination-2eed3d06b098812489dfca50cb114536",
+  "drsSlug": "goule-abomination",
   "notes": "",
   "exemple": false
  },
@@ -3417,6 +4083,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -3,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-grand-lion-a0",
@@ -3455,6 +4130,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-4-Grand-Lion-2eed3d06b0988094bfdbcf546460ba62",
+  "drsSlug": "lion-grand-male",
   "notes": "",
   "exemple": false
  },
@@ -3468,6 +4144,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": 0,
+   "INT": -3,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-4-griffon-a0",
@@ -3507,12 +4192,14 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-4-Griffon-2eed3d06b09881ceb8efe2a206fb1d83",
+  "drsSlug": "griffon",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-4-minotaure",
   "kind": "monstre",
+  "v1": true,
   "nom": "Minotaure",
   "type": "Créature",
   "niveau": 4.0,
@@ -3520,6 +4207,15 @@
   "pvMax": 30,
   "defense": 16,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-minotaure-a0",
@@ -3553,6 +4249,7 @@
  {
   "id": "notion-nc-4-ombre",
   "kind": "monstre",
+  "v1": true,
   "nom": "Ombre",
   "type": "Créature",
   "niveau": 4.0,
@@ -3560,6 +4257,15 @@
   "pvMax": 26,
   "defense": 16,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 6,
+   "FOR": 0,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-ombre-a0",
@@ -3596,6 +4302,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 0,
+   "CHA": -3,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-requin-a0",
@@ -3632,6 +4347,7 @@
   "deplacement": 10,
   "initiativeFiche": 16,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-4-Requin-2eed3d06b0988060ab2ed078ba7de116",
+  "drsSlug": "requin",
   "notes": "",
   "exemple": false
  },
@@ -3645,6 +4361,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 8,
+   "FOR": 8,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-4-rhinoceros-a0",
@@ -3683,6 +4408,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-4-Rhinoc-ros-2eed3d06b098802988c1e4123035c273",
+  "drsSlug": "rhinoceros",
   "notes": "",
   "exemple": false
  },
@@ -3696,6 +4422,15 @@
   "pvMax": 60,
   "defense": 18,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": -2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-nc-4-squelette-geant-a0",
@@ -3751,6 +4486,15 @@
   "pvMax": 35,
   "defense": 17,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": 1,
+   "INT": 0,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-4-vampirien-a0",
@@ -3817,6 +4561,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-4-Vampirien-2eed3d06b09881488844f807d6fc703c",
+  "drsSlug": "vampien",
   "notes": "",
   "exemple": false
  },
@@ -3830,6 +4575,15 @@
   "pvMax": 85,
   "defense": 13,
   "initMod": -1,
+  "caracteristiques": {
+   "AGI": -1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": -2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-nc-4-zombie-choursette-a0",
@@ -3895,6 +4649,15 @@
   "pvMax": 70,
   "defense": 19,
   "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-5-elementaire-d-eau-grand-a0",
@@ -3953,6 +4716,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Elementaire-d-eau-Grand-2eed3d06b09881389278ea12ae0628a2",
+  "drsSlug": "elementaire-d-eau-grand",
   "notes": "",
   "exemple": false
  },
@@ -3966,6 +4730,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 10,
+   "FOR": 10,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-5-hydre-a-5-tetes-a0",
@@ -4010,6 +4783,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Hydre-5-t-tes-2eed3d06b0988146bd77c84ccf581381",
+  "drsSlug": "hydre-a-cinq-tetes",
   "notes": "",
   "exemple": false
  },
@@ -4023,6 +4797,15 @@
   "pvMax": 70,
   "defense": 20,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 3,
+   "FOR": 5,
+   "PER": 1,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-5-momie-a0",
@@ -4060,6 +4843,7 @@
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Momie-2eed3d06b09881efa5ffebd629f2b59e",
+  "drsSlug": "momie",
   "notes": "",
   "exemple": false
  },
@@ -4073,6 +4857,15 @@
   "pvMax": 70,
   "defense": 18,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 3
+  },
   "attaques": [
    {
     "id": "notion-nc-5-ourhible-a0",
@@ -4112,6 +4905,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Ourhible-2eed3d06b098813db2e3db7e629fd11b",
+  "drsSlug": "ourhible",
   "notes": "",
   "exemple": false
  },
@@ -4125,6 +4919,15 @@
   "pvMax": 45,
   "defense": 18,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": -1,
+   "PER": 0,
+   "CHA": 1,
+   "INT": 3,
+   "VOL": 3
+  },
   "attaques": [
    {
     "id": "notion-nc-5-sorcier-a0",
@@ -4177,12 +4980,14 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-5-Sorcier-2eed3d06b0988119a127e483f238491c",
+  "drsSlug": "sorcier",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-5-troll",
   "kind": "monstre",
+  "v1": true,
   "nom": "Troll",
   "type": "Humanoïde",
   "niveau": 5.0,
@@ -4190,6 +4995,15 @@
   "pvMax": 70,
   "defense": 19,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-5-troll-a0",
@@ -4247,6 +5061,15 @@
   "pvMax": 70,
   "defense": 20,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-6-chef-ogre-a0",
@@ -4294,6 +5117,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-6-Chef-Ogre-2eed3d06b098810b88a6f89934d6ff61",
+  "drsSlug": "ogre-chef",
   "notes": "",
   "exemple": false
  },
@@ -4307,6 +5131,15 @@
   "pvMax": 60,
   "defense": 20,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 0,
+   "CHA": 1,
+   "INT": 0,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-6-chef-orc-a0",
@@ -4343,6 +5176,7 @@
   "deplacement": 10,
   "initiativeFiche": 13,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-6-Chef-Orc-2eed3d06b09881a8aafbd72cf295a6b5",
+  "drsSlug": "orc-chef",
   "notes": "",
   "exemple": false
  },
@@ -4356,6 +5190,15 @@
   "pvMax": 90,
   "defense": 21,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 10,
+   "FOR": 10,
+   "PER": 1,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-6-elephant-a0",
@@ -4399,12 +5242,14 @@
   "deplacement": 10,
   "initiativeFiche": 11,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-6-El-phant-2eed3d06b098809cbd02d451db21a785",
+  "drsSlug": "elephant",
   "notes": "",
   "exemple": false
  },
  {
   "id": "notion-nc-6-geant-des-collines",
   "kind": "monstre",
+  "v1": true,
   "nom": "Géant des collines",
   "type": "Créature",
   "niveau": 6.0,
@@ -4412,6 +5257,15 @@
   "pvMax": 80,
   "defense": 18,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 7,
+   "FOR": 8,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-6-geant-des-collines-a0",
@@ -4452,6 +5306,15 @@
   "pvMax": 80,
   "defense": 20,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 8,
+   "FOR": 8,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 1
+  },
   "attaques": [
    {
     "id": "notion-nc-6-ours-polaire-a0",
@@ -4496,6 +5359,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/p/NC-6-Ours-Polaire-2eed3d06b09880758eddf746369c562a",
+  "drsSlug": "ours-polaire",
   "notes": "",
   "exemple": false
  },
@@ -4509,6 +5373,15 @@
   "pvMax": 100,
   "defense": 21,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -2,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-7-chimere-a0",
@@ -4562,6 +5435,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-7-Chim-re-2eed3d06b09881e2a965cd00e9d0659e",
+  "drsSlug": "chimere",
   "notes": "",
   "exemple": false
  },
@@ -4575,6 +5449,15 @@
   "pvMax": 100,
   "defense": 21,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 2,
+   "CHA": -4,
+   "INT": -2,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-7-chimere-draconique-a0",
@@ -4625,6 +5508,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-7-Chim-re-draconique-2eed3d06b09881b1ace5e05a79400b26",
+  "drsSlug": "chimere-draconique",
   "notes": "",
   "exemple": false
  },
@@ -4638,6 +5522,15 @@
   "pvMax": 110,
   "defense": 22,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 8,
+   "FOR": 8,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
   "attaques": [
    {
     "id": "notion-nc-7-geoselachis-a0",
@@ -4680,6 +5573,7 @@
   "deplacement": 10,
   "initiativeFiche": 15,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-7-Geoselachis-2eed3d06b098819f99e3d21dce3a12fb",
+  "drsSlug": "geoselachis",
   "notes": "",
   "exemple": false
  },
@@ -4693,6 +5587,15 @@
   "pvMax": 90,
   "defense": 20,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 0,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-nc-7-golem-de-chair-a0",
@@ -4749,6 +5652,7 @@
   "deplacement": 10,
   "initiativeFiche": 10,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-7-Golem-de-chair-2eed3d06b0988181ad15f081f37caa44",
+  "drsSlug": "golem-de-charir",
   "notes": "",
   "exemple": false
  },
@@ -4762,6 +5666,15 @@
   "pvMax": 110,
   "defense": 23,
   "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 10,
+   "FOR": 10,
+   "PER": 1,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-7-grand-elephant-a0",
@@ -4808,6 +5721,15 @@
   "pvMax": 70,
   "defense": 20,
   "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 5,
+   "FOR": 5,
+   "PER": 4,
+   "CHA": 4,
+   "INT": 4,
+   "VOL": 4
+  },
   "attaques": [
    {
     "id": "notion-nc-8-vampire-a0",
@@ -4900,6 +5822,7 @@
   "deplacement": 10,
   "initiativeFiche": 17,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-8-Vampire-2eed3d06b09881249170ebd8973b1288",
+  "drsSlug": "vampire",
   "notes": "",
   "exemple": false
  },
@@ -4913,6 +5836,15 @@
   "pvMax": 160,
   "defense": 25,
   "initMod": -1,
+  "caracteristiques": {
+   "AGI": -1,
+   "CON": 12,
+   "FOR": 12,
+   "PER": 2,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-nc-9-geant-de-feu-a0",
@@ -4962,6 +5894,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://silver-pen-32f.notion.site/NC-9-Geant-de-feu-2eed3d06b0988113a4bce754aa623a48",
+  "drsSlug": "geant-du-feu",
   "notes": "",
   "exemple": false
  },
@@ -4975,6 +5908,15 @@
   "pvMax": 32,
   "defense": 22,
   "initMod": 3,
+  "caracteristiques": {
+   "AGI": 3,
+   "CON": 5,
+   "FOR": 3,
+   "PER": 0,
+   "CHA": -4,
+   "INT": 3,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-sigmeus-le-necromant-a0",
@@ -5011,6 +5953,15 @@
   "pvMax": 50,
   "defense": 25,
   "initMod": 5,
+  "caracteristiques": {
+   "AGI": 5,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": 0,
+   "INT": 0,
+   "VOL": 0
+  },
   "attaques": [
    {
     "id": "notion-voir-elementaire-d-air-rang-8-forme-elementaire-d-air-a0",
@@ -5044,6 +5995,15 @@
   "pvMax": 28,
   "defense": 14,
   "initMod": -1,
+  "caracteristiques": {
+   "AGI": -1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": -2,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": -2
+  },
   "attaques": [
    {
     "id": "notion-zombie-coriasse-a0",
@@ -5080,6 +6040,15 @@
   "pvMax": 50,
   "defense": 18,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": 0,
+   "CHA": 0,
+   "INT": 2,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-chasseur-aile-a0",
@@ -5117,6 +6086,7 @@
   "deplacement": 10,
   "initiativeFiche": 12,
   "sourceUrl": "https://drs.chroniques-oubliees.fr/fantasy/creatures",
+  "drsSlug": "chasseur-aile",
   "notes": "",
   "exemple": false
  },
@@ -5130,6 +6100,15 @@
   "pvMax": 85,
   "defense": 13,
   "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 6,
+   "FOR": 6,
+   "PER": -2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 6
+  },
   "attaques": [
    {
     "id": "notion-zombie-ourhible-a0",
@@ -5182,7 +6161,307 @@
   "deplacement": 5,
   "initiativeFiche": 8,
   "sourceUrl": "https://drs.chroniques-oubliees.fr/fantasy/creatures",
+  "drsSlug": "zombie-ourhible",
   "notes": "",
+  "exemple": false
+ },
+ {
+  "id": "notion-v1-chauve-souris-geante",
+  "kind": "monstre",
+  "nom": "Chauve-souris géante",
+  "type": "Animal",
+  "niveau": 3,
+  "pv": 29,
+  "pvMax": 29,
+  "defense": 16,
+  "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": -1,
+   "FOR": -1,
+   "PER": 4,
+   "CHA": -4,
+   "INT": -4,
+   "VOL": 4
+  },
+  "attaques": [
+   {
+    "id": "notion-v1-chauve-souris-geante-a0",
+    "nom": "Morsure",
+    "bonus": 7,
+    "degats": "1d6+1",
+    "degatsAffiche": "1d6+1 + poison",
+    "effetTouche": {
+     "cle": "Poison anesthésiant",
+     "duree": null,
+     "sauvegarde": {
+      "carac": "CON",
+      "difficulte": 12
+     }
+    }
+   }
+  ],
+  "capacites": [],
+  "capacitesPartagees": [],
+  "capacitesDetails": [
+   {
+    "nom": "Poison anesthésiant (Capacité)",
+    "description": "La morsure inocule un poison : test CON difficulté 12, sans quoi la victime utilise un d12 à la place du d20 pour tous ses tests pendant 1d6 rounds (MJ : durée en rounds, appliquer puis retirer via Effets). Déjà empoisonnée et de nouveau mordue : inconscience pendant 1d6 tours (MJ)."
+   },
+   {
+    "nom": "Tactique (Capacité)",
+    "description": "La chauve-souris géante préfère attaquer les PJ pendant leur sommeil, lorsqu'ils campent à la belle étoile (MJ)."
+   }
+  ],
+  "description": "Une immense silhouette sombre occulte quelques instants la lune dans un claquement d'ailes, mais ce n'est pas un oiseau, plutôt une affreuse chauve-souris géante...",
+  "taille": "",
+  "categorie": "Animaux",
+  "rd": 0,
+  "deplacement": null,
+  "initiativeFiche": 18,
+  "notes": "",
+  "v1": true,
+  "exemple": false
+ },
+ {
+  "id": "notion-v1-elementaire-de-feu",
+  "kind": "monstre",
+  "nom": "Élémentaire de feu",
+  "type": "Créature",
+  "niveau": 3,
+  "pv": 29,
+  "pvMax": 29,
+  "defense": 16,
+  "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 0
+  },
+  "attaques": [
+   {
+    "id": "notion-v1-elementaire-de-feu-a0",
+    "nom": "Poings enflammés",
+    "bonus": 4,
+    "degats": "1d6+3",
+    "degatsAffiche": "1d6+3"
+   }
+  ],
+  "capacites": [],
+  "capacitesPartagees": [],
+  "capacitesDetails": [
+   {
+    "nom": "Réduction des DM (Capacité)",
+    "description": "RD 5 contre les DM de nature non-magique uniquement (armes magiques et sorts, sauf sorts de feu, infligent des DM normaux). Non automatisé : MJ (fiche rd à 0)."
+   },
+   {
+    "nom": "Immunité (Capacité)",
+    "description": "Immunisé aux DM de feu (MJ)."
+   },
+   {
+    "nom": "Aura de feu (Capacité)",
+    "description": "Inflige 1d6 DM à toute créature qui l'attaque à mains nues ou avec des armes naturelles (griffes, etc.). MJ : appliquer manuellement (boutons −PV)."
+   },
+   {
+    "nom": "Moral (Capacité)",
+    "description": "Combat jusqu'à la destruction."
+   }
+  ],
+  "description": "Un grand feu crépite devant vous, lorsque, soudain, il semble prendre vie et avance dans votre direction en redoublant de flammes !",
+  "taille": "",
+  "categorie": "Monstres/Créatures",
+  "rd": 0,
+  "deplacement": null,
+  "initiativeFiche": 12,
+  "notes": "",
+  "v1": true,
+  "exemple": false
+ },
+ {
+  "id": "notion-v1-gobelours",
+  "kind": "monstre",
+  "nom": "Gobelours",
+  "type": "Humanoïde",
+  "niveau": 2,
+  "pv": 25,
+  "pvMax": 25,
+  "defense": 17,
+  "initMod": 0,
+  "caracteristiques": {
+   "AGI": 0,
+   "CON": 4,
+   "FOR": 4,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 0
+  },
+  "attaques": [
+   {
+    "id": "notion-v1-gobelours-a0",
+    "nom": "Masse cloutée",
+    "bonus": 8,
+    "degats": "1d8+5",
+    "degatsAffiche": "1d8+5"
+   }
+  ],
+  "capacites": [],
+  "capacitesPartagees": [],
+  "capacitesDetails": [],
+  "description": "C'est une bien étrange créature qui vous menace de son énorme masse cloutée. Massive, sa silhouette tient de l'ours et sa tête de gobelin, mais elle semble avoir hérité du caractère de l'ours ! Le gobelours est un goblinoïde, c'est-à-dire qu'il est apparenté à la race des gobelins et hobgobelins. Il est le plus massif de la famille, mesurant en moyenne 2,10 m, ce qui en fait un adversaire redoutable.",
+  "taille": "Grande",
+  "categorie": "Monstres/Créatures",
+  "rd": 0,
+  "deplacement": null,
+  "initiativeFiche": 10,
+  "notes": "",
+  "v1": true,
+  "exemple": false
+ },
+ {
+  "id": "notion-v1-puma",
+  "kind": "monstre",
+  "nom": "Puma",
+  "type": "Animal",
+  "niveau": 2,
+  "pv": 15,
+  "pvMax": 15,
+  "defense": 16,
+  "initMod": 4,
+  "caracteristiques": {
+   "AGI": 4,
+   "CON": 2,
+   "FOR": 2,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
+  "attaques": [
+   {
+    "id": "notion-v1-puma-a0",
+    "nom": "Morsure et Griffes",
+    "bonus": 5,
+    "degats": "1d6+2",
+    "degatsAffiche": "1d6+2"
+   }
+  ],
+  "capacites": [],
+  "capacitesPartagees": [],
+  "capacitesDetails": [
+   {
+    "nom": "Attaque bondissante (Capacité)",
+    "description": "Bonus de +5 en attaque au contact et +1d6 DM supplémentaires à sa première attaque, s'il peut se déplacer avant d'attaquer (ou bondir depuis un arbre). MJ : appliquer via Mod. attaque (+5) et Bonus DM (+1d6) du panneau Attaque."
+   }
+  ],
+  "description": "Perché sur un grand arbre, un regard jaune vous regarde passer. Le grand fauve gronde et souffle dans votre direction, puis dans un feulement il bondit de tout son poids sur vous !",
+  "taille": "",
+  "categorie": "Animaux",
+  "rd": 0,
+  "deplacement": null,
+  "initiativeFiche": 23,
+  "notes": "",
+  "v1": true,
+  "exemple": false
+ },
+ {
+  "id": "notion-v1-ours-enrage",
+  "kind": "monstre",
+  "nom": "Ours enragé",
+  "type": "Animal",
+  "niveau": 2,
+  "pv": 35,
+  "pvMax": 35,
+  "defense": 17,
+  "initMod": 2,
+  "caracteristiques": {
+   "AGI": 2,
+   "CON": 3,
+   "FOR": 3,
+   "PER": 2,
+   "CHA": -2,
+   "INT": -4,
+   "VOL": 2
+  },
+  "attaques": [
+   {
+    "id": "notion-v1-ours-enrage-a0",
+    "nom": "Morsure et griffes",
+    "bonus": 6,
+    "degats": "1d6+5",
+    "degatsAffiche": "1d6+5"
+   }
+  ],
+  "capacites": [],
+  "capacitesPartagees": [],
+  "capacitesDetails": [
+   {
+    "nom": "Tactique (Capacité)",
+    "description": "Frappe sans discernement : si plusieurs adversaires se retrouvent au contact avec l'ours, tirer chaque tour au hasard lequel sera la cible de sa puissante attaque (MJ)."
+   },
+   {
+    "nom": "Moral (Capacité)",
+    "description": "Quand l'ours tombe à 4 PV ou moins, il fuit (MJ)."
+   }
+  ],
+  "description": "Debout sur ses pattes arrières, un ours noir de presque deux mètres vous fixe du regard, la bave aux lèvres. La bête est enragée et semble vouloir se défouler sur vous.",
+  "taille": "",
+  "categorie": "Animaux",
+  "rd": 0,
+  "deplacement": null,
+  "initiativeFiche": 15,
+  "notes": "",
+  "v1": true,
+  "exemple": false
+ },
+ {
+  "id": "notion-v1-orc-robuste",
+  "kind": "monstre",
+  "nom": "Orc robuste",
+  "type": "Humanoïde",
+  "niveau": 1,
+  "pv": 9,
+  "pvMax": 9,
+  "defense": 14,
+  "initMod": 1,
+  "caracteristiques": {
+   "AGI": 1,
+   "CON": 1,
+   "FOR": 1,
+   "PER": 0,
+   "CHA": -2,
+   "INT": -2,
+   "VOL": 0
+  },
+  "attaques": [
+   {
+    "id": "notion-v1-orc-robuste-a0",
+    "nom": "Épée",
+    "bonus": 2,
+    "degats": "1d8+1",
+    "degatsAffiche": "1d8+1"
+   }
+  ],
+  "capacites": [],
+  "capacitesPartagees": [],
+  "capacitesDetails": [
+   {
+    "nom": "Sensible à la lumière (Capacité)",
+    "description": "Créatures souterraines : la lumière du soleil inflige un malus de -1 à tous leurs tests, attaques comprises (MJ : ni éclairage ni jour suivis par le moteur)."
+   }
+  ],
+  "description": "Les orques sont des créatures robustes, un peu plus grandes que les humains, dotées de traits bestiaux et au comportement violent. Ils vivent au sein de tribus dominées par un chef régnant par la loi du plus fort.",
+  "taille": "",
+  "categorie": "Monstres/Créatures",
+  "rd": 0,
+  "deplacement": null,
+  "initiativeFiche": 12,
+  "notes": "",
+  "v1": true,
   "exemple": false
  }
 ]

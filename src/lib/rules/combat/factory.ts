@@ -185,6 +185,9 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     niveau: template.niveau,
     statut: "actif" as const,
     usagesSorts: {},
+    // Caracs DRS (000 si fiche incomplète, à compléter par le MJ) :
+    // tests contre les monstres (10+CON...).
+    caracs: { ...(template.caracteristiques ?? { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 }) },
     // Espèces du template (type + catégorie + sous-catégories, normalisées) :
     // dégâts bonus contre certaines espèces (armes bénies, Destruction du mal...).
     categories: categoriesMonstre(template),

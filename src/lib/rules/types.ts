@@ -112,6 +112,12 @@ export interface Sort {
   familles?: string[];
   /** Sort offensif : bonus au jet. */
   bonus?: number;
+  /**
+   * Test d'attaque magique à difficulté fixe (formule sur les caracs de la
+   * CIBLE, ex: "10+CON", Saignements) : remplace le seuil de DEF.
+   * Le jet garde le bonus d'attaque magique ; seule la cible change.
+   */
+  difficulteAttaque?: string;
   /** Sort offensif : dégâts (ex: "2d6"). */
   degats?: string;
   /**
@@ -257,6 +263,8 @@ export interface MonsterTemplate extends Omit<CreatureBase, "pv" | "effets"> {
   niveau: number;
   pv: number;
   capacites: string[];
+  /** Caractéristiques DRS (AGI, CON, FOR, PER, CHA, INT, VOL). Absent = fiche à compléter (MJ) : le moteur replie sur 0. */
+  caracteristiques?: Caracteristiques;
   /** Clés du catalogue partagé (capacites-partagees.ts). */
   capacitesPartagees?: string[];
   /** Textes complets des capacités (transcriptions Notion). */
@@ -277,6 +285,10 @@ export interface MonsterTemplate extends Omit<CreatureBase, "pv" | "effets"> {
   deplacement?: number | null;
   initiativeFiche?: number;
   sourceUrl?: string;
+  /** Slug de la fiche DRS V2 (https://drs.chroniques-oubliees.fr/fantasy/creatures/...) : badge "V2". Absent = hors DRS (custom, variante, ancienne édition, V1 à venir). */
+  drsSlug?: string;
+  /** Présent dans la V1 (livres) : badge "V1". Cumulable avec le badge V2. */
+  v1?: boolean;
 }
 
 /** Capacité partagée par plusieurs créatures (ex: Vol rapide). Texte informatif. */

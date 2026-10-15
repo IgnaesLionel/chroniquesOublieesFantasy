@@ -280,9 +280,10 @@ export const SEED_SORTS: Sort[] = [
     id: "sort-saignements", nom: "Saignements", type: "offensif",
     voie: "Voie du sang", rang: 1,
     action: "attaque",
-    description: "Test d'attaque magique diff 10+CON (10 m, moteur : vs DEF) : 1d4° DM par round pendant INT rounds (MJ).",
+    description: "Test d'attaque magique (10 m) diff 10+CON de la cible : 1d4° DM par round pendant INT rounds.",
     familles: ["Sorcier"],
-    effetCle: "Saignement", effetDuree: null, effetDegats: "1d4°",
+    difficulteAttaque: "10+CON",
+    effetCle: "Saignement", effetDuree: "INT", effetDegats: "1d4°",
     cout: { ressource: "mana", montant: 1 },
   },
   {

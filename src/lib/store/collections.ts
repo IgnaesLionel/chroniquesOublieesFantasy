@@ -12,24 +12,27 @@ import type { Session } from "@/src/lib/rules/session/types";
 
 // Hooks typés par collection : l'UI ne connaît plus les clés localStorage.
 // Demain, ces hooks brancheront SQLite/Postgres sans changer les pages.
+// Persisté (campagne) : personnages, sessions (+ progression via usePlaySession).
+// Mémoire seule (données de jeu depuis le code) : monstres, PNJ, sorts,
+// scénarios, objets maison (perdus au rechargement).
 export function useCharacters() {
   return useLocalCollection<Character>(STORAGE_KEYS.characters, SEED_CHARACTERS);
 }
 
 export function useMonsters() {
-  return useLocalCollection<MonsterTemplate>(STORAGE_KEYS.monsters, SEED_MONSTERS);
+  return useLocalCollection<MonsterTemplate>(STORAGE_KEYS.monsters, SEED_MONSTERS, { persist: false });
 }
 
 export function useNpcs() {
-  return useLocalCollection<Npc>(STORAGE_KEYS.npcs, SEED_NPCS);
+  return useLocalCollection<Npc>(STORAGE_KEYS.npcs, SEED_NPCS, { persist: false });
 }
 
 export function useScenarios() {
-  return useLocalCollection<Scenario>(STORAGE_KEYS.scenarios, SEED_SCENARIOS);
+  return useLocalCollection<Scenario>(STORAGE_KEYS.scenarios, SEED_SCENARIOS, { persist: false });
 }
 
 export function useSorts() {
-  return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS);
+  return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS, { persist: false });
 }
 
 export function useSessions() {

@@ -451,17 +451,37 @@ describe("complétion des sorts depuis le grimoire", () => {
     // Copie, pas de mutation.
     expect(stale).not.toHaveProperty("cibleEspeces");
   });
+  it("remplit les mécaniques d'effet manquantes (Saignements : DoT retrouvé)", () => {
+    const vieux = {
+      id: "sort-vieux", nom: "Saignements", type: "offensif" as const,
+      degats: "1d4", cout: { ressource: "mana", montant: 1 },
+    };
+    const [complete] = completerSortsDepuisGrimoire([vieux]);
+    expect(complete.effetCle).toBe("Saignement");
+    expect(complete.effetDegats).toBe("1d4°");
+    expect(complete.effetDuree).toBe("INT");
+    // Valeur définie préservée (dégâts immédiats maison conservés).
+    expect(complete.degats).toBe("1d4");
+    expect(vieux).not.toHaveProperty("effetCle");
+  });
   it("ne touche ni aux valeurs définies (homebrew MJ) ni aux sorts inconnus", () => {
     const maison = { ...stale, id: "x", toucheAuto: false as const, cibleEspeces: ["Végétal"] };
     const inconnu = { id: "y", nom: "Sort inventé", type: "offensif" as const };
     const [m, i] = completerSortsDepuisGrimoire([maison, inconnu]);
-    expect(m).toBe(maison); // même référence : rien à compléter
+    // Valeurs définies intactes ; mécaniques manquantes héritées du grimoire.
     expect(m.toucheAuto).toBe(false);
     expect(m.cibleEspeces).toEqual(["Végétal"]);
+    expect(m.degatsParRangVoie).toEqual(["2d4°+CHA", "2d4°+CHA", "2d4°+CHA", "2d4°+CHA", "3d4°+CHA"]);
     expect(i).toBe(inconnu);
   });
-  it("sort déjà complet : référence inchangée", () => {
-    const sorts = [{ ...stale, toucheAuto: true as const, cibleEspeces: ["Mort-vivant"] }];
+  it("sort vraiment complet : référence inchangée", () => {
+    const sorts = [{
+      ...stale,
+      toucheAuto: true as const,
+      cibleEspeces: ["Mort-vivant"],
+      action: "attaque" as const,
+      degatsParRangVoie: ["2d4°+CHA", "2d4°+CHA", "2d4°+CHA", "2d4°+CHA", "3d4°+CHA"],
+    }];
     expect(completerSortsDepuisGrimoire(sorts)).toBe(sorts);
   });
 });

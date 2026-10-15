@@ -85,23 +85,26 @@ describe("effets temporaires", () => {
     expect(s.participants[0].effets).toHaveLength(0);
   });
 
-  it("combat : DoT appliqué au début du tour, durée consommée à la fin (2 ticks pour 2 tours)", () => {
+  it("combat : DoT à la fin du tour du porteur (2 ticks pour 2 tours)", () => {
     const a = participant("A");
     const b = { ...participant("B"), camp: "monstre" as const };
     let s = createCombat([a, b]);
     s = addParticipantEffect(s, "B", createEffect("saignement", { dureeTours: 2 }));
-    // Début du tour de B (manche 1) : -2 PV, effet toujours présent.
+    // Tour de B (manche 1) : il agit d'abord, PV intacts, effet présent.
+    s = nextTurn(s, false);
+    expect(s.participants[1].pv).toBe(30);
+    expect(s.participants[1].effets[0].toursRestants).toBe(2);
+    // Fin du tour de B : -2 PV, durée 2 => 1.
     s = nextTurn(s, false);
     expect(s.participants[1].pv).toBe(28);
-    expect(s.participants[1].effets[0].toursRestants).toBe(2);
-    // Tour de A (manche 2) : fin du tour de B -> 2 => 1.
-    s = nextTurn(s, false);
     expect(s.participants[1].effets[0].toursRestants).toBe(1);
-    // Début du tour de B (manche 2) : -2 PV à nouveau...
+    expect(s.log.some((l) => l.message.includes("effet (-2 PV)"))).toBe(true);
+    // Tour de B (manche 2) : PV inchangés pendant son tour...
+    s = nextTurn(s, false);
+    expect(s.participants[1].pv).toBe(28);
+    // ...puis fin de son tour : -2 PV et expiration.
     s = nextTurn(s, false);
     expect(s.participants[1].pv).toBe(26);
-    // ...puis fin de son tour : expiration.
-    s = nextTurn(s, false);
     expect(s.participants[1].effets).toHaveLength(0);
     expect(s.log.some((l) => l.message.includes("expiré"))).toBe(true);
   });
@@ -145,7 +148,7 @@ describe("effets temporaires", () => {
   it("attaque applique malus poison (-2) et bonus protection (+2 déf)", () => {
     const atk = { ...participant("Att"), effets: [createEffect("empoisonne")] }; // +5-2 = +3
     const def = { ...participant("Def", ), camp: "monstre" as const, defense: 15, effets: [createEffect("protection")] }; // déf 17
-    let s = createCombat([atk, def]);
+    const s = createCombat([atk, def]);
     // naturel 14 : 14+3=17 vs 17 -> touche (sans effets : 14+5=19 touche aussi, mais vérifions le calcul effectif)
     const { resolution } = resolveAttack(s, "Att", "Def", "a", fixedRng([0.66, 0]));
     expect(resolution.jetNaturel).toBe(14);
@@ -187,9 +190,9 @@ describe("états préjudiciables (LDB)", () => {
   });
 
   it("aveuglé : -5 au contact, -10 à distance (arc)", () => {
-    const arc = (effets: ReturnType<typeof createEffect>[]) => ({
+    const arc = (effets: ReturnType<typeof createEffect>[]): CombatParticipant => ({
       ...participant("Arc"),
-      attaques: [{ id: "arc", nom: "Arc court", bonus: 7, degats: "1d6", familles: ["arcs" as "arcs"] }],
+      attaques: [{ id: "arc", nom: "Arc court", bonus: 7, degats: "1d6", familles: ["arcs"] }],
       effets,
     });
     const contact = (effets: ReturnType<typeof createEffect>[]) => ({
@@ -270,6 +273,13 @@ describe("états préjudiciables (LDB)", () => {
     expect(resolution.jetTotal).toBe(14);
     expect(resolution.defenseCible).toBe(10);
     expect(resolution.touche).toBe(true);
+  });
+
+  it("options tactiques : postures au catalogue", () => {
+    expect(createEffect("defense-partielle").modificateurs).toMatchObject({ defense: 3 });
+    expect(createEffect("defense-totale").modificateurs).toMatchObject({ defense: 5 });
+    expect(createEffect("riposte-posture").modificateurs).toMatchObject({ ripostePosture: 1 });
+    expect(createEffect("soutien-tactique").modificateurs).toMatchObject({ attaque: 5 });
   });
 
   it("libellés moteur des nouvelles clés", () => {

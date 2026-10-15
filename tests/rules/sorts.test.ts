@@ -46,6 +46,8 @@ describe("grimoire des sorts (DRS)", () => {
     expect(parNom["Ensevelissement"].effetDegats).toBe("2d4°");
     expect(parNom["Ensevelissement"].degats).toBeUndefined();
     expect(parNom["Saignements"].effetDegats).toBe("1d4°");
+    expect(parNom["Saignements"].effetDuree).toBe("INT");
+    expect(parNom["Saignements"].difficulteAttaque).toBe("10+CON");
     expect(parNom["Saignements"].degats).toBeUndefined();
     expect(parNom["Strangulation"].effetDegats).toBe("1d4°+INT");
     expect(parNom["Rituel du sang"]).toBeTruthy();

@@ -32,6 +32,10 @@ export function MonsterEditor({ draft, onChange, onSave, onCancel }: Props) {
 
   const set = (p: Partial<MonsterTemplate>) => onChange({ ...draft, ...p });
 
+  const caracs = draft.caracteristiques ?? { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 };
+  const setCarac = (cle: "AGI" | "CON" | "FOR" | "PER" | "CHA" | "INT" | "VOL", v: number) =>
+    onChange({ ...draft, caracteristiques: { ...caracs, [cle]: v } });
+
   const sousCategories = draft.sousCategories ?? [];
   const toggleSousCategorie = (nom: string) => {
     set({ sousCategories: sousCategories.includes(nom) ? sousCategories.filter((x) => x !== nom) : [...sousCategories, nom] });
@@ -122,6 +126,15 @@ export function MonsterEditor({ draft, onChange, onSave, onCancel }: Props) {
           <label>Init mod<input type="number" value={draft.initMod} onChange={(e) => set({ initMod: Number(e.target.value) })} className={input} /></label>
           <label>RD<input type="number" min={0} value={draft.rd ?? 0} onChange={(e) => set({ rd: Number(e.target.value) })} className={input} /></label>
           <label>Dépl. (m)<input type="number" min={0} value={draft.deplacement ?? ""} onChange={(e) => set({ deplacement: e.target.value === "" ? null : Number(e.target.value) })} className={input} placeholder="—" /></label>
+        </div>
+
+        <div className="text-sm space-y-1.5">
+          <div className="font-semibold" title="Caractéristiques DRS (tests contre le monstre : 10+CON...)">Caractéristiques</div>
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            {(["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"] as const).map((cle) => (
+              <label key={cle}>{cle}<input type="number" value={caracs[cle] ?? 0} onChange={(e) => setCarac(cle, Number(e.target.value))} className={input} /></label>
+            ))}
+          </div>
         </div>
 
         <div className="text-sm space-y-1.5">
