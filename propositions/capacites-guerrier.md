@@ -117,6 +117,15 @@ avec tous leurs bonus affichés.
 
 ## 4. Proposition C — File d'attaques gratuites
 
+> **✅ Implémenté (v1 automatique)** — Signaux `attaquesGratuites` sur le
+> participant (Riposte au raté d'arme, Piqûre de rappel quand un autre est
+> visé, Enchaînement à la chute au contact = auto ; Teigneux posé par le
+> MJ via bouton ⚔+). Chips sur la grille avec lancer (⚔, cible = fauteur ou
+> premier ennemi actif, mêmes règles moteur via `resolveAttack`) et écart (✕).
+> Quota 1/round par type noté dans l'état (Enchaînement : cascade non
+> plafonnée ; Rempart : Teigneux × AGI+2). Aucune posture/action consommée :
+> le MJ garde la main (conditions de contact à valider).
+
 **Problème** : Riposte, Teigneux, Piqûre de rappel, Enchaînement déclenchent
 des attaques qui ne consomment pas l'action du personnage, mais rien dans
 l'app ne les rend possibles autrement qu'en « MJ fait l'attaque à la main ».

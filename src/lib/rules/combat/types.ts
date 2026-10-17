@@ -8,6 +8,37 @@ import type { Rng } from "@/src/lib/rules/dice/roller";
 export type Camp = "pj" | "monstre";
 export type Statut = "actif" | "ko" | "mort";
 
+/** Type de signal d'attaque gratuite (G) : voir AttaqueGratuite. */
+export type TypeAttaqueGratuite = "riposte" | "rappel" | "teigneux" | "enchainement";
+
+/** Label fr des attaque gratuitement disponibles types (UI). */
+export const LABEL_ATTAQUE_GRATUITE: Record<TypeAttaqueGratuite, string> = {
+  riposte: "Riposte",
+  rappel: "Piqûre de rappel",
+  teigneux: "Teigneux",
+  enchainement: "Enchaînement",
+};
+
+/**
+ * Signal d'attaque gratuite (G, hors tour) posé sur un participant :
+ * - Riposte : un adversaire a RATÉ une attaque d'arme contre lui (auto) ;
+ * - Piqûre de rappel : un adversaire a visé un autre (auto, contact au MJ) ;
+ * - Teigneux : un fuyard au contact (posé par le MJ, 1/round, Rempart : AGI+2) ;
+ * - Enchaînement : le porteur a réduit un adversaire à 0 PV au contact (auto,
+ *   cascade non plafonnée).
+ * Le signal reste affiché (chip sur la ligne) jusqu'au lancement (attaque
+ * normale via resolveAttack → lancee = manche d'usage) ou l'écart MJ.
+ */
+export interface AttaqueGratuite {
+  type: TypeAttaqueGratuite;
+  /** Cible du signal : instance du fauteur (riposte/rappel) ou du fuyard (teigneux MJ). Enchaînement : cible choisie au lancement. */
+  de?: string;
+  /** Manche de création du signal. */
+  manche: number;
+  /** Manche d'usage (consommé) : note le quota 1/round du type. */
+  lancee?: number;
+}
+
 export interface CombatParticipant {
   instanceId: string;
   templateId: string;
@@ -88,6 +119,14 @@ export interface CombatParticipant {
   famillePredilection?: ArmeFamille;
   /** Spécialisation : bonus DM fixe (0-6) avec l'arme de prédilection. */
   bonusSpecialisation?: number;
+  /**
+   * Attaques gratuites (G, hors tour) : signaux automatiques (Riposte au raté
+   * adverse, Piqûre de rappel quand un autre est visé, Enchaînement à la chute)
+   * ou posés par le MJ (Teigneux). Lancement réel = attaque normale via
+   * resolveAttack, header journalisé "(G, hors tour)". `lancee` = manche
+   * d'usage, sert au quota 1/round (Enchaînement : cascade, non plafonné).
+   */
+  attaquesGratuites?: AttaqueGratuite[];
 }
 
 /** Sort absorbé par un bouclier, renvoyable (Renvoi de sort ; zones rejouées en mono-cible, MJ au cas par cas). */

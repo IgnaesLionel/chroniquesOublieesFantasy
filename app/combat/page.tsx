@@ -6,10 +6,10 @@ import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 import { localStorageAdapter } from "@/src/lib/store/repository";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import type { Character, MonsterTemplate } from "@/src/lib/rules/types";
-import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
-import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
+import type { AttackResolution, AttaqueGratuite, CombatParticipant, CombatState, TypeAttaqueGratuite } from "@/src/lib/rules/combat/types";
+import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, appliquerResultatsCombat, castSoutien, depenserChanceApresCoup, frapperCibles, frapperZone, protegerAllie, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, tenterSortieEnseveli, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/rules/combat/staging";
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { maxZombiesControles, normaliserNomCapacite, normaliserPersonnage } from "@/src/lib/rules/personnage";
@@ -211,6 +211,68 @@ export default function CombatPage() {
       );
     }
   };
+
+  /** Attaque gratuite (G, hors tour) — Riposte au raté adverse, Piqûre de
+   * rappel (tiers attaqué), Teigneux (fuyard, signal posé par le MJ),
+   * Enchaînement (adversaire réduit à 0 PV). Même moteur qu'une attaque
+   * normale : resolveAttack (coûts, limites, effets) ; le signal est consommé
+   * en amont (quota 1/round du type, Enchaînement cascade). Cible : le
+   * fauteur du signal, sinon premier ennemi actif ; l'attaque tirée est la
+   * première du participant (MJ : lancer à la main sinon). */
+  const lancerAttaqueGratuite = (id: string, g: AttaqueGratuite) => {
+    if (!combat) return;
+    const atk = combat.participants.find((p) => p.instanceId === id);
+    if (!atk) return;
+    if (!attaqueGratuiteDisponible(atk, g.type, combat.manche)) {
+      const raison = g.type === "teigneux" ? " (1/round ; Rempart : AGI+2, vérifier en fiche)" : " (1/round)";
+      setCombat((c) =>
+        c
+          ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: `Attaque gratuite (${LABEL_ATTAQUE_GRATUITE[g.type]}) : déjà utilisée cette manche${raison}.` }] }
+          : c
+      );
+      return;
+    }
+    const fauteur = g.de ? combat.participants.find((p) => p.instanceId === g.de) : undefined;
+    const cble = fauteur?.statut === "actif" ? fauteur : combat.participants.find((p) => p.camp !== atk.camp && p.statut === "actif");
+    if (!cble) {
+      setCombat((c) =>
+        c
+          ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: "Attaque gratuite : aucune cible active." }] }
+          : c
+      );
+      return;
+    }
+    const aid = atk.attaques[0]?.id;
+    if (!aid) return;
+    try {
+      // Signal consommé avant la résolution ; en-tête journalisé en premier.
+      const prepare = marquerAttaqueGratuiteLancee(
+        {
+          ...combat,
+          log: [
+            ...combat.log,
+            { id: `g-${Date.now()}`, at: new Date().toISOString(), manche: combat.manche, message: `⚔ Attaque gratuite (${LABEL_ATTAQUE_GRATUITE[g.type]}) : ${atk.nom} frappe ${cble.nom} (G, hors tour${g.de ? "" : ", cible au MJ"})` },
+          ],
+        },
+        id,
+        g
+      );
+      const { state, resolution } = resolveAttack(prepare, id, cble.instanceId, aid, Math.random, DEFAULT_COMBAT_OPTIONS);
+      setCombat(state);
+      setLast(resolution);
+      setLastAttaque({ attackerId: id, targetId: cble.instanceId, attackId: aid });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Attaque gratuite impossible.";
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+      );
+    }
+  };
+
+  /** Écarte un signal d'attaque gratuite (lancement MJ à la main). */
+  const ecarterGratuite = (id: string, g: AttaqueGratuite) => setCombat((c) => (c ? ecarterAttaqueGratuite(c, id, g) : c));
+  /** Pose un signal Teigneux (G) : le MJ choisit le fuyard au moment du lancement. */
+  const poserGratuite = (id: string, type: TypeAttaqueGratuite) => setCombat((c) => (c ? signalerAttaqueGratuite(c, id, type) : c));
 
   const useChance = () => {
     if (!combat || !last || !lastAttaque) return;
@@ -463,6 +525,9 @@ export default function CombatPage() {
             attackerId={attackerId}
             syncIds={syncIds}
             onSync={syncDepuisFiche}
+            onGratuite={lancerAttaqueGratuite}
+            onEffaceGratuite={ecarterGratuite}
+            onAjouteGratuite={poserGratuite}
             onSelectAttacker={(id) => {
               setAttackerId(id);
               setAttackId(null);

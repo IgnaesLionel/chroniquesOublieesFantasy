@@ -31,7 +31,7 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
       capacites: [
         { nom: "Réflexes éclair", rang: 1, resume: "Rang+2 en AGI pour esquiver, +3 en Init et +1 en DEF (+2 au rang 5)." },
         { nom: "Charge", rang: 2, resume: "Action limitée : charge de 5 à 10 m en ligne droite, attaque au contact avec dé bonus et +1d4 DM. Pas au contact." },
-        { nom: "Enchaînement", rang: 3, resume: "Un adversaire réduit à 0 PV au contact donne une attaque gratuite sur un autre adversaire au contact." },
+        { nom: "Enchaînement", rang: 3, resume: "Adversaire réduit à 0 PV au contact : signal ⚔ poussé automatiquement sur la ligne (lancer = attaque gratuite sur un autre au contact, contact au MJ)." },
         { nom: "Déchaînement d'acier", rang: 4, resume: "Action limitée : traverse 10 m en ligne droite, une attaque à -2 contre chaque adversaire sur le passage." },
         { nom: "Attaque tourbillon", rang: 5, resume: "Action limitée, 1/combat : DM de l'arme automatiques à toutes les cibles dans 5 m." },
       ],
@@ -153,9 +153,9 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
     {
       voie: "Voie du soldat",
       capacites: [
-        { nom: "Teigneux", rang: 1, resume: "Action gratuite (G), 1/round : un fuyard au contact subit une attaque (MJ : attaque manuelle). Rang+2 contre alcool et privations (MJ)." },
+        { nom: "Teigneux", rang: 1, resume: "Action gratuite (G), 1/round : un fuyard au contact subit une attaque (bouton ⚔+ sur la ligne, puis ⚔ pour lancer ; Rempart : AGI+2/manche). Rang+2 contre alcool et privations (MJ)." },
         { nom: "Prouesse", rang: 2, resume: "Action gratuite (G), 1/round : sacrifier 1d4° PV pour +5 à un test de FOR ou CON, même après le jet (MJ : tests et PV manuels)." },
-        { nom: "Piqûre de rappel", rang: 3, resume: "Action gratuite (G), 1/round : un adversaire au contact qui attaque un autre subit une attaque (MJ). INT négative + DM = focus." },
+        { nom: "Piqûre de rappel", rang: 3, resume: "Action gratuite (G), 1/round : un adversaire au contact qui attaque un autre subit une attaque — signal ⚔ automatique sur la ligne (contact au MJ). INT négative + DM = focus." },
         { nom: "Force héroïque", rang: 4, resume: "FOR +1 (Éditer) et dé bonus aux tests de FOR (MJ)." },
         { nom: "Rempart", rang: 5, resume: "+1 DEF auto ; Teigneux contre AGI+2 adversaires/round, déplacement stoppé si touché (MJ)." },
       ],

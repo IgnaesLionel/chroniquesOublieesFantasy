@@ -33,13 +33,15 @@ import type { ActiveEffect, AttackDef, Character, MonsterTemplate, Sort } from "
 import { monsterInstances } from "@/src/lib/rules/combat/factory";
 import type {
   AttackResolution,
+  AttaqueGratuite,
   Camp,
   CombatOptions,
   CombatParticipant,
   CombatState,
   SortAbsorbe,
+  TypeAttaqueGratuite,
 } from "@/src/lib/rules/combat/types";
-import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
+import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/combat/types";
 
 function stamp(): string {
   return new Date().toISOString();
@@ -706,9 +708,50 @@ export function resolveAttack(
   if (paralyseLog) log.push({ id: id("paral"), at: stamp(), manche: s.manche, message: paralyseLog });
   if (paradeLog) log.push({ id: id("par"), at: stamp(), manche: s.manche, message: paradeLog });
   if (protEffet) log.push({ id: id("prot"), at: stamp(), manche: s.manche, message: `${cible.nom} : protection consommée (+${protEffet.modificateurs["defense"] ?? 0} DEF contre cette attaque).` });
-  if (!toucheVraie && estAttaqueArme(attaque) && talentConnu(cible, "Riposte")) {
-    log.push({ id: id("rip"), at: stamp(), manche: s.manche, message: `Riposte (G) : ${cible.nom} peut riposter contre ${attaquant.nom} (attaque au contact uniquement, 1/round — MJ : attaque manuelle)` });
+  // Attaques gratuites (G) : signaux automatiques (chips sur la ligne du
+  // porteur dans la grille) ; le lancer réel reste une attaque normale du
+  // moteur appelée par la page avec l'en-tête "(G, hors tour)". Teigneux est
+  // posé manuellement par le MJ (bouton ⚔+ ; Rempart : AGI+2/manche).
+  const signauxGratuites: { id: string; g: AttaqueGratuite }[] = [];
+  if (!toucheVraie && estAttaqueArme(attaque) && cible.statut === "actif" && talentConnu(cible, "Riposte")) {
+    log.push({ id: id("rip"), at: stamp(), manche: s.manche, message: `Riposte (G) : ${cible.nom} peut riposter contre ${attaquant.nom} (attaque au contact uniquement, 1/round)` });
+    if (attaqueGratuiteDisponible(cible, "riposte", s.manche)) {
+      signauxGratuites.push({ id: cible.instanceId, g: { type: "riposte", de: attaquant.instanceId, manche: s.manche } });
+    }
   }
+  // Enchaînement (G) : le porteur réduit un adversaire à 0 PV au contact ->
+  // attaque gratuite sur un autre adversaire (cascade, non plafonnée).
+  if (cibleTombe && estAttaqueContact(attaque, !!sort) && talentConnu(attaquant, "Enchaînement")) {
+    signauxGratuites.push({ id: attaquant.instanceId, g: { type: "enchainement", manche: s.manche } });
+  }
+  // Piqûre de rappel (G) : un adversaire au contact qui attaque un autre ->
+  // signal pour le porteur (1/round ; cible ≠ porteur, attaquant ≠ porteur).
+  if (attaquant.camp !== cible.camp) {
+    const porteur = participants.find(
+      (p) =>
+        p.camp === cible.camp &&
+        p.instanceId !== cible.instanceId &&
+        p.instanceId !== attaquant.instanceId &&
+        p.statut === "actif" &&
+        talentConnu(p, "Piqûre de rappel") &&
+        attaqueGratuiteDisponible(p, "rappel", s.manche)
+    );
+    if (porteur) {
+      signauxGratuites.push({ id: porteur.instanceId, g: { type: "rappel", de: attaquant.instanceId, manche: s.manche } });
+    }
+  }
+  const participantsAvecSignaux =
+    signauxGratuites.length > 0
+      ? participants.map((p) => {
+          const ajouts = signauxGratuites.filter((x) => x.id === p.instanceId).map((x) => x.g);
+          if (ajouts.length === 0) return p;
+          const liste = [...(p.attaquesGratuites ?? [])];
+          for (const g of ajouts) {
+            if (!liste.some((x) => x.type === g.type && x.de === g.de && !x.lancee)) liste.push(g);
+          }
+          return { ...p, attaquesGratuites: liste };
+        })
+      : participants;
   if (!toucheVraie && estAttaqueArme(attaque) && talentConnu(attaquant, "Attaque à suivre") && !talentConnu(attaquant, "Droite-gauche")) {
     log.push({ id: id("suivre"), at: stamp(), manche: s.manche, message: `Attaque à suivre (G) : ${attaquant.nom} peut attaquer de la 2e main (dague, hachette, épée courte, 1/round — MJ)` });
   }
@@ -737,7 +780,7 @@ export function resolveAttack(
     sangMordant: sangLog ? { degats: sangDegats, pvAttaquantApres: pvAttaquantApresSang as number } : null,
   };
 
-  return { state: appliquerPhenixAutomatique(checkEnd({ ...s, participants, log }), rng), resolution };
+  return { state: appliquerPhenixAutomatique(checkEnd({ ...s, participants: participantsAvecSignaux, log }), rng), resolution };
 }
 
 /**
@@ -1242,6 +1285,75 @@ function cleTalent(nom: string): string {
 export function talentConnu(p: Pick<CombatParticipant, "capacites">, nom: string): boolean {
   const q = cleTalent(nom);
   return (p.capacites ?? []).some((t) => cleTalent(t) === q);
+}
+
+/**
+ * Attaques gratuites (G, hors tour) — Riposte, Piqûre de rappel, Teigneux,
+ * Enchaînement (voir AttaqueGratuite). Le signal vit sur le participant
+ * (`attaquesGratuites`) ; le lancer réel est une attaque normale du moteur.
+ * Quota 1/round par type (sauf Enchaînement, cascade) ; Rempart : Teigneux
+ * jusqu'à AGI+2 fois / manche (plancher 1).
+ */
+export function attaqueGratuiteDisponible(
+  p: CombatParticipant,
+  type: TypeAttaqueGratuite,
+  manche: number
+): boolean {
+  if (type === "enchainement") return true;
+  const limite =
+    type === "teigneux" && talentConnu(p, "Rempart") ? Math.max(1, (p.caracs?.AGI ?? 0) + 2) : 1;
+  const utilisees = (p.attaquesGratuites ?? []).filter((g) => g.type === type && g.lancee === manche).length;
+  return utilisees < limite;
+}
+
+/** Pose un signal d'attaque gratuite (doublon en attente ignoré). */
+export function signalerAttaqueGratuite(
+  state: CombatState,
+  participantId: string,
+  type: TypeAttaqueGratuite,
+  de?: string
+): CombatState {
+  return {
+    ...state,
+    participants: state.participants.map((p) => {
+      if (p.instanceId !== participantId) return p;
+      const liste = p.attaquesGratuites ?? [];
+      if (liste.some((g) => g.type === type && g.de === de && !g.lancee)) return p;
+      return { ...p, attaquesGratuites: [...liste, { type, ...(de ? { de } : {}), manche: state.manche }] };
+    }),
+  };
+}
+
+/** Marque comme lancé (consommé : compte pour le 1/round de la manche). */
+export function marquerAttaqueGratuiteLancee(state: CombatState, participantId: string, g: AttaqueGratuite): CombatState {
+  return {
+    ...state,
+    participants: state.participants.map((p) => {
+      if (p.instanceId !== participantId || p.attaquesGratuites === undefined) return p;
+      return {
+        ...p,
+        attaquesGratuites: p.attaquesGratuites.map((x) =>
+          x.type === g.type && x.de === g.de && x.manche === g.manche ? { ...x, lancee: state.manche } : x
+        ),
+      };
+    }),
+  };
+}
+
+/** Écarte un signal (lancement consommé par la voie du MJ, ou annulation). */
+export function ecarterAttaqueGratuite(state: CombatState, participantId: string, g: AttaqueGratuite): CombatState {
+  return {
+    ...state,
+    participants: state.participants.map((p) => {
+      if (p.instanceId !== participantId || p.attaquesGratuites === undefined) return p;
+      return {
+        ...p,
+        attaquesGratuites: p.attaquesGratuites.filter(
+          (x) => !(x.type === g.type && x.de === g.de && x.manche === g.manche)
+        ),
+      };
+    }),
+  };
 }
 
 /** Ce participant est-il un loup compagnon (staging, appel, ou repli nom) ? */

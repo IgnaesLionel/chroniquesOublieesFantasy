@@ -1,6 +1,8 @@
 "use client";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import { LABEL_ATTAQUE_GRATUITE, type AttaqueGratuite, type TypeAttaqueGratuite } from "@/src/lib/rules/combat/types";
 import { getModifier } from "@/src/lib/rules/effects/effects";
+import { talentConnu } from "@/src/lib/rules/combat/attack";
 import { pvBarreColor } from "@/src/lib/ui/pv";
 
 function tonEffet(e: { modificateurs: Record<string, number> }): string {
@@ -18,9 +20,13 @@ interface Props {
   attackerId: string | null;
   onSync?: (id: string) => void;
   syncIds?: string[];
+  /** Lancer / écarter / poser (Teigneux MJ) une attaque gratuite. */
+  onGratuite?: (id: string, g: AttaqueGratuite) => void;
+  onEffaceGratuite?: (id: string, g: AttaqueGratuite) => void;
+  onAjouteGratuite?: (id: string, type: TypeAttaqueGratuite) => void;
 }
 
-export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerId, onSync, syncIds }: Props) {
+export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerId, onSync, syncIds, onGratuite, onEffaceGratuite, onAjouteGratuite }: Props) {
   return (
     <div className="rounded-lg border border-zinc-800 overflow-hidden">
       <table className="w-full text-sm">
@@ -40,6 +46,8 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
             const isAttacker = p.instanceId === attackerId;
             // DEF effective : base (armure comprise) + effets (surpris, renversé...).
             const modDef = getModifier(p.effets, "defense");
+            const nomDe = (id?: string) =>
+              id ? (combat.participants.find((x) => x.instanceId === id)?.nom ?? "?") : "";
             return (
               <tr
                 key={p.instanceId}
@@ -76,6 +84,42 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                         </span>
                       ))}
                     </span>
+                  )}
+                  {(p.attaquesGratuites ?? []).length > 0 && (
+                    <span className="block mt-1 space-x-1">
+                      {(p.attaquesGratuites ?? []).map((g) => (
+                        <span
+                          key={`${g.type}-${g.de ?? "-"}`}
+                          title={`⚔ ${LABEL_ATTAQUE_GRATUITE[g.type]} (G, hors tour)${g.de ? ` → ${nomDe(g.de)}` : ""} — contact et conditions validés côté MJ`}
+                          className="inline-block text-[10px] px-1 py-0.5 rounded bg-orange-950 border border-orange-800 text-orange-200"
+                        >
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (!g.lancee && onGratuite) onGratuite(p.instanceId, g); }}
+                            disabled={!!g.lancee}
+                            title={g.lancee ? `Lancée cette manche (${LABEL_ATTAQUE_GRATUITE[g.type]}, 1/round)` : "Résoudre l'attaque gratuite (G — ne dépasse pas la quota 1/round du type)"}
+                            className={`${g.lancee ? "text-zinc-500 cursor-default" : "hover:text-white"}`}
+                          >
+                            {g.lancee ? "✓" : "⚔"} {LABEL_ATTAQUE_GRATUITE[g.type]}{g.de ? ` → ${nomDe(g.de)}` : ""}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onEffaceGratuite?.(p.instanceId, g); }}
+                            title="Écarter le signal (le MJ peut lancer l'attaque à la main si besoin)"
+                            className="ml-1 text-orange-400 hover:text-white"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  {onAjouteGratuite && talentConnu(p, "Teigneux") && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onAjouteGratuite(p.instanceId, "teigneux"); }}
+                      title="Teigneux (G, 1/round — Rempart : AGI+2) : signal une attaque gratuite ; cible le fuyard au contact (MJ)"
+                      className="mt-1 block text-[10px] px-1.5 py-0.5 rounded bg-orange-900 hover:bg-orange-800 text-orange-200"
+                    >
+                      + ⚔ Teigneux
+                    </button>
                   )}
                   {active && <span className="ml-2 text-[10px] font-bold text-amber-300">▶ TOUR</span>}
                 </td>
