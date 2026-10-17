@@ -21,6 +21,9 @@ export function construirePJCombat(c: Character, catalogue: Item[] = []): Combat
       templateId: `compagnon:loup:${c.id}`,
       initMod: frais.initMod,
       initiative: null,
+      // PV persistés sur la fiche maître (fin de combat précédent, soins hors
+      // combat) ; sinon pleins. 0 conservé = KO (fuite MJ, à soigner).
+      pvConserve: c.compagnon?.pv,
     }),
   ];
 }

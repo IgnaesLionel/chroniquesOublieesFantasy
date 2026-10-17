@@ -91,11 +91,11 @@ export const CAPACITES_MYSTIQUE: Record<string, VoieDetail[]> = {
     {
       voie: "Voie des soins",
       capacites: [
-        { nom: "Récupération mineure", rang: 1, resume: "Sort d'attaque : mains au contact (ou soi), 1d4+CHA PV. 1/jour par rang (+1 par rang 3 atteint dans une autre voie). Rang+2 en médecine et premiers soins (MJ).", sortId: "sort-recuperation-mineure" },
-        { nom: "Vigueur divine", rang: 2, resume: "Guérit poison ou maladie au contact (+ test magique si surnaturel), rang+2 contre maladies et poisons." },
-        { nom: "Récupération majeure", rang: 3, resume: "Sort (limitée) : soigne à 20 m (ou soi), 3d4+CHA PV (+1d4 par rang 5 atteint dans une voie).", sortId: "sort-recuperation-majeure" },
-        { nom: "Phénix", rang: 4, resume: "1/jour : à 0 PV se relève + onde de 2d4+CHA aux alliés dans 20 m, lui le double." },
-        { nom: "Rétablissement", rang: 5, resume: "Sort : 1/jour, 10 min, soigne une créature par point de CHA (effet majeure chacune), patients au repos dans 5 m.", sortId: "sort-retablissement" },
+        { nom: "Récupération mineure", rang: 1, resume: "Sort d'attaque au contact (ou soi) : 1d4°+CHA PV. 1/jour par rang dans la voie (+1 par rang 3 atteint dans une autre voie de prêtre). Rang+2 en médecine et premiers soins (MJ).", sortId: "sort-recuperation-mineure" },
+        { nom: "Vigueur divine", rang: 2, resume: "Capacité limitée (L) au contact, sans PM : guérit poison ou maladie (+ test d'attaque magique si surnaturel, MJ). Rang+2 pour résister aux maladies et poisons." },
+        { nom: "Récupération majeure", rang: 3, resume: "Sort (limitée) à 20 m (ou soi) : 3d4°+CHA PV (+1d4° par rang 5 atteint dans une voie de prêtre).", sortId: "sort-recuperation-majeure" },
+        { nom: "Phénix", rang: 4, resume: "Automatique 1/jour : à 0 PV se relève aussitôt + onde 2d4°+CHA aux alliés dans 20 m (lui le double).", },
+        { nom: "Rétablissement", rang: 5, resume: "Rituel hors combat 1/jour, 10 min : une créature par point de CHA (prêtre inclus, repos dans 5 m), chacune comme une majeure. Concentration interdite.", sortId: "sort-retablissement" },
       ],
     },
     {

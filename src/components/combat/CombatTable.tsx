@@ -53,6 +53,11 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   <span className={`text-[10px] px-1.5 py-0.5 rounded mr-1.5 ${p.camp === "pj" ? "bg-blue-900 text-blue-200" : "bg-red-900 text-red-200"}`}>
                     {p.camp === "pj" ? "PJ" : "MO"}
                   </span>
+                  {p.bouclierBonus != null && (
+                    <span title={`Bouclier manié (+${p.bouclierBonus} DEF) — requis Voie du bouclier`} className="text-[10px] px-1.5 py-0.5 rounded mr-1.5 bg-sky-950 border border-sky-800 text-sky-200">
+                      🛡 +{p.bouclierBonus}
+                    </span>
+                  )}
                   <span className="font-semibold">{p.nom}</span>
                   {(p.sousCategories ?? []).length > 0 && (
                     <span className="block text-[10px] text-amber-300/80" title="Sous-catégories (dégâts bonus de certains sorts)">
@@ -90,8 +95,8 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   {p.defense + modDef}{modDef !== 0 && <span className="text-xs text-zinc-500"> ({p.defense})</span>}
                 </td>
                 <td className="px-3 py-2">
-                  <span className={`text-xs px-2 py-0.5 rounded ${p.statut === "actif" ? "bg-green-900 text-green-200" : "bg-zinc-800 text-zinc-400"}`}>
-                    {p.statut === "actif" ? "actif" : "KO"}
+                  <span className={`text-xs px-2 py-0.5 rounded ${p.statut === "actif" ? "bg-green-900 text-green-200" : p.statut === "mort" ? "bg-black border border-zinc-700 text-zinc-400" : "bg-zinc-800 text-zinc-400"}`}>
+                    {p.statut === "actif" ? "actif" : p.statut === "mort" ? "mort" : "KO"}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-xs text-zinc-400">{active ? "à jouer" : ""}</td>

@@ -8,13 +8,18 @@ interface Props {
   participant: CombatParticipant | null;
   onAdd: (key: string, duree: number | null) => void;
   onRemove: (effetId: string) => void;
+  /** Tenter de sortir d'Ensevelissement (action limitée, FOR/AGI + aides). */
+  onSortie?: (cibleId: string, carac: "FOR" | "AGI", aides: number) => void;
 }
 
-export function EffectsPanel({ participant, onAdd, onRemove }: Props) {
+export function EffectsPanel({ participant, onAdd, onRemove, onSortie }: Props) {
   const [key, setKey] = useState("empoisonne");
   const [duree, setDuree] = useState("3");
+  const [sortieCarac, setSortieCarac] = useState<"FOR" | "AGI">("FOR");
+  const [sortieAides, setSortieAides] = useState("");
 
   if (!participant) return null;
+  const enseveli = participant.effets.some((e) => (e.modificateurs["inciblable"] ?? 0) > 0);
   // Tous les modificateurs fusionnés (attaque, DEF, dés, paralysie, marqueurs MJ...).
   const modsFusionnes: Record<string, number> = {};
   for (const e of participant.effets) {
@@ -45,6 +50,24 @@ export function EffectsPanel({ participant, onAdd, onRemove }: Props) {
           </div>
         ))}
       </div>
+      {enseveli && onSortie && (
+        <div className="rounded border border-amber-800 bg-amber-950/30 p-2 space-y-1.5">
+          <div className="text-xs uppercase text-amber-300/90 font-bold">Sortie d&apos;Ensevelissement (action limitée)</div>
+          <div className="flex gap-2">
+            <select value={sortieCarac} onChange={(e) => setSortieCarac(e.target.value as "FOR" | "AGI")} title="Caractéristique au choix de la cible" className="flex-1 bg-zinc-800 rounded px-2 py-1.5 text-sm">
+              <option value="FOR">FOR</option>
+              <option value="AGI">AGI</option>
+            </select>
+            <input value={sortieAides} onChange={(e) => setSortieAides(e.target.value)} placeholder="Aides" title="Personnes qui creusent : +2 chacune (max +10)" className="w-16 bg-zinc-800 rounded px-2 py-1.5 text-sm text-center" />
+            <button
+              onClick={() => onSortie(participant.instanceId, sortieCarac, Number(sortieAides) || 0)}
+              className="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold"
+            >
+              Creuser (diff 15)
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex gap-2">
         <select value={key} onChange={(e) => setKey(e.target.value)} className="flex-1 bg-zinc-800 rounded px-2 py-2 text-sm">
           {EFFECT_CATALOG.map((t) => (

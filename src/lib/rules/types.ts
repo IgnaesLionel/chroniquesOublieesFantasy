@@ -118,6 +118,16 @@ export interface Sort {
    * Le jet garde le bonus d'attaque magique ; seule la cible change.
    */
   difficulteAttaque?: string;
+  /**
+   * Test opposé d'attaque magique (ex: Pied dans la tombe, Ensevelissement) :
+   * d20 + bonus magique du lanceur contre d20 + bonus magique de la cible
+   * (au lieu du seuil de DEF). Le jet garde tous ses modificateurs.
+   */
+  testOppose?: "magique";
+  /** Réservé aux vivants (ex: Pied dans la tombe) : refusé sinon (MJ). */
+  exigeVivant?: boolean;
+  /** Taille maximale de la cible (ex: Ensevelissement, "Moyenne"). Inconnue = compatible (MJ). */
+  tailleMax?: string;
   /** Sort offensif : dégâts (ex: "2d6"). */
   degats?: string;
   /**
@@ -155,19 +165,31 @@ export interface Sort {
   limiteParCible?: boolean;
   /** Attaque temporaire accordée au lanceur (ex: griffes de l'Aspect, contact de la Succube). */
   attaqueAccordee?: { nom: string; degats: string; bonus?: number; volDeVie?: boolean };
-  /** Serviteur invoqué ajouté au combat (ex: démon, zombie). PV = base + parNiveau × niveau. */
+  /** Serviteur invoqué ajouté au combat (ex: démon, zombie). */
   invocation?: {
     nom: string;
-    pvBase: number;
-    pvParNiveau: number;
-    defense: number;
+    /** Profil du bestiaire à matérialiser (ex: "Zombie humain") : prioritaire ; sans lui, les stats numériques ci-dessous. */
+    modeleNom?: string;
+    pvBase?: number;
+    pvParNiveau?: number;
+    defense?: number;
     /** "magique" = bonus magique du lanceur, sinon bonus fixe. */
-    bonusAttaque: number | "magique";
-    degats: string;
+    bonusAttaque?: number | "magique";
+    degats?: string;
     initiative?: number;
   };
   /** Frappe de zone : dégâts + effet à tous les ennemis actifs (ex: Armée des morts). */
   zone?: boolean;
+  /**
+   * Rituel hors combat uniquement (ex: Rétablissement, 10 min, patients au repos
+   * dans 5 m) : refusé en combat via castSoutien / panneaux. Hors combat via
+   * lancerRetablissement (multi-patients, 1/jour).
+   */
+  rituelHorsCombat?: boolean;
+  /** Le sort soigne jusqu'à CHA patients (Rétablissement) : multi-ciblage. */
+  patientsParCha?: boolean;
+  /** La concentration accrue (−2 PM) est interdite (ex: Rétablissement). */
+  concentrationInterdite?: boolean;
   /** Cibles multiples au choix (ex: Arc de feu ×3 : résoudre une fois par cible). */
   ciblesMax?: number;
   /** Plusieurs cibles au choix sans nombre fixé (ex: Appel de la foudre : résoudre une fois par cible). */
@@ -254,6 +276,18 @@ export interface Character extends CreatureBase {
   bourse?: Bourse;
   /** Sorts connus (offensifs utilisables comme attaques, défensifs comme soutien). */
   sorts: Sort[];
+  /**
+   * Compteurs journaliers (1/jour, quotas voie des soins...) : clé normalisée
+   * (ex: "récupération mineure", "phénix", "rétablissement") -> utilisations
+   * aujourd'hui. Remis à zéro au repos (réinitialiserQuotidiens / récup. complète MJ).
+   */
+  usagesJournaliers?: Record<string, number>;
+  /**
+   * PV persistés du compagnon animal (loup du rôdeur) : survit entre les
+   * combats (staging + "Appliquer aux fiches"), soignable hors combat.
+   * pvMax recalculé (niv×4) ; seul le pv courant est stocké.
+   */
+  compagnon?: { pv: number };
 }
 
 export interface MonsterTemplate extends Omit<CreatureBase, "pv" | "effets"> {

@@ -2,10 +2,17 @@
 import { useState } from "react";
 import type { Character, Sort } from "@/src/lib/rules/types";
 import {
+  lancerRetablissement,
   lancerSortHorsCombat,
   sortLancableHorsCombat,
   sortUtilisable,
 } from "@/src/lib/rules/combat/attack";
+import {
+  patientsMaxRetablissement,
+  quotaMineureParJour,
+  usagesMineureRestants,
+} from "@/src/lib/rules/soins";
+import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
 
@@ -28,6 +35,9 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
   const [erreur, setErreur] = useState<string | null>(null);
   const [brulure, setBrulure] = useState(false);
   const [concentration, setConcentration] = useState(false);
+  const [patientIds, setPatientIds] = useState<string[]>([]);
+  const [repos, setRepos] = useState(true);
+  const [rayon, setRayon] = useState(true);
 
   const lanceurs = characters.filter((c) => (c.sorts ?? []).length > 0);
   if (lanceurs.length === 0) return null;
@@ -47,9 +57,39 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
   const cible = characters.find((c) => c.id === cibleId) ?? lanceur;
   const mana = lanceur.ressources?.["mana"];
   const coutBase = sort?.cout?.montant ?? 0;
-  const concPossible = !!sort && (sort.action ?? "attaque") === "attaque" && coutBase > 0;
+  const estRetablissement = !!sort && normaliserNomCapacite(sort.nom) === "rétablissement";
+  const estMineureHC = !!sort && normaliserNomCapacite(sort.nom) === "récupération mineure" && sort.voie === "Voie des soins";
+  const concPossible = !!sort && !sort.concentrationInterdite && (sort.action ?? "attaque") === "attaque" && coutBase > 0;
   const concActive = concentration && concPossible;
   const coutEff = concActive ? Math.max(0, coutBase - 2) : coutBase;
+  const chaLanceur = lanceur.caracteristiques?.CHA ?? 0;
+  const maxPatients = patientsMaxRetablissement(chaLanceur);
+  const retabUtilise = (lanceur.usagesJournaliers?.["rétablissement"] ?? 0) >= 1;
+  const porteurHC = { capacites: lanceur.capacites ?? [], sorts: (lanceur.sorts ?? []).map((s) => ({ nom: s.nom, voie: s.voie, rang: s.rang })) };
+  const quotaMH = estMineureHC ? quotaMineureParJour(porteurHC) : null;
+  const restantsMH = estMineureHC ? usagesMineureRestants(porteurHC, lanceur.usagesJournaliers) : null;
+
+  const lancerRetab = () => {
+    setMessage(null);
+    setErreur(null);
+    if (!sort) return;
+    try {
+      const ids = patientIds.length > 0 ? patientIds : [lanceur.id];
+      const pats = ids.map((id) => characters.find((c) => c.id === id)!).filter(Boolean);
+      const { lanceur: l2, patients: apres, resolution } = lancerRetablissement(lanceur, pats, sort, Math.random, { dureeMin: 10, auRepos: repos, rayonOk: rayon });
+      const parId = new Map(apres.map((p) => [p.id, p]));
+      parId.set(l2.id, l2);
+      onUpdate(characters.map((c) => parId.get(c.id) ?? c));
+      const lignes = apres.map((p, i) => {
+        const r = resolution.patients[i];
+        return `${p.nom} +${r.soinTotal} PV [${r.soinDetails.join(", ")}] : ${r.pvAvant} → ${r.pvApres}`;
+      });
+      setMessage(`${resolution.lanceurNom} : ${resolution.sortNom} (10 min, −${resolution.manaPaye} mana, CHA ${chaLanceur} → ${apres.length}/${maxPatients} patients, +1d4°×${resolution.nbRang5} R5, jet par patient) · ${lignes.join(" · ")}`);
+      setPatientIds([]);
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : "Rituel impossible.");
+    }
+  };
 
   const lancer = () => {
     setMessage(null);
@@ -80,6 +120,8 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
       }
       if (resolution.effetNom) parties.push(`✦ ${resolution.effetNom}`);
       if (resolution.attaqueAccordee) parties.push(`⚔ ${resolution.attaqueAccordee}`);
+      if (resolution.invoque) parties.push(`👹 ${resolution.invoque} (MJ : cadavre valide, ajouter le serviteur)`);
+      if (resolution.avertissement) parties.push(`⚠ ${resolution.avertissement}`);
       setMessage(parties.join(" · "));
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Sort impossible.");
@@ -97,12 +139,86 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
       s.coutPV ? `${s.coutPV} PV` : "",
       s.effetCle ? `✦${s.effetCle}` : "",
       s.attaqueAccordee ? "+attaque" : "",
+      s.rituelHorsCombat ? "rituel 10 min" : "",
     ]
       .filter(Boolean)
       .join(" · ");
     const raison = !lancable.ok ? lancable.raison : !niv.ok ? niv.raison : null;
     return `${s.nom} · ${flags}${ok ? "" : ` (${raison})`}`;
   };
+
+  if (estRetablissement) {
+    const pats = patientIds.length > 0 ? patientIds : [lanceur.id];
+    return (
+      <div className="rounded-lg border border-emerald-900 bg-zinc-900 p-4 space-y-2.5">
+        <h2 className="font-bold text-sm uppercase text-emerald-300">
+          Rétablissement — rituel hors combat
+          {mana ? <span className="ml-2 font-mono normal-case">mana {mana.actuel}/{mana.max}</span> : null}
+        </h2>
+        <p className="text-xs text-zinc-500">
+          1/jour, 10 min, une créature par point de CHA ({chaLanceur} → max {maxPatients}, prêtre inclus),
+          patients au repos dans 5 m. Chacune comme une majeure (3d4°+CHA +1d4°/R5, jet par patient).
+          Concentration interdite, brûlure interdite (soin).
+          {retabUtilise ? " — déjà utilisé aujourd'hui." : ""}
+        </p>
+        <label className="block text-sm">Lanceur
+          <select
+            value={lanceur.id}
+            onChange={(e) => { setLanceurId(e.target.value); setSortId(null); setMessage(null); setErreur(null); setPatientIds([]); }}
+            className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+          >
+            {lanceurs.map((c) => (
+              <option key={c.id} value={c.id}>{c.nom} — {c.pv}/{c.pvMax} PV · CHA {c.caracteristiques?.CHA ?? 0}</option>
+            ))}
+          </select>
+        </label>
+        <div className="text-sm space-y-1">
+          <div className="text-xs uppercase text-zinc-500 font-bold">Patients ({pats.length}/{maxPatients})</div>
+          {characters.map((c) => {
+            const coche = patientIds.includes(c.id) || (patientIds.length === 0 && c.id === lanceur.id);
+            return (
+              <label key={c.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={patientIds.includes(c.id)}
+                  disabled={!patientIds.includes(c.id) && patientIds.length >= maxPatients}
+                  onChange={(e) => {
+                    setPatientIds((prev) => e.target.checked ? [...prev, c.id].slice(0, maxPatients) : prev.filter((x) => x !== c.id));
+                    setMessage(null); setErreur(null);
+                  }}
+                />
+                <span>{c.nom} — {c.pv}/{c.pvMax} PV{c.id === lanceur.id ? " (prêtre)" : ""}{coche && patientIds.length === 0 ? " (défaut)" : ""}</span>
+              </label>
+            );
+          })}
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={repos} onChange={(e) => setRepos(e.target.checked)} />
+          <span>Patients au repos (10 min)</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={rayon} onChange={(e) => setRayon(e.target.checked)} />
+          <span>Patients dans 5 m autour du prêtre</span>
+        </label>
+        {sort && <p className="text-xs text-zinc-500">{sort.description ?? "Aucune description."}</p>}
+        <button
+          onClick={lancerRetab}
+          disabled={!sort || retabUtilise || pats.length === 0 || pats.length > maxPatients || !repos || !rayon}
+          className="w-full py-2.5 rounded bg-emerald-700 hover:bg-emerald-600 font-bold disabled:opacity-40"
+        >
+          Lancer {sort ? sort.nom : "—"} ({pats.length} patient(s), jet par patient)
+        </button>
+        {message && (<div className="text-xs text-emerald-300 bg-emerald-950 border border-emerald-800 rounded px-2 py-1.5">{message}</div>)}
+        {erreur && (<div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">{erreur}</div>)}
+        <button
+          onClick={() => { setSortId(null); setMessage(null); setErreur(null); }}
+          className="w-full py-1.5 rounded bg-zinc-800 text-xs text-zinc-400"
+        >
+          ← Autre sort
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-emerald-900 bg-zinc-900 p-4 space-y-2.5">
@@ -113,7 +229,7 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
       <p className="text-xs text-zinc-500">
         Soutien hors combat : action (A/M/L) ignorée, pas de limite d&apos;action ni de mouvement.
         Niveau, mana et PV sacrifiés appliqués. Concentration accrue possible (sorts A : −2 PM).
-        Offensifs, zones et invocations : en combat uniquement.
+        Offensifs et zones : en combat uniquement. Invocations : possibles avec validation MJ.
       </p>
       <label className="block text-sm">Lanceur
         <select
@@ -160,6 +276,11 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
         </select>
       </label>
       {sort && <p className="text-xs text-zinc-500">{sort.description ?? "Aucune description."}</p>}
+      {estMineureHC && quotaMH != null && restantsMH != null && (
+        <div className="text-xs text-zinc-400">
+          Récupération mineure : {(lanceur.usagesJournaliers?.["récupération mineure"] ?? 0)}/{quotaMH} aujourd&apos;hui — reste {restantsMH}.
+        </div>
+      )}
       {sort && (sort.cout?.montant ?? 0) > 0 && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
           <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
@@ -187,6 +308,9 @@ export function HorsCombatPanel({ characters, onUpdate }: Props) {
               <input type="checkbox" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
               <span>Concentration accrue (−2 PM → {Math.max(0, coutBase - 2)} PM)</span>
             </label>
+          )}
+          {sort?.concentrationInterdite && (
+            <div className="text-xs text-zinc-500">Concentration interdite (rituel).</div>
           )}
           {brulure && (mana?.actuel ?? 0) !== 0 && (
             <div className="text-xs text-amber-300/90">⚠ Brûlure possible uniquement à 0 mana.</div>

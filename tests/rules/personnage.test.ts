@@ -18,6 +18,7 @@ import {
   drInitial,
   drNombre,
   drType,
+  fusionnerEditionPersonnage,
   manaMax,
   monterNiveau,
   normaliserPersonnage,
@@ -483,6 +484,34 @@ describe("complétion des sorts depuis le grimoire", () => {
       degatsParRangVoie: ["2d4°+CHA", "2d4°+CHA", "2d4°+CHA", "2d4°+CHA", "3d4°+CHA"],
     }];
     expect(completerSortsDepuisGrimoire(sorts)).toBe(sorts);
+  });
+});
+
+describe("édition fiche : le brouillon du modal n'écrase jamais l'équipement ni les sorts", () => {
+  const bouclier = { itemId: "item-petit-bouclier", quantite: 1, equipe: true };
+  it("brouillon périmé : inventaire, sorts, ressources conservés ; champs du modal repris", () => {
+    const courant = {
+      ...SEED_CHARACTERS.find((c) => c.id === "pj-guerrier-nain")!,
+      inventaire: [bouclier],
+      pv: 5,
+    };
+    const brouillon = { ...courant, nom: "Dorain II", niveau: 2, pv: 16, inventaire: [], sorts: [] };
+    const fusion = fusionnerEditionPersonnage(courant, brouillon);
+    expect(fusion.nom).toBe("Dorain II");
+    expect(fusion.niveau).toBe(2);
+    expect(fusion.pv).toBe(16);
+    expect(fusion.inventaire).toEqual([bouclier]);
+    expect(fusion.sorts).toBe(courant.sorts);
+    expect(fusion.ressources).toBe(courant.ressources);
+  });
+  it("changement de famille : sorts et talents vidés du brouillon conservés", () => {
+    const courant = SEED_CHARACTERS.find((c) => c.id === "pj-guerrier-nain")!;
+    const brouillon = { ...courant, famille: "Aventurier" as const, sorts: [], capacites: [] };
+    const fusion = fusionnerEditionPersonnage(courant, brouillon);
+    expect(fusion.famille).toBe("Aventurier");
+    expect(fusion.sorts).toEqual([]);
+    expect(fusion.capacites).toEqual([]);
+    expect(fusion.inventaire).toBe(courant.inventaire);
   });
 });
 

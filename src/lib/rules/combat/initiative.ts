@@ -67,10 +67,30 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   }
   const log = [...state.log];
   let participants = state.participants;
+  let tourIndex = state.tourIndex;
+  // Poussière : zombies invoqués à 0 PV → retirés du combat (pas de KO).
+  // Les index (tour en cours, prochain) sont décalés d'autant.
+  const enPoussiere = new Set(
+    participants.filter((p) => p.invoque?.espece === "Zombie" && p.pv <= 0).map((p) => p.instanceId)
+  );
+  let ancienSupprime = false;
+  if (enPoussiere.size > 0) {
+    for (const p of participants) {
+      if (enPoussiere.has(p.instanceId)) log.push(entry(manche, `${p.nom} tombe en poussière.`));
+    }
+    const ancienId = state.participants[state.tourIndex]?.instanceId;
+    ancienSupprime = !!ancienId && enPoussiere.has(ancienId);
+    const decale = (ref: number) =>
+      Math.max(0, ref - participants.slice(0, ref).filter((p) => enPoussiere.has(p.instanceId)).length);
+    tourIndex = decale(state.tourIndex);
+    idx = decale(idx);
+    participants = participants.filter((p) => !enPoussiere.has(p.instanceId));
+    if (idx >= participants.length) idx = 0;
+  }
   // 1) Fin de tour de l'ancien actif : dégâts/soins par tour (ex: Saignement),
   // puis durées consommées. Un effet posé pendant ce même tour est épargné
   // (il doit encore couvrir un tour complet).
-  const ancien = participants[state.tourIndex];
+  const ancien = ancienSupprime ? undefined : participants[tourIndex];
   if (ancien && ancien.effets.length > 0) {
     // Un effet posé pendant ce même tour ne blesse pas encore (tour complet à venir).
     const prets = ancien.effets.filter(
@@ -80,7 +100,7 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
     if (pvDelta !== 0) {
       const pv = Math.max(0, Math.min(ancien.pvMax, ancien.pv + pvDelta));
       participants = participants.map((p, i) => (
-        i === state.tourIndex
+        i === tourIndex
           ? { ...p, pv, statut: pv <= 0 ? ("ko" as const) : p.statut }
           : p
       ));
@@ -88,8 +108,50 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
       if (pv <= 0 && ancien.statut === "actif") log.push(entry(manche, `${ancien.nom} est hors combat`));
     }
     const { restants, expires } = decrementerFinDeTour(ancien.effets, state.manche, state.tourIndex);
-    participants = participants.map((p, i) => (i === state.tourIndex ? { ...p, effets: restants } : p));
+    participants = participants.map((p, i) => (i === tourIndex ? { ...p, effets: restants } : p));
     for (const e of expires) log.push(entry(manche, `Effet "${e.nom}" expiré sur ${ancien.nom} (fin de tour).`));
+    // Moribond (Ensevelissement) : à 0 PV enterré → marqué, décès au tour
+    // suivant si toujours enterré ; soin ou libération purge la marque.
+    const apres = participants[tourIndex];
+    if (apres && apres.effets.some((e) => (e.modificateurs["inciblable"] ?? 0) > 0)) {
+      if (apres.pv <= 0) {
+        const marque = apres.effets.some((e) => (e.modificateurs["moribond"] ?? 0) > 0);
+        if (marque) {
+          participants = participants.map((p, i) =>
+            i === tourIndex ? { ...p, statut: "mort" as const } : p
+          );
+          log.push(entry(manche, `${apres.nom} meurt enterré.`));
+        } else {
+          participants = participants.map((p, i) =>
+            i === tourIndex
+              ? {
+                  ...p,
+                  effets: p.effets.map((e) =>
+                    (e.modificateurs["inciblable"] ?? 0) > 0
+                      ? { ...e, modificateurs: { ...e.modificateurs, moribond: 1 } }
+                      : e
+                  ),
+                }
+              : p
+          );
+          log.push(entry(manche, `${apres.nom} est mourant enterré : décès au prochain tour sauf libération ou soin.`));
+        }
+      } else {
+        participants = participants.map((p, i) =>
+          i === tourIndex
+            ? {
+                ...p,
+                effets: p.effets.map((e) => {
+                  if ((e.modificateurs["moribond"] ?? 0) <= 0) return e;
+                  const mods = { ...e.modificateurs };
+                  delete mods["moribond"];
+                  return { ...e, modificateurs: mods };
+                }),
+              }
+            : p
+        );
+      }
+    }
   }
   // 2) Tour du nouvel actif (aucun tick : déjà appliqué en fin de tour).
   const actif = participants[idx];

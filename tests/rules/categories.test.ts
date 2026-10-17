@@ -4,6 +4,7 @@ import {
   categoriesMonstre,
   cibleEspeceAcceptee,
   estDeCategorie,
+  estVivant,
   normaliserCategorie,
 } from "@/src/lib/rules/categories";
 import { monsterInstances } from "@/src/lib/rules/combat/factory";
@@ -96,6 +97,16 @@ describe("sous-catégories de créatures", () => {
     const tpl = SEED_MONSTERS.find((m) => m.nom === "Squelette")!;
     expect(monsterSchema.safeParse(tpl).success).toBe(true);
     expect(monsterSchema.safeParse({ ...tpl, sousCategories: ["Mort-vivant", "Custom"] }).success).toBe(true);
+  });
+
+  it("estVivant : PJ oui, morts-vivants et construits non", () => {
+    expect(estVivant({ camp: "pj" })).toBe(true);
+    const squelette = monsterInstances(SEED_MONSTERS.find((m) => m.nom === "Squelette")!, 1)[0];
+    expect(estVivant(squelette)).toBe(false);
+    const golem = monsterInstances(SEED_MONSTERS.find((m) => m.nom === "Golem de chair")!, 1)[0];
+    expect(estVivant(golem)).toBe(false);
+    const gobelin = monsterInstances(SEED_MONSTERS.find((m) => m.nom === "Gobelin de base")!, 1)[0];
+    expect(estVivant(gobelin)).toBe(true);
   });
 
   it("cibleEspeceAcceptee : sans restriction toujours, sinon espèce requise", () => {

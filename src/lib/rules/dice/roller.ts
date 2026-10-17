@@ -65,15 +65,17 @@ export function resoudreFormuleSort(valeur: number | string, contexte: Record<st
   return Math.floor(evaluerArithmetique(substituerStats(valeur, contexte)));
 }
 
-/** Durée d'effet d'un sort (formules plancher 1 tour) : null = permanent. */
+/** Durée d'effet d'un sort (formules plancher 1 tour) : null = permanent.
+ * Contexte : caracs + RANG (voie) + NIVEAU (personnage, ex: Armée des morts). */
 export function dureeEffetSort(
   duree: number | string | null | undefined,
   caracs: Record<string, number> = {},
-  rangVoie = 1
+  rangVoie = 1,
+  niveau = 1
 ): number | null {
   if (duree === undefined || duree === null) return null;
   if (typeof duree === "number") return duree;
-  return Math.max(1, resoudreFormuleSort(duree, { ...caracs, RANG: Math.max(1, Math.floor(rangVoie)) }));
+  return Math.max(1, resoudreFormuleSort(duree, { ...caracs, RANG: Math.max(1, Math.floor(rangVoie)), NIVEAU: Math.max(1, Math.floor(niveau)) }));
 }
 
 export interface DiceExpression {
@@ -118,7 +120,7 @@ export function parseDiceExpression(input: string): DiceExpression {
 
 /** Remplace les caracs (INT, CHA, FOR...) et RANG par leurs valeurs : "1d4°+INT" + {INT:2} -> "1d4°+2". */
 export function substituerStats(expr: string, caracs: Record<string, number> = {}): string {
-  return expr.replace(/\b(AGI|CON|FOR|PER|CHA|INT|VOL|RANG)\b/g, (nom) => String(caracs[nom] ?? 0));
+  return expr.replace(/\b(AGI|CON|FOR|PER|CHA|INT|VOL|RANG|NIVEAU)\b/g, (nom) => String(caracs[nom] ?? 0));
 }
 
 /** Remplace le dé évolutif (dE) par sa valeur au niveau donné : "1dE+1" niv. 9 -> "1d8+1". */

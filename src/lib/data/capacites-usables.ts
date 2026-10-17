@@ -3,6 +3,7 @@
 // autre effet (ou aucun : usage noté au journal) dans le panneau Capacités.
 // Seuls les cas mécaniquement directs y figurent ; le reste se gère au cas
 // par cas (durées variables, dés bonus non modélisés, etc.).
+import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
 
 export type CibleCapacite = "allies" | "ennemis" | "tous" | "soi";
 
@@ -22,22 +23,22 @@ export interface CapaciteUsable {
   /** Soin en dés du lanceur (ex: "4d4°+CON", Increvable). */
   soin?: string;
   /** Montant saisi par le MJ au lieu d'un jet (ex: Siphon = NC PV) : "soin". */
-  montantMJ?: "soin";
+  montantMJ?: "soin" | "lien";
   /** Purge les états non permanents de la cible (ex: Increvable). */
   nettoie?: boolean;
-  /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort). */
-  actionSpeciale?: "renvoi";
+  /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort, "proteger" de Protéger un allié). */
+  actionSpeciale?: "renvoi" | "proteger" | "vigueur" | "lien-empathique";
   /** Écart éventuel avec le texte DRS (approximation moteur). */
   note?: string;
 }
 
-export const CAPACITES_USABLES: CapaciteUsable[] = [
-  {
+export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     talent: "Protéger un allié",
     effetCle: "protection",
     dureeTours: 1,
     cibles: "allies",
-    note: "DRS : +2 DEF contre 1 attaque ; moteur : +2 DEF pendant 1 round.",
+    actionSpeciale: "proteger",
+    note: "Guerrier (G, bouclier requis) : mod. DEF du bouclier à un allié au contact (MJ) contre la prochaine attaque (1/round, annoncée avant le résultat) ; le guerrier garde son bonus ; pas si surpris.",
   },
   {
     talent: "Pacte démoniaque",
@@ -107,7 +108,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     dureeTours: null,
     cibles: "allies",
     soin: "2d4°+CHA",
-    note: "1/jour (MJ) : à 0 PV se relève + onde aux alliés dans 20 m, lui le double (MJ).",
+    note: "Automatique 1/jour (moteur : déclenché à 0 PV, jet unique, alliés 20 m au montant, prêtre au double). Le bouton reste en secours MJ (1 cible).",
   },
   {
     talent: "Attaque puissante",
@@ -345,7 +346,9 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     effetCle: null,
     dureeTours: null,
     cibles: "allies",
-    note: "Poison/maladie au contact (+ test si surnaturel, MJ) ; purge ciblée non auto.",
+    actionSpeciale: "vigueur",
+    nettoie: true,
+    note: "Limitée (L) au contact, sans PM : guérit poison/maladie. Auto = purge ; Test MJ = test d'attaque magique (opposé si surnaturel) puis purge si réussi. Rang+2 vs maladies/poisons (MJ).",
   },
   {
     talent: "Parer un coup",
@@ -353,7 +356,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     dureeTours: 1,
     cibles: "soi",
     mods: { parade: 1 },
-    note: "Guerrier (M, bouclier requis) : posture sur soi — la prochaine attaque réussie est bloquée sur test opposé (niv+FOR/AGI). Rang 5 : (G) 1/round avec dé malus (MJ). Énorme/colossale : moitié DM (MJ).",
+    note: "Guerrier (M, bouclier requis) : posture sur soi — la prochaine attaque réussie (contact ou distance, pas les touches auto) est bloquée sur test opposé d'attaque au contact (niv + FOR/AGI + arme + mods). Rang 5 : (G) 1/round avec dé malus (MJ). Énorme/colossale : moitié DM (MJ).",
   },
   {
     talent: "Absorber un sort",
@@ -369,7 +372,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     dureeTours: null,
     cibles: "ennemis",
     actionSpeciale: "renvoi",
-    note: "Guerrier (G) : renvoie le sort absorbé contre son lanceur (pas les zones).",
+    note: "Guerrier (G, bouclier requis) : renvoie le sort absorbé contre son lanceur (effets appliqués ; zones rejouées en mono-cible, MJ).",
   },
   {
     talent: "Science du critique",
@@ -389,4 +392,40 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [
     nettoie: true,
     note: "Rôdeur (L), 1/combat (MJ) : à 0 PV, +4d4°+CON au prochain tour, +5 DEF 1 round, purge des états non permanents.",
   },
+  {
+    talent: "Travail d'équipe",
+    effetCle: "travail-equipe",
+    dureeTours: null,
+    cibles: "allies",
+    mods: { deBonus: 1 },
+    note: "Rôdeur, loup au contact (MJ : adjacence déclarée) : dé bonus en attaque au loup ciblé (retirer l'effet à la séparation). Piste/anti-surprise du rôdeur : MJ.",
+  },
+  {
+    talent: "Lien empathique",
+    effetCle: null,
+    dureeTours: null,
+    cibles: "allies",
+    montantMJ: "lien",
+    actionSpeciale: "lien-empathique",
+    note: "Rôdeur (L) : télépathie + 1 PV rôdeur = 1 PV loup (2 PV avec Tactiques), sans limite. Saisir les PV dépensés.",
+  },
 ];
+
+/**
+ * Un talent est-il lançable en combat (au moins une mécanique : effet,
+ * coût PV, soin, purge, renvoi) ? Les passifs (Armure d'os, Exsangue...),
+ * les manœuvres gérées par le panneau Attaque et les talents narratifs
+ * sont exclus du panneau Capacités (ni sorts ni effets à appliquer).
+ */
+export function estLancable(u: CapaciteUsable | undefined): boolean {
+  if (!u) return false;
+  return !!(u.effetCle || u.mods || u.coutPV || u.soin || u.montantMJ || u.nettoie || u.actionSpeciale);
+}
+
+/** Talents lançables parmi des noms connus (panneau Capacités, badge). */
+export function talentsLancables(talents: string[]): string[] {
+  return talents.filter((t) => {
+    const q = normaliserNomCapacite(t);
+    return estLancable(CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q));
+  });
+}

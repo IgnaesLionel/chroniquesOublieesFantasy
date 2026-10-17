@@ -29,6 +29,8 @@ export const EFFECT_CATALOG: EffectTemplate[] = [
   { key: "ralenti", nom: "Ralenti", description: "Une seule action par round, d'attaque ou de mouvement (MJ).", dureeDefaut: 2, modificateurs: { actionUnique: 1 } },
   { key: "renverse", nom: "Renversé", description: "−5 en attaque et en DEF ; se relever exige une action d'attaque (MJ).", dureeDefaut: 2, modificateurs: { attaque: -5, defense: -5 } },
   { key: "surpris", nom: "Surpris", description: "Pas d'action et −5 en DEF au premier round de combat.", dureeDefaut: 1, modificateurs: { empecheAgir: 1, defense: -5 } },
+  // Effets de sorts officiels (LDB) : Enseveli (Ensevelissement).
+  { key: "enseveli", nom: "Enseveli", description: "Enterré vivant (Ensevelissement) : aucune action, inciblable ; 2d4°/round. Sortie : action limitée, test FOR/AGI diff 15 (aides +2, max +10). À 0 PV : décès au tour suivant.", dureeDefaut: null, modificateurs: { empecheAgir: 1, inciblable: 1 } },
   // Options tactiques officielles (LDB) : postures déclarées au lieu d'attaquer (MJ : économie d'actions).
   { key: "defense-partielle", nom: "Défense partielle", description: "LDB (A) : +3 en DEF et aux tests opposés pour résister (MJ) pendant 1 round. Générale : contact, distance et magie.", dureeDefaut: 1, modificateurs: { defense: 3 } },
   { key: "defense-totale", nom: "Défense totale", description: "LDB (L) : +5 en DEF et aux tests opposés pour résister (MJ) pendant 1 round. Générale : contact, distance et magie.", dureeDefaut: 1, modificateurs: { defense: 5 } },
@@ -42,4 +44,5 @@ export const EFFECT_CATALOG: EffectTemplate[] = [
   { key: "brulure", nom: "Brûlure", description: "Perd 1 PV au début de son tour (Feu, générique).", dureeDefaut: 2, modificateurs: { pvParTour: -1 } },
   { key: "gele", nom: "Gelé", description: "−1 attaque, ralenti (Glace, générique).", dureeDefaut: 1, modificateurs: { attaque: -1 } },
   { key: "concentration", nom: "Concentration", description: "Marqueur, aucun modificateur.", dureeDefaut: null, modificateurs: {} },
+  { key: "travail-equipe", nom: "Travail d'équipe", description: "Loup au contact du rôdeur (MJ : adjacence déclarée) : dé bonus en attaque.", dureeDefaut: null, modificateurs: { deBonus: 1 } },
 ];

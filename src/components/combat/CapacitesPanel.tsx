@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
-import { CAPACITES_USABLES } from "@/src/lib/data/capacites-usables";
+import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { canAct } from "@/src/lib/rules/effects/effects";
@@ -18,10 +18,13 @@ interface Props {
       dureeTours: number | null;
       mods: Record<string, number> | undefined;
       coutPV: string | undefined;
-      actionSpeciale: "renvoi" | undefined;
+      actionSpeciale: "renvoi" | "proteger" | "vigueur" | "lien-empathique" | undefined;
       soin: string | undefined;
       soinFixe: number | undefined;
       nettoie: boolean | undefined;
+      outrepasserSoin: boolean | undefined;
+      modeVigueur: "auto" | "test" | undefined;
+      lienMontant: number | undefined;
     }
   ) => void;
 }
@@ -38,9 +41,15 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
   const [effetCle, setEffetCle] = useState<string>("");
   const [duree, setDuree] = useState<string>("");
   const [montant, setMontant] = useState<string>("");
+  const [modeVigueur, setModeVigueur] = useState<"auto" | "test">("auto");
+  const [outrepasserSoin, setOutrepasserSoin] = useState(false);
 
-  if (!lanceur || lanceur.capacites.length === 0) return null;
-  const talent = lanceur.capacites.includes(talentNom ?? "") ? talentNom! : lanceur.capacites[0];
+  if (!lanceur) return null;
+  // Passifs, manœuvres du panneau Attaque et talents narratifs exclus :
+  // seules les capacités lançables (effet, coût, soin, purge, renvoi).
+  const lancables = talentsLancables(lanceur.capacites);
+  if (lancables.length === 0) return null;
+  const talent = lancables.includes(talentNom ?? "") ? talentNom! : lancables[0];
   const defaut = defautPour(talent);
   const effetActif = effetCle || defaut?.effetCle || "";
   const dureeActive = duree !== "" ? Number(duree) : defaut?.dureeTours ?? null;
@@ -62,17 +71,32 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
   const cible = cibles.find((p) => p.instanceId === cibleId)
     ?? cibles[0] ?? null;
   const bloque = !canAct(lanceur.effets);
+  const estVigueur = normaliserNomCapacite(talent) === "vigueur divine";
+  const estPhenix = normaliserNomCapacite(talent) === "phénix";
+  const phenixUtilise = lanceur.usagesJournaliers?.["phénix"] ?? 0;
 
   return (
     <div className="rounded-lg border border-amber-900 bg-zinc-900 p-4 space-y-2.5">
       <h2 className="font-bold text-sm uppercase text-amber-300">Capacités</h2>
+      <p className="text-xs text-zinc-500" title="Talents connus du personnage (◈ = utilisable ici, · passif ou géré ailleurs : panneau Attaque, MJ)">
+        Connus : {lanceur.capacites.length > 0
+          ? lanceur.capacites.map((t, i) => (
+            <span key={`${t}-${i}`}>
+              {i > 0 && " · "}
+              <span title={lancables.includes(t) ? "Utilisable dans ce panneau" : "Passif ou géré ailleurs (panneau Attaque, MJ)"}>
+                {lancables.includes(t) ? `◈ ${t}` : t}
+              </span>
+            </span>
+          ))
+          : "aucun"}
+      </p>
       <label className="block text-sm">Talent
         <select
           value={talent}
           onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); }}
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
         >
-          {lanceur.capacites.map((t) => (
+          {lancables.map((t) => (
             <option key={t} value={t}>◈ {t}</option>
           ))}
         </select>
@@ -116,6 +140,41 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
           />
         </label>
       )}
+      {defaut?.montantMJ === "lien" && (
+        <label className="block text-sm">PV du rôdeur à dépenser (1 PV = 1 PV loup, 2 PV avec Tactiques)
+          <input
+            type="number" min={1} value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+            placeholder="PV dépensés"
+            className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
+          />
+        </label>
+      )}
+      {estVigueur && (
+        <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
+          <div className="text-xs uppercase text-zinc-500 font-bold">Vigueur divine (L, contact, sans PM)</div>
+          <label className="flex items-center gap-2" title="Guérit poison/maladie sans jet (rang+2 vs maladies/poisons, MJ)">
+            <input type="radio" checked={modeVigueur === "auto"} onChange={() => setModeVigueur("auto")} />
+            <span>Guérison automatique</span>
+          </label>
+          <label className="flex items-center gap-2" title="Infection surnaturelle : test d'attaque magique (opposé), purge si réussi">
+            <input type="radio" checked={modeVigueur === "test"} onChange={() => setModeVigueur("test")} />
+            <span>Test d&apos;attaque magique (MJ, surnaturel)</span>
+          </label>
+        </div>
+      )}
+      {estPhenix && (
+        <div className="text-xs text-zinc-400 bg-zinc-800/60 border border-zinc-800 rounded px-2 py-1.5">
+          Phénix auto 1/jour : se déclenche à 0 PV (jet unique, alliés 20 m, prêtre au double).
+          {phenixUtilise >= 1 ? " — déjà utilisé aujourd'hui." : " — disponible."} Le bouton reste en secours MJ (1 cible).
+        </div>
+      )}
+      {(defaut?.soin || defaut?.montantMJ === "soin") && cible?.soinMagiqueRecu && (
+        <label className="flex items-center gap-2 text-xs text-zinc-400" title="Règle de table : 1 soin magique / cible / combat.">
+          <input type="checkbox" checked={outrepasserSoin} onChange={(e) => setOutrepasserSoin(e.target.checked)} />
+          <span>{cible.nom} déjà soigné ce combat — outrepasser MJ</span>
+        </label>
+      )}
       {cibles.length === 0 && (
         <p className="text-xs text-red-400">Aucune cible valide pour ce talent (aucun allié actif).</p>
       )}
@@ -123,6 +182,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
         onClick={() => {
           if (cible) {
             const soinFixe = defaut?.montantMJ === "soin" && montant.trim() !== "" ? Number(montant) : undefined;
+            const lienMontant = defaut?.montantMJ === "lien" && montant.trim() !== "" ? Number(montant) : undefined;
             onUtiliser(lanceur.instanceId, cible.instanceId, talent, {
               effetCle: effetActif || null,
               dureeTours: dureeActive,
@@ -131,7 +191,10 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
               actionSpeciale: defaut?.actionSpeciale,
               soin: soinFixe !== undefined ? undefined : defaut?.soin,
               soinFixe,
-              nettoie: defaut?.nettoie,
+              nettoie: estVigueur ? undefined : defaut?.nettoie,
+              outrepasserSoin,
+              modeVigueur: estVigueur ? modeVigueur : undefined,
+              lienMontant,
             });
           }
         }}

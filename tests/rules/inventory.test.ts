@@ -270,6 +270,23 @@ describe("familles d'armes", () => {
     expect(participantFromCharacter({ ...equipe, defense: 11 }, SEED_ITEMS).defense).toBe(17);
   });
 
+  it("bouclier équipé sur la fiche -> participant avec bouclierBonus (Voie du bouclier)", () => {
+    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // Petit bouclier du stock, équipé : bonus +1 détecté en combat.
+    const equipe = recalculerPersonnage({
+      ...base,
+      inventaire: [...(base.inventaire ?? []), { itemId: "item-petit-bouclier", quantite: 1, equipe: true }],
+    }, SEED_ITEMS);
+    expect(equipe.inventaire.find((e) => e.itemId === "item-petit-bouclier")?.equipe).toBe(true);
+    expect(participantFromCharacter(equipe, SEED_ITEMS).bouclierBonus).toBe(1);
+    // Rangé (non équipé) : pas de bouclier en combat.
+    const range = recalculerPersonnage({
+      ...base,
+      inventaire: [...(base.inventaire ?? []), { itemId: "item-petit-bouclier", quantite: 1, equipe: false }],
+    }, SEED_ITEMS);
+    expect(participantFromCharacter(range, SEED_ITEMS).bouclierBonus).toBeNull();
+  });
+
   it("magiques non cumulés (max), mundanes cumulés, talents en plus", () => {
     const anneau: Item = {
       id: "x-anneau", nom: "Anneau +3", categorie: "armure", quantite: 1, exemple: false,

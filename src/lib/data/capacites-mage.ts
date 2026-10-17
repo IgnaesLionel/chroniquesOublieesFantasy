@@ -195,7 +195,7 @@ export const CAPACITES_MAGE: Record<string, VoieDetail[]> = {
     {
       voie: "Voie du sang",
       capacites: [
-        { nom: "Saignements", rang: 1, resume: "Sort d'attaque : test magique diff 10+CON (10 m, moteur : vs DEF), 1d4°/round pendant INT rounds (MJ).", sortId: "sort-saignements" },
+        { nom: "Saignements", rang: 1, resume: "Sort d'attaque : test magique diff 10+CON (10 m), 1d4°/round pendant INT rounds, sans dégâts immédiats.", sortId: "sort-saignements" },
         { nom: "Sang mordant", rang: 2, resume: "Sort (mouvement) : sang acide (INT minutes), riposte auto 1d4° d'acide à qui le blesse au contact (sorts et distance : MJ).", sortId: "sort-sang-mordant" },
         { nom: "Exsangue", rang: 3, resume: "Passif : corps cadavérique +2 DEF (+3 rang 5, -1 si autre armure qu'os, MJ : Éditer) ; à 0 PV agit avec dé malus (1 DM = inconscience)." },
         { nom: "Rituel du sang", rang: 4, resume: "Sort d'attaque : sacrifie 1d4° PV (20 m, vivant, sans test), +1d4° aux DM tranchants/perçants subis pendant INT rounds (MJ).", sortId: "sort-rituel-sang" },

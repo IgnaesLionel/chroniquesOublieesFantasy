@@ -4,16 +4,16 @@ import type { AttackDef } from "@/src/lib/rules/types";
 import type { ArmeFamille } from "@/src/lib/rules/world/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, etatLimite, frapperCibles, frapperZone, invoquerCompagnon, payerCoutSort, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, etatLimite, bonusOppositionContact, frapperCibles, frapperZone, invoquer, invoquerCompagnon, payerCoutSort, protegerAllie, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, tailleAcceptee, tenterSortieEnseveli, utiliserCapacite } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, nomBaseInstance, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { fixedRng, parseDiceExpression, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { CAPACITES } from "@/src/lib/data/capacites";
-import { CAPACITES_USABLES } from "@/src/lib/data/capacites-usables";
+import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
 import { createEffect, pvParTourTotal } from "@/src/lib/rules/effects/effects";
-import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
+import { maxZombiesControles, normaliserNomCapacite } from "@/src/lib/rules/personnage";
 
 function pj(nom = "Guerrier", defense = 18): CombatParticipant {
   return {
@@ -248,27 +248,41 @@ describe("moteur de combat", () => {
     expect(m.sorts).toEqual([]);
   });
 
-  it("usages par défaut : Protéger un allié -> Protection sur allié", () => {
+  it("usages par défaut : Protéger un allié -> action spéciale (mod. bouclier)", () => {
     const entree = CAPACITES_USABLES.find((u) => u.talent === "Protéger un allié");
-    expect(entree).toMatchObject({ effetCle: "protection", dureeTours: 1, cibles: "allies" });
+    expect(entree).toMatchObject({ effetCle: "protection", dureeTours: 1, cibles: "allies", actionSpeciale: "proteger" });
   });
 
-  it("utiliserCapacite : buff appliqué + visible + journalisé (Dorain protège un allié)", () => {
+  it("protegerAllie : mod. DEF du bouclier contre la prochaine attaque, consommée (1/round)", () => {
     const dorainSeed = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    const dorain = participantFromCharacter(dorainSeed, []);
-    expect(dorain.capacites).toContain("Protéger un allié");
+    const dorain = { ...participantFromCharacter(dorainSeed, []), bouclierBonus: 2 };
     const s = createCombat([dorain, pj("Allié"), gobelin("G")]);
-    const [lanceur, allie] = s.participants.map((p) => p.instanceId);
-    const { state, resolution } = utiliserCapacite(s, lanceur, allie, "Protéger un allié", { effetCle: "protection", dureeTours: 1 });
-    const cible = state.participants[1];
-    expect(cible.effets).toHaveLength(1);
-    expect(cible.effets[0].nom).toBe("Protection");
-    expect(cible.effets[0].toursRestants).toBe(1);
-    expect(cible.effets[0].source).toBe(dorain.nom);
-    expect(cible.effets[0].modificateurs).toMatchObject({ defense: 2 });
-    expect(resolution.effetNom).toBe("Protection");
-    expect(state.log.some((l) => l.message.includes("Protéger un allié"))).toBe(true);
-    expect(state.log.some((l) => l.message.includes("Protection"))).toBe(true);
+    const [lanceur, allie, monstre] = s.participants.map((p) => p.instanceId);
+    // Sans bouclier manié : refusé.
+    const nu = createCombat([{ ...dorain, bouclierBonus: null }, pj("Allié2"), gobelin("G2")]);
+    const [nuL, nuA] = nu.participants.map((p) => p.instanceId);
+    expect(() => protegerAllie(nu, nuL, nuA)).toThrow(/bouclier requis/);
+    // Protection +2 (bouclier), pas +2 fixe : effet ciblé 1 round.
+    const p1 = protegerAllie(s, lanceur, allie);
+    const garde = p1.state.participants[1];
+    expect(garde.effets).toHaveLength(1);
+    expect(garde.effets[0].nom).toBe("Protection");
+    expect(garde.effets[0].toursRestants).toBe(1);
+    expect(garde.effets[0].source).toBe(dorain.nom);
+    expect(garde.effets[0].modificateurs).toMatchObject({ defense: 2, protection: 1 });
+    expect(p1.resolution.talentNom).toBe("Protéger un allié");
+    expect(p1.state.log.some((l) => l.message.includes("protège"))).toBe(true);
+    // Déjà protégé : refusé (1/round).
+    expect(() => protegerAllie(p1.state, lanceur, allie)).toThrow(/déjà protégé/);
+    // 1re attaque (14+4 = 18 < 18+2) : manquée, protection consommée.
+    const r1 = resolveAttack(p1.state, monstre, allie, "dague", fixedRng([0.66]));
+    expect(r1.resolution.touche).toBe(false);
+    expect(r1.state.participants[1].effets).toHaveLength(0);
+    expect(r1.state.log.some((l) => l.message.includes("protection consommée"))).toBe(true);
+    // 2e attaque : sans bonus (14+4 = 18 vs 18 -> touché ; 1d6+2 : 4+2 = 6).
+    const r2 = resolveAttack(r1.state, monstre, allie, "dague", fixedRng([0.66, 0.5]));
+    expect(r2.resolution.touche).toBe(true);
+    expect(r2.resolution.degatsTotal).toBe(6);
   });
 
   it("utiliserCapacite : talent inconnu / étourdi -> erreur ; sans effet -> narratif seul", () => {
@@ -819,7 +833,37 @@ describe("guerrier (voies du livre)", () => {
     expect(r2.state.log.some((l) => l.message.includes("rate sa parade"))).toBe(true);
   });
 
-  it("absorber + renvoyer : sort stocké puis retourné, zones refusées", () => {
+  it("bouclier requis : Parer/Absorber/Protéger/Renvoi refusés sans bouclier", () => {
+    const nu = { ...guerrier(), bouclierBonus: null, capacites: ["Parer un coup", "Absorber un sort", "Protéger un allié"] };
+    const s = createCombat([nu, pj("Allié")]);
+    const [l, c] = s.participants.map((p) => p.instanceId);
+    expect(() => utiliserCapacite(s, l, l, "Parer un coup", { effetCle: "Parade", dureeTours: 1, mods: { parade: 1 } })).toThrow(/bouclier requis/);
+    expect(() => utiliserCapacite(s, l, l, "Absorber un sort", { effetCle: "Absorption", dureeTours: 1, mods: { absorption: 1 } })).toThrow(/bouclier requis/);
+    expect(() => protegerAllie(s, l, c)).toThrow(/bouclier requis/);
+    // Avec bouclier : Parer passe.
+    const ok = createCombat([{ ...nu, bouclierBonus: 1 }, pj("Allié2")]);
+    const [l2, c2] = ok.participants.map((p) => p.instanceId);
+    const r = utiliserCapacite(ok, l2, l2, "Parer un coup", { effetCle: "Parade", dureeTours: 1, mods: { parade: 1 } });
+    expect(r.state.participants[0].effets).toHaveLength(1);
+    expect(r.resolution.effetNom).toBe("Parade");
+    expect(() => utiliserCapacite(ok, l2, l2, "Absorber un sort", { effetCle: "Absorption", dureeTours: 1, mods: { absorption: 1 } })).toThrow(/parade préparée/);
+  });
+
+  it("bonusOppositionContact : niv + FOR/AGI + arme + mods (distance incluse)", () => {
+    // guerrier() : épée +6 (bonus complet), niv 3, FOR 3.
+    expect(bonusOppositionContact(guerrier())).toMatchObject({ bonus: 6, avantage: null });
+    // Arme d'inventaire (bonus partiel) : 3 + 3 + 1.
+    const fantassin = { ...guerrier(), attaques: [{ id: "item:epee", nom: "🗡 Épée", bonus: 1, degats: "1d8" }] };
+    expect(bonusOppositionContact(fantassin)).toMatchObject({ bonus: 7, avantage: null });
+    // Malus d'effet inclus (aveuglé −5 attaque).
+    const aveugle = { ...fantassin, effets: [createEffect("aveugle")] };
+    expect(bonusOppositionContact(aveugle)).toMatchObject({ bonus: 2, avantage: null });
+    // Dé malus (affaibli) : reporté sur le test opposé.
+    const affaibli = { ...fantassin, effets: [createEffect("affaibli")] };
+    expect(bonusOppositionContact(affaibli)).toMatchObject({ bonus: 7, avantage: "malus" });
+  });
+
+  it("absorber + renvoyer : parade requise, sort stocké puis retourné (zones rejouées)", () => {
     const baiser = { id: "x", nom: "Baiser du vampire", type: "offensif" as const, cout: { ressource: "mana", montant: 3 } };
     const atk = {
       ...sorcier(),
@@ -828,11 +872,22 @@ describe("guerrier (voies du livre)", () => {
     };
     const def = {
       ...guerrier(),
-      effets: [createEffect("Absorption", { modificateurs: { absorption: 1 }, dureeTours: 1 })],
+      bouclierBonus: 2,
+      effets: [
+        createEffect("Parade", { modificateurs: { parade: 1 }, dureeTours: 1 }),
+        createEffect("Absorption", { modificateurs: { absorption: 1 }, dureeTours: 1 }),
+      ],
     };
+    // Absorption sans parade préparée : le sort passe (19+4 = 23 ≥ 14 ; 1d6 : 6 DM).
+    const seul = createCombat([atk, { ...guerrier(), effets: [createEffect("Absorption", { modificateurs: { absorption: 1 }, dureeTours: 1 })] }]);
+    const [sa, st] = seul.participants.map((p) => p.instanceId);
+    const r0 = resolveAttack(seul, sa, st, "sort:x", fixedRng([0.9, 0.95]));
+    expect(r0.resolution.touche).toBe(true);
+    expect(r0.state.participants[1].pv).toBe(34);
+    expect(r0.state.participants[1].sortAbsorbe).toBeUndefined();
     const s = createCombat([atk, def]);
     const [a, t] = s.participants.map((p) => p.instanceId);
-    // 19+4 = 23 ≥ 14 touché ; absorption 20+6 = 26 ≥ 23.
+    // 19+4 = 23 ≥ 14 touché ; absorption (parade requise) 20+6 = 26 ≥ 23.
     const r1 = resolveAttack(s, a, t, "sort:x", fixedRng([0.9, 0.95]));
     expect(r1.state.participants[1].pv).toBe(40);
     expect(r1.state.participants[1].effets).toHaveLength(0);
@@ -845,11 +900,53 @@ describe("guerrier (voies du livre)", () => {
     expect(r2.state.participants[0].pv).toBe(36);
     expect(r2.state.participants[1].sortAbsorbe).toBeUndefined();
     expect(r2.state.participants[1].attaques).toHaveLength(1);
-    // Sans sort absorbé, ni zone : erreurs.
+    // Sans sort absorbé : erreur.
     expect(() => renvoyerSort(r2.state, t, a)).toThrow(/aucun sort absorbé/);
+    // Zone : désormais renvoyée en mono-cible contre le lanceur (19+1 = 20 ≥ 12 ; 1d6 : 4).
     const zone = { ...r2.state.participants[1], sortAbsorbe: { nom: "Z", bonus: 1, degats: "1d6", zone: true } };
     const sz = { ...r2.state, participants: r2.state.participants.map((p) => (p.instanceId === t ? zone : p)) };
-    expect(() => renvoyerSort(sz, t, a)).toThrow(/zone/);
+    const rz = renvoyerSort(sz, t, a, fixedRng([0.9, 0.5]));
+    expect(rz.resolution.touche).toBe(true);
+    expect(rz.resolution.degatsTotal).toBe(4);
+    // Renvoi sans bouclier : refusé.
+    const sn = { ...r1.state, participants: r1.state.participants.map((p) => (p.instanceId === t ? { ...p, bouclierBonus: null } : p)) };
+    expect(() => renvoyerSort(sn, t, a)).toThrow(/bouclier requis/);
+  });
+
+  it("zone : Défense au bouclier −rang (sauf surpris), absorption du guerrier seul", () => {
+    const boom = { id: "z", nom: "Explosion", type: "offensif" as const, zone: true, degats: "2d6", cout: { ressource: "mana", montant: 3 } };
+    const lanceur = { ...sorcier(), sorts: [boom], attaques: [] };
+    const garde = {
+      ...guerrier(),
+      bouclierBonus: 2,
+      capacites: ["Défense au bouclier", "Parer un coup", "Absorber un sort"],
+      effets: [
+        createEffect("Parade", { modificateurs: { parade: 1 }, dureeTours: 1 }),
+        createEffect("Absorption", { modificateurs: { absorption: 1 }, dureeTours: 1 }),
+      ],
+    };
+    const s = createCombat([lanceur, garde, gobelin("G")]);
+    const ids = s.participants.map((p) => p.instanceId);
+    // 2d6 : 4+4 = 8 ; garde : −3 (rang 3) puis absorption 19+6 = 26 ≥ 3+8 = 11.
+    const r = frapperZone(s, ids[0], boom, fixedRng([0.5, 0.5, 0.1, 0.9]), {}, [ids[1], ids[2]]);
+    const apres = r.state.participants;
+    expect(apres[1].pv).toBe(40);
+    expect(apres[1].effets).toHaveLength(0);
+    expect(apres[1].sortAbsorbe?.nom).toBe("Explosion");
+    expect(apres[2].pv).toBe(0);
+    expect(r.state.log.some((l) => l.message.includes("Défense au bouclier"))).toBe(true);
+    expect(r.state.log.some((l) => l.message.includes("absorbe Explosion"))).toBe(true);
+    // Surpris : ni réduction ni parade — 8 DM.
+    const garde2 = {
+      ...guerrier(),
+      bouclierBonus: 2,
+      capacites: ["Défense au bouclier"],
+      effets: [createEffect("surpris")],
+    };
+    const s2 = createCombat([lanceur, garde2, gobelin("G2")]);
+    const ids2 = s2.participants.map((p) => p.instanceId);
+    const r2 = frapperZone(s2, ids2[0], boom, fixedRng([0.5, 0.5]), {}, [ids2[1], ids2[2]]);
+    expect(r2.state.participants[1].pv).toBe(32);
   });
 
   it("science du critique : seuil 19 avec prédilection (MJ)", () => {
@@ -1476,6 +1573,19 @@ describe("fusion capacités : usages valides et exécutables", () => {
     }
   });
 
+  it("passifs exclus du panneau Capacités : seules les lançables", () => {
+    const lances = talentsLancables([
+      "Protéger un allié", "Pacte démoniaque", "Siphon des âmes", "Increvable",
+      "Parer un coup", "Renvoi de sort", "Armure d'os", "Exsangue",
+      "Archer émérite", "Survie", "Attaque puissante", "Charge", "Feinte",
+      "Sort inventé",
+    ]);
+    expect(lances).toEqual([
+      "Protéger un allié", "Pacte démoniaque", "Siphon des âmes", "Increvable",
+      "Parer un coup", "Renvoi de sort",
+    ]);
+  });
+
   it("Prouesse et Tour de force : coût PV auto au clic", () => {
     const lanceur = { ...pj("Guerrier"), capacites: ["Prouesse"] };
     const s = createCombat([lanceur, gobelin("G")]);
@@ -1566,5 +1676,167 @@ describe("options tactiques (LDB)", () => {
     const r = resolveAttack(s, a, t, "sort:mirabel-saignements", fixedRng([0.2, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
     expect(r.resolution.defenseCible).toBe(10);
     expect(r.resolution.touche).toBe(true);
+  });
+});
+
+describe("outre-tombe (corrections LDB)", () => {
+  const pied = () => ({
+    id: "pied", nom: "Un pied dans la tombe", type: "offensif" as const,
+    testOppose: "magique" as const, exigeVivant: true,
+    degats: "1d6", effetCle: "ralenti", effetDuree: 1,
+    effetSauvegarde: { carac: "CON", difficulte: 10 },
+    cout: { ressource: "mana", montant: 1 },
+  });
+  const lanceurPied = () => ({
+    ...sorcier(),
+    attaques: [{ id: "sort:pied", nom: "✦ Pied", bonus: 10, degats: "1d6", effetTouche: { cle: "ralenti", duree: 1, sauvegarde: { carac: "CON", difficulte: 10 } } }],
+    sorts: [pied()],
+    ressources: { mana: { max: 10, actuel: 10 } },
+  });
+
+  it("test opposé magique : d20 + magie vs d20 + magie (DEF ignorée)", () => {
+    const cible = { ...gobelin(), defense: 30, bonusMagique: 3, caracs: { CON: 1 } };
+    const s = createCombat([lanceurPied(), cible]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // Attaquant 19+10 = 29 vs défenseur 17+3 = 20 -> touché (raté vs DEF 30).
+    const r = resolveAttack(s, a, t, "sort:pied", fixedRng([0.9, 0.8, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    expect(r.resolution.defenseCible).toBe(20);
+    expect(r.resolution.touche).toBe(true);
+    expect(r.state.log.some((l) => l.message.includes("Test opposé magique"))).toBe(true);
+    // Défenseur supérieur : 3+10 = 13 vs 19+3 = 22 -> manqué.
+    const r2 = resolveAttack(s, a, t, "sort:pied", fixedRng([0.1, 0.9, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    expect(r2.resolution.touche).toBe(false);
+  });
+
+  it("Pied : cible non vivante refusée (squelette, golem)", () => {
+    const squelette = monsterInstances(SEED_MONSTERS.find((m) => m.nom === "Squelette")!, 1)[0];
+    const s = createCombat([lanceurPied(), squelette]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    expect(() => resolveAttack(s, a, t, "sort:pied", fixedRng([0.9]))).toThrow(/non vivante/);
+    // PJ vivant : pas de refus.
+    const s2 = createCombat([lanceurPied(), gobelin()]);
+    const [a2, t2] = s2.participants.map((p) => p.instanceId);
+    expect(() => resolveAttack(s2, a2, t2, "sort:pied", fixedRng([0.9, 0.1, 0.5, 0.5]))).not.toThrow();
+  });
+
+  it("CON inconnue : estimation explicite au MJ (pas de 0 silencieux)", () => {
+    const sansCaracs = { ...gobelin(), caracs: undefined };
+    const s = createCombat([lanceurPied(), sansCaracs]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const r = resolveAttack(s, a, t, "sort:pied", fixedRng([0.9, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    expect(r.state.log.some((l) => l.message.includes("inconnue"))).toBe(true);
+  });
+
+  it("taille : Ensevelissement refuse au-delà de Moyenne", () => {
+    expect(tailleAcceptee("Moyenne", "Moyenne")).toBe(true);
+    expect(tailleAcceptee("Petite", "Moyenne")).toBe(true);
+    expect(tailleAcceptee("Grande", "Moyenne")).toBe(false);
+    expect(tailleAcceptee(undefined, "Moyenne")).toBe(true);
+    const sort = { ...pied(), nom: "Ensevelissement", tailleMax: "Moyenne" };
+    const lanceur = { ...lanceurPied(), sorts: [sort] };
+    const grand = { ...gobelin(), taille: "Grande" };
+    const s = createCombat([lanceur, grand]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    expect(() => resolveAttack(s, a, t, "sort:pied", fixedRng([0.9]))).toThrow(/trop grand/);
+  });
+
+  it("enseveli : inciblable (attaque, multi, zone), sortie FOR/AGI + aides", () => {
+    const victime = {
+      ...gobelin("Victime"),
+      effets: [createEffect("enseveli", { dureeTours: null })],
+    };
+    const s = createCombat([pj("A"), victime, gobelin("G")]);
+    const [a, v, g] = s.participants.map((p) => p.instanceId);
+    expect(() => resolveAttack(s, a, v, "epee", fixedRng([0.9]))).toThrow(/inciblable/);
+    const sortFeu = { id: "feu", nom: "Feu", type: "offensif" as const, degats: "1d6" };
+    const lanceurFeu = { ...pj("A"), attaques: [{ id: "sort:feu", nom: "✦ Feu", bonus: 5, degats: "1d6" }], sorts: [sortFeu] };
+    const sf = createCombat([lanceurFeu, victime]);
+    const [af, vf] = sf.participants.map((p) => p.instanceId);
+    expect(() => frapperCibles(sf, af, sortFeu, "sort:feu", [vf], fixedRng([0.9]), DEFAULT_COMBAT_OPTIONS, {}, {})).toThrow(/inciblable/);
+    // Sortie réussie : 19+1 (FOR) = 20 ≥ 15 -> libre.
+    const cibleForte = { ...victime, caracs: { FOR: 1 } };
+    const s2 = createCombat([pj("A"), cibleForte]);
+    const [, v2] = s2.participants.map((p) => p.instanceId);
+    const r = tenterSortieEnseveli(s2, v2, "FOR", 0, fixedRng([0.9]));
+    expect(r.resolution.reussie).toBe(true);
+    expect(r.state.participants[1].effets).toHaveLength(0);
+    // Échec : 3+1 = 4 < 15 -> reste.
+    const r2 = tenterSortieEnseveli(s2, v2, "FOR", 0, fixedRng([0.1]));
+    expect(r2.resolution.reussie).toBe(false);
+    expect(r2.state.participants[1].effets).toHaveLength(1);
+    // Aides plafonnées : 99 aides -> +10 ; 1 naturel + 0 + 10 = 11 < 15.
+    const s3 = createCombat([pj("B"), victime]);
+    const [, v3] = s3.participants.map((p) => p.instanceId);
+    const r3 = tenterSortieEnseveli(s3, v3, "FOR", 99, fixedRng([0.0]));
+    expect(r3.resolution.aides).toBe(10);
+    expect(r3.resolution.reussie).toBe(false);
+    // Non enseveli / KO : erreurs.
+    expect(() => tenterSortieEnseveli(s2, a, "FOR", 0)).toThrow(/pas enseveli/);
+  });
+
+  it("moribond : enseveli à 0 PV meurt au tour suivant (soin purge)", () => {
+    const enseveli = (pv: number) => ({
+      ...gobelin("Enterré"),
+      pv,
+      effets: [createEffect("enseveli", { dureeTours: null })],
+    });
+    let s = createCombat([pj("A"), enseveli(0)]);
+    s = nextTurn(s, false); // tour de l'enseveli
+    s = nextTurn(s, false); // fin de son tour : marqué moribond
+    expect(s.log.some((l) => l.message.includes("mourant enterré"))).toBe(true);
+    s = nextTurn(s, false); // tour de A
+    s = nextTurn(s, false); // fin de son tour : décès
+    expect(s.participants[1].statut).toBe("mort");
+    expect(s.log.some((l) => l.message.includes("meurt enterré"))).toBe(true);
+  });
+
+  it("poussière : zombie invoqué à 0 PV retiré (pas de KO)", () => {
+    const zombie = {
+      ...gobelin("Zomb"),
+      pv: 0, statut: "ko" as const,
+      invoque: { par: "x", espece: "Zombie" },
+    };
+    const sorcierP = { ...pj("Sorcier"), instanceId: "x" };
+    let s = createCombat([sorcierP, zombie, gobelin("G")]);
+    s = nextTurn(s, false);
+    expect(s.participants.some((p) => p.nom === "Zomb")).toBe(false);
+    expect(s.log.some((l) => l.message.includes("poussière"))).toBe(true);
+  });
+
+  it("animation : profil bestiaire, max zombies, cadavre au MJ", () => {
+    const sort = SEED_SORTS.find((x) => x.id === "sort-animation-morts")!;
+    expect(sort.invocation?.modeleNom).toBe("Zombie humain");
+    const zombieTpl = SEED_MONSTERS.find((m) => m.nom === "Zombie humain")!;
+    const lanceur = { ...lanceurPied(), sorts: [{ ...sort, cout: { ressource: "mana", montant: 0 } }], ressources: { mana: { max: 10, actuel: 10 } } };
+    const s = createCombat([lanceur, gobelin("G")]);
+    const [a] = s.participants.map((p) => p.instanceId);
+    const r = invoquer(s, a, { ...sort, cout: { ressource: "mana", montant: 0 } }, Math.random, {}, { modele: zombieTpl, max: 1 });
+    const z = r.state.participants[r.state.participants.length - 1];
+    expect(z.nom).toContain("Zombie");
+    expect(z.pvMax).toBe(zombieTpl.pvMax);
+    expect(z.attaques[0].nom).toBe(zombieTpl.attaques[0].nom);
+    expect(z.invoque).toMatchObject({ par: a, espece: "Zombie" });
+    // 2e zombie : refusé (max 1).
+    expect(() => invoquer(r.state, a, sort, Math.random, {}, { modele: zombieTpl, max: 1 })).toThrow(/max 1/);
+    // Sans profil ni stats : erreur MJ explicite.
+    expect(() => invoquer(s, a, { ...sort, invocation: { nom: "Zombie" } }, Math.random, {})).toThrow(/MJ/);
+    // Contrôle max : 1 + rangs 5 sorcier.
+    expect(maxZombiesControles(["Animation des morts"])).toBe(1);
+    expect(maxZombiesControles(["Animation des morts", "Lien de sang"])).toBe(2);
+  });
+
+  it("armée : sans immédiat, durée NIVEAU rounds", () => {
+    const sort = SEED_SORTS.find((x) => x.id === "sort-armee-morts")!;
+    expect(sort.degats).toBeUndefined();
+    expect(sort.effetDuree).toBe("NIVEAU");
+    const lanceur = { ...sorcier(), sorts: [sort], attaques: [] };
+    const s = createCombat([lanceur, gobelin("G")]);
+    const [a, g] = s.participants.map((p) => p.instanceId);
+    const r = frapperZone(s, a, sort, fixedRng([0.5, 0.5, 0.5]), {}, [g]);
+    // Pas de hit initial : PV intacts, effet NIVEAU (5) rounds appliqué.
+    expect(r.resolution.degatsTotal).toBe(0);
+    expect(s.participants[1].pv).toBe(r.state.participants[1].pv);
+    const effet = r.state.participants[1].effets.find((e) => e.nom === "Armée des morts");
+    expect(effet?.toursRestants).toBe(5);
   });
 });

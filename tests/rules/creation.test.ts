@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
+import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import type { Character } from "@/src/lib/rules/types";
-import { deriverPersonnage, recalculerPersonnage } from "@/src/lib/rules/personnage";
+import { bonusDefenseTalents, deriverPersonnage, recalculerPersonnage } from "@/src/lib/rules/personnage";
 import {
   CREATION_DEFAUT,
   apprendreTalentComplet,
@@ -341,7 +342,7 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(sans.defense).toBe(11);
   });
 
-  it("guerrier : Vivacité +3 INIT, bouclier/dur/rempart +1 DEF, Robustesse +3 PV (DRS)", () => {
+  it("guerrier : Vivacité +3 INIT, Défense bouclier manié +1 (+2 rang 5), Robustesse +3 PV (DRS)", () => {
     const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     // DRS Robustesse (R1) : PV max +rang+2 = +3 auto (16 = 10+CON 3+3), DEF 11.
     expect(deriverPersonnage(dorain).defense).toBe(11);
@@ -351,13 +352,26 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(deriverPersonnage(c).initiative).toBe(14);
     expect(c.initMod).toBe(4);
     c = apprendreTalentComplet(c, "Défense au bouclier", SEED_SORTS);
-    expect(c.defense).toBe(12);
-    c = apprendreTalentComplet(c, "Renvoi de sort", SEED_SORTS);
-    expect(c.defense).toBe(13); // +2 au rang 5 de la voie
-    c = apprendreTalentComplet(c, "Dur à cuire", SEED_SORTS);
-    expect(c.defense).toBe(14);
-    c = apprendreTalentComplet(c, "Rempart", SEED_SORTS);
-    expect(c.defense).toBe(15);
+    expect(c.defense).toBe(11); // talent seul, sans bouclier manié : aucun bonus
+    expect(bonusDefenseTalents(c, SEED_ITEMS, [])).toBe(0);
+    // Bouclier manié (petit bouclier +1) : +1 item et +1 talent = 13.
+    const bouclier = { itemId: "item-petit-bouclier", quantite: 1, equipe: true };
+    const arme = recalculerPersonnage({ ...c, inventaire: [...c.inventaire, bouclier] }, SEED_ITEMS);
+    expect(bonusDefenseTalents(arme, SEED_ITEMS, arme.inventaire)).toBe(1);
+    expect(arme.defense).toBe(13);
+    // Rang 5 de la voie (Renvoi appris) : talent +2 (fiche 14).
+    let r5 = c;
+    for (const t of ["Protéger un allié", "Parer un coup", "Absorber un sort", "Renvoi de sort"]) {
+      r5 = apprendreTalentComplet(r5, t, SEED_SORTS);
+    }
+    const arme5 = recalculerPersonnage({ ...r5, inventaire: [...r5.inventaire, bouclier] }, SEED_ITEMS);
+    expect(bonusDefenseTalents(arme5, SEED_ITEMS, arme5.inventaire)).toBe(2);
+    expect(arme5.defense).toBe(14);
+    // Dur à cuire / Rempart : +1 chacun, cumulés au bouclier.
+    const dur = recalculerPersonnage({ ...apprendreTalentComplet(arme, "Dur à cuire", SEED_SORTS), inventaire: arme.inventaire }, SEED_ITEMS);
+    expect(dur.defense).toBe(14);
+    const rempart = recalculerPersonnage({ ...apprendreTalentComplet(dur, "Rempart", SEED_SORTS), inventaire: dur.inventaire }, SEED_ITEMS);
+    expect(rempart.defense).toBe(15);
   });
 
   it("rodeur : Éclaireur +1 DR au lieu du +1 PC, Archer +1 Init/rang, Parade/Tactiques DEF", () => {

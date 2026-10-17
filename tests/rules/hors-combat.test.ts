@@ -40,7 +40,7 @@ describe("sorts hors combat", () => {
     expect(sortLancableHorsCombat(sort).ok).toBe(true);
   });
 
-  it("offensif / zone / invocation : refusés hors combat", () => {
+  it("offensif / zone refusés hors combat ; invocation avec avertissement MJ", () => {
     const offensif: Sort = { id: "o", nom: "Foudre", type: "offensif" };
     expect(sortLancableHorsCombat(offensif).ok).toBe(false);
     expect(() => lancerSortHorsCombat(pretre(), pretre("Cible"), offensif)).toThrow(/combat/);
@@ -52,9 +52,18 @@ describe("sorts hors combat", () => {
       id: "i",
       nom: "Invocation",
       type: "utilitaire",
+      cout: { ressource: "mana", montant: 3 },
       invocation: { nom: "Démon", pvBase: 0, pvParNiveau: 5, defense: 18, bonusAttaque: "magique", degats: "2d4" },
     };
-    expect(sortLancableHorsCombat(invoc).ok).toBe(false);
+    const lancable = sortLancableHorsCombat(invoc);
+    expect(lancable.ok).toBe(true);
+    expect(lancable.avertissement).toMatch(/validation MJ/);
+    // Coût payé, serviteur au MJ (aucun participant ajouté hors combat).
+    const { lanceur: l2, resolution } = lancerSortHorsCombat(pretre(), pretre("Cible"), invoc);
+    expect(resolution.manaPaye).toBe(3);
+    expect(l2.ressources.mana.actuel).toBe(2);
+    expect(resolution.invoque).toBe("Démon");
+    expect(resolution.avertissement).toMatch(/validation MJ/);
   });
 
   it("soin hors combat : PV rendus (plafond pvMax), mana payé, action ignorée", () => {

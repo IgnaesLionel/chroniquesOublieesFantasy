@@ -114,9 +114,9 @@ export const SEED_CHARACTERS: Character[] = [
       {
         id: "aelion-recuperation", nom: "Récupération mineure", type: "defensif",
         voie: "Voie des soins", rang: 1,
-        description: "Mains au contact (ou soi) : 1d4+CHA PV.",
+        description: "Mains au contact (ou soi) : 1d4°+CHA PV.",
         familles: ["Prêtre"],
-        soin: "1d4",
+        soin: "1d4°+CHA",
         cout: { ressource: "mana", montant: 1 },
       },
     ],

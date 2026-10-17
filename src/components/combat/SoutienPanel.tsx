@@ -4,6 +4,8 @@ import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { Sort } from "@/src/lib/rules/types";
 import { canAct } from "@/src/lib/rules/effects/effects";
 import { sortUtilisable, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { usagesMineureRestants, quotaMineureParJour, rangVoieSoins, nbRang3AutresVoiesPretre } from "@/src/lib/rules/soins";
+import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
 
@@ -20,6 +22,7 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
   const [cibleId, setCibleId] = useState<string | null>(null);
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
+  const [outrepasserSoin, setOutrepasserSoin] = useState(false);
 
   if (!lanceur || soutiens.length === 0) return null;
   const jouables = soutiens.filter((s) => sortUtilisable(lanceur.niveau, s).ok);
@@ -29,9 +32,15 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
   const bloque = !canAct(lanceur.effets);
   const mana = lanceur.ressources["mana"];
   const coutBase = sort.cout?.montant ?? 0;
-  const concPossible = (sort.action ?? "attaque") === "attaque" && coutBase > 0;
+  const estRituel = !!sort.rituelHorsCombat;
+  const concPossible = !sort.concentrationInterdite && (sort.action ?? "attaque") === "attaque" && coutBase > 0;
   const concActive = concentration && concPossible;
   const coutEff = concActive ? Math.max(0, coutBase - 2) : coutBase;
+  const estMineure = normaliserNomCapacite(sort.nom) === "récupération mineure" && sort.voie === "Voie des soins";
+  const porteur = { capacites: lanceur.capacites ?? [], sorts: (lanceur.sorts ?? []).map((s) => ({ nom: s.nom, voie: s.voie, rang: s.rang })) };
+  const quotaMineure = estMineure ? quotaMineureParJour(porteur) : null;
+  const restantsMineure = estMineure ? usagesMineureRestants(porteur, lanceur.usagesJournaliers) : null;
+  const cibleDejaSoignee = !!cible?.soinMagiqueRecu && !!sort.soin && !outrepasserSoin;
   const raisonBrulure = (): string | null => {
     if (sort.soin) return "brûlure interdite pour les soins";
     if (coutEff <= 0) return "brûlure inutile (coût 0)";
@@ -63,6 +72,7 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
               s.coutPV ? `${s.coutPV} PV` : "",
               s.invocation ? "invoque" : "",
               s.zone ? "zone" : "",
+              s.rituelHorsCombat ? "rituel HC" : "",
               s.attaqueAccordee ? "+attaque" : "",
             ].filter(Boolean).join(" · ");
             return (
@@ -73,6 +83,23 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
           })}
         </select>
       </label>
+      {estRituel && (
+        <div className="text-xs text-amber-300/90 bg-amber-950 border border-amber-800 rounded px-2 py-1.5">
+          ⚠ {sort.nom} : rituel hors combat (10 min, CHA patients au repos dans 5 m, 1/jour, concentration interdite) — à lancer hors combat.
+        </div>
+      )}
+      {estMineure && quotaMineure != null && restantsMineure != null && (
+        <div className="text-xs text-zinc-400">
+          Récupération mineure : {(lanceur.usagesJournaliers?.["récupération mineure"] ?? 0)}/{quotaMineure} aujourd&apos;hui
+          (rang soins {rangVoieSoins(porteur)} + {nbRang3AutresVoiesPretre(porteur)} rang 3 hors soins) — reste {restantsMineure}.
+        </div>
+      )}
+      {sort.soin && cible?.soinMagiqueRecu && (
+        <label className="flex items-center gap-2 text-xs text-zinc-400" title="Règle de table : 1 soin magique / cible / combat. Cocher pour outrepasser (table sans limite).">
+          <input type="checkbox" checked={outrepasserSoin} onChange={(e) => setOutrepasserSoin(e.target.checked)} />
+          <span>{cible.nom} déjà soigné ce combat — outrepasser MJ (1 soin/combat)</span>
+        </label>
+      )}
       <label className="block text-sm">Bénéficiaire
         <select value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
           {allies.map((p) => (
@@ -100,12 +127,16 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
               <span>Concentration accrue (−2 PM → {Math.max(0, coutBase - 2)} PM, action L)</span>
             </label>
           )}
+          {sort.concentrationInterdite && (
+            <div className="text-xs text-zinc-500">Concentration interdite (rituel).</div>
+          )}
         </div>
       )}
       <button
-        onClick={() => { if (cible) onCast(lanceur.instanceId, cible.instanceId, sort, { mode: burnActive ? "brulure" : "mana", concentration: concActive }); }}
-        disabled={bloque || !cible}
+        onClick={() => { if (cible) onCast(lanceur.instanceId, cible.instanceId, sort, { mode: burnActive ? "brulure" : "mana", concentration: concActive, outrepasserSoin }); }}
+        disabled={bloque || !cible || estRituel || cibleDejaSoignee || (estMineure && (restantsMineure ?? 1) <= 0)}
         className="w-full py-2.5 rounded bg-violet-700 hover:bg-violet-600 font-bold disabled:opacity-40"
+        title={estRituel ? "Rituel hors combat — lancez hors combat" : cibleDejaSoignee ? "Cible déjà soignée ce combat (outrepasser MJ pour forcer)" : undefined}
       >
         Lancer {sort.nom}
       </button>

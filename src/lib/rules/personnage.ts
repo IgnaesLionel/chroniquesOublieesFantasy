@@ -310,8 +310,12 @@ export function bonusDefenseTalents(
     bonus += 3 + compteRang(4);
   }
   if (noms.has(normaliserNomCapacite("Défense au bouclier"))) {
-    bonus += 1;
-    if (noms.has(normaliserNomCapacite("Renvoi de sort"))) bonus += 1;
+    // +1 DEF (+2 au rang 5 de la voie), bouclier manié requis. Renvoi de
+    // sort ne donne rien (règle corrigée) ; Expertise du bouclier
+    // (compagnon, autre progression) exclue via le nom de voie.
+    if (bouclierEquipe(inventaire, catalogue)) {
+      bonus += rangVoieBouclier(c.capacites ?? [], c.profil, c.classe) >= 5 ? 2 : 1;
+    }
   }
   if (noms.has(normaliserNomCapacite("Bouclier de la foi"))) {
     bonus += 1;
@@ -351,6 +355,57 @@ export function bonusDefenseTalents(
 function torseMundaneEquipe(itemId: string, catalogue: Item[]): boolean {
   const item = catalogue.find((o) => o.id === itemId);
   return !!item && estTorse(item) && (item.bonusDefense ?? 0) > 0;
+}
+
+/** Bouclier manié (équipé) : l'item ou null. Voie du bouclier : requis pour Protéger/Parer/Absorber/Renvoi et le bonus passif. */
+export function bouclierEquipe(inventaire: InventaireEntree[] = [], catalogue: Item[] = []): Item | null {
+  for (const e of inventaire) {
+    if (!e.equipe) continue;
+    const item = catalogue.find((o) => o.id === e.itemId);
+    if (item && item.emplacement === "bouclier") return item;
+  }
+  return null;
+}
+
+/** Modificateur de DEF du bouclier manié (null = pas de bouclier). */
+export function bonusBouclier(inventaire: InventaireEntree[] = [], catalogue: Item[] = []): number | null {
+  const b = bouclierEquipe(inventaire, catalogue);
+  return b ? (b.bonusDefense ?? 0) : null;
+}
+
+/**
+ * Zombies contrôlables (Animation des morts) : 1 +1 par rang 5 atteint dans
+ * une voie du profil Sorcier. Les autres profils ne progressent pas ici.
+ */
+export function maxZombiesControles(capacites: string[] = []): number {
+  const noms = new Set(capacites.map(normaliserNomCapacite));
+  const voies = CAPACITES["Sorcier"] ?? [];
+  let rangs5 = 0;
+  for (const v of voies) {
+    for (const c of v.capacites) {
+      if (c.rang === 5 && noms.has(normaliserNomCapacite(c.nom))) rangs5 += 1;
+    }
+  }
+  return 1 + rangs5;
+}
+
+/**
+ * Rang max connu dans la Voie du bouclier (Guerrier) : +1 DEF, +2 au rang 5,
+ * réduction des DM de zone égale au rang. Expertise du bouclier (compagnon,
+ * autre progression) exclue via le nom de voie.
+ */
+export function rangVoieBouclier(capacites: string[] = [], profil?: string, classe?: string): number {
+  const noms = new Set(capacites.map(normaliserNomCapacite));
+  const p = (profil ?? "").trim() || (classe ?? "").trim();
+  const voies = p ? (CAPACITES[p] ?? []) : Object.values(CAPACITES).flat();
+  let rang = 0;
+  for (const v of voies) {
+    if (!v.voie.toLowerCase().includes("bouclier")) continue;
+    for (const c of v.capacites) {
+      if (noms.has(normaliserNomCapacite(c.nom))) rang = Math.max(rang, c.rang);
+    }
+  }
+  return rang;
 }
 
 /** Bonus CON permanent des talents connus : Pacte ténébreux (Sorcier) +1. */
@@ -469,6 +524,7 @@ export function remettreAZeroPersonnage<T extends Character>(
     traitsPeuple: c.voieMage ? adopterVoieMage(c.peuple) : traitsInitiaux(c.peuple),
     inventaire: (inventaireBase ?? []).map((e) => ({ ...e })),
     migreSorts: true,
+    compagnon: undefined,
   };
   const r = recalculerPersonnage(vide);
   return {
@@ -595,6 +651,19 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
   const mana = ressources.mana
     ? { max: Math.max(ressources.mana.max, manaFormule), actuel: Math.min(ressources.mana.actuel, Math.max(ressources.mana.max, manaFormule)) }
     : { max: manaFormule, actuel: manaFormule };
+  const usagesJournaliers =
+    o.usagesJournaliers && typeof o.usagesJournaliers === "object"
+      ? Object.fromEntries(
+          Object.entries(o.usagesJournaliers as Record<string, unknown>)
+            .filter(([, v]) => typeof v === "number" && (v as number) >= 0)
+            .map(([k, v]) => [k, Math.floor(v as number)])
+        )
+      : undefined;
+  const compagnonBrut = o.compagnon as { pv?: unknown } | undefined;
+  const compagnon =
+    compagnonBrut && typeof compagnonBrut.pv === "number" && (compagnonBrut.pv as number) >= 0
+      ? { pv: Math.floor(compagnonBrut.pv as number) }
+      : undefined;
   return {
     id: String(o.id ?? `pj-${Date.now().toString(36)}`),
     kind: "personnage",
@@ -635,6 +704,31 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     notes: typeof o.notes === "string" ? o.notes : undefined,
     exemple: o.exemple === true,
     migreSorts,
+    ...(usagesJournaliers ? { usagesJournaliers } : {}),
+    ...(compagnon ? { compagnon } : {}),
+  };
+}
+
+/**
+ * Fusionne une édition (modal Personnages) sur la fiche courante : seuls les
+ * champs du modal sont repris (nom, niveau, peuple, famille, profil, armure,
+ * idéal, travers, caracs, PV, DEF...). Tout ce qui se gère hors modal —
+ * inventaire, sorts/talents (sauf vidage volontaire au changement de
+ * famille), effets, ressources, DR, bourse, attaques — est conservé depuis
+ * la fiche courante, jamais écrasé par un brouillon périmé.
+ */
+export function fusionnerEditionPersonnage(courant: Character, edite: Character): Character {
+  const familleChangee = (edite.famille ?? "") !== (courant.famille ?? "");
+  return {
+    ...edite,
+    inventaire: courant.inventaire,
+    sorts: familleChangee ? edite.sorts : courant.sorts,
+    capacites: familleChangee ? edite.capacites : courant.capacites,
+    effets: courant.effets,
+    ressources: courant.ressources,
+    desRecuperation: courant.desRecuperation,
+    bourse: courant.bourse,
+    attaques: courant.attaques,
   };
 }
 
@@ -669,7 +763,8 @@ const CHAMPS_SORTS_COMPLETABLES = [
   "toucheAuto", "cibleEspeces",
   "effetCle", "effetDuree", "effetDegats", "effetMods", "effetSauvegarde",
   "degats", "degatsParRangVoie", "demiDegatsSiRate", "difficulteAttaque",
-  "limiteCombat", "limiteParCible", "zone", "ciblesMax", "ciblesLibres",
+  "testOppose", "exigeVivant", "tailleMax",
+  "limiteCombat", "limiteParCible", "zone", "rituelHorsCombat", "patientsParCha", "concentrationInterdite", "ciblesMax", "ciblesLibres",
   "invocation", "attaqueAccordee", "coutPV", "action", "bonus", "soin", "cout",
 ] as const;
 
@@ -816,7 +911,8 @@ export function depenserDeRecuperation<T extends Character>(
 }
 
 /**
- * Récupération complète : +1 DR (plafond max) et TOUS les points de mana.
+ * Récupération complète : +1 DR (plafond max) et TOUS les points de mana,
+ * + remise à zéro des quotas journaliers (mineure, phénix, rétablissement...).
  * Refusée si déjà au complet (DR et mana au max). Le soin éventuel se fait
  * ensuite via depenserDeRecuperation (dé lancé) ou
  * depenserDeRecuperationMax (valeur max, proposée aussitôt).
@@ -843,6 +939,7 @@ export function recuperationComplete<T extends Character>(
       ...c,
       desRecuperation: dr ? { ...dr, actuel: drApres } : dr,
       ressources: mana ? { ...c.ressources, mana: { ...mana, actuel: manaApres } } : c.ressources,
+      usagesJournaliers: {},
     },
     resolution: { drAvant, drApres, manaAvant, manaApres },
   };

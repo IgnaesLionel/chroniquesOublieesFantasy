@@ -1,0 +1,78 @@
+{
+  "COFBASE": {
+    "equipment": {
+      "tags": {
+        "dmtemporaires": "Les DMs sont temporaires",
+        "dmtemporairespossibles": "DM temporaires possibles",
+        "legere": "Arme légère"
+      }
+    },
+    "customStatus": {
+      "partialDef": "En défense partielle (A)",
+      "partialDefDescription": "+3 en DEF et aux tests opposés pour résister à une attaque ou un effet pendant 1 round",
+      "partialDefActivate": "Activer la défense partielle (A)",
+      "partialDefDeactivate": "Désactiver la défense partielle (A)",
+      "fullDef": "En défense totale (L)",
+      "fullDefDescription": "+5 en DEF et aux tests opposés pour résister à une attaque ou un effet pendant 1 round",
+      "fullDefActivate": "Activer la défense totale (L)",
+      "fullDefDeactivate": "Désactiver la défense totale (L)"
+    },
+    "config": {
+      "martialTrainingWeapon": {
+        "unarmed": "Mains nues",
+        "staff": "Bâton",
+        "ironStaff": "Bâton ferré",
+        "dagger": "Dague",
+        "greatSword": "Épée à deux mains",
+        "bastardSword": "Épée bâtarde",
+        "shortSword": "Épée courte",
+        "longSword": "Épée longue",
+        "spear": "Épieu",
+        "flail": "Fléau",
+        "greatFlail": "Fléau à deux mains",
+        "club": "Gourdin",
+        "axe": "Hache",
+        "greatAxe": "Hache à deux mains",
+        "lance": "Lance",
+        "cavalryLance": "Lance de cavalerie",
+        "hammer": "Marteau",
+        "mace": "Masse",
+        "pike": "Pique",
+        "rapier": "Rapière",
+        "stiletto": "Stylet",
+        "swiftblade": "Vivelame",
+        "handCrossbow": "Arbalète de poing",
+        "lightCrossbow": "Arbalète légère",
+        "heavyCrossbow": "Arbalète lourde",
+        "shortBow": "Arc court",
+        "longBow": "Arc long",
+        "throwingKnife": "Couteau de lancer",
+        "throwingDagger": "Dague (jet)",
+        "sling": "Fronde",
+        "throwingAxe": "Hachette (jet)",
+        "javelin": "Javelot",
+        "throwingSpear": "Lance (jet)",
+        "handCannon": "Pétoire",
+        "musket": "Mousquet"
+      },
+      "martialTrainingArmor": {
+        "paddedClothFur": "Tissus matelassés, fourrures",
+        "leather": "Cuir simple",
+        "studdedLeather": "Cuir renforcé, broigne",
+        "chainShirt": "Chemise de mailles",
+        "chainMail": "Cotte de mailles",
+        "plateArmor": "Armure de plaques",
+        "fullPlate": "Plaque complète"
+      },
+      "martialTrainingShield": {
+        "smallShield": "Petit bouclier",
+        "largeShield": "Grand bouclier"
+      }
+    },
+    "Sidebar": {
+      "title": "Chroniques Oubliées Fantasy<br>Livre des règles",
+      "cof2": "Black Book Éditions",
+      "cof2Tooltip": "Retrouvez toutes les informations sur le jeu Chroniques Oubliées Fantasy v2 sur le site de l'éditeur Black Book Éditions."
+    }
+  }
+}

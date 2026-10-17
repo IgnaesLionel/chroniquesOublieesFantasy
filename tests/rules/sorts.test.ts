@@ -107,7 +107,7 @@ describe("grimoire des sorts (DRS)", () => {
 });
 
 describe("sorts fonctionnels : rang de voie, saves et durées formulaires", () => {
-  const CARACS = { AGI: 1, CON: 0, FOR: 0, PER: 0, CHA: 2, INT: 3, VOL: 1, RANG: 3 };
+  const CARACS = { AGI: 1, CON: 0, FOR: 0, PER: 0, CHA: 2, INT: 3, VOL: 1, RANG: 3, NIVEAU: 5 };
 
   it("seeds : dégâts par rang, saves et durées tous évaluables", () => {
     for (const s of SEED_SORTS) {

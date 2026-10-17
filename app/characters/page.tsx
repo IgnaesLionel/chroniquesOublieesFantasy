@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { useCharacters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
-import { exportJson } from "@/src/lib/store/repository";
+import { exportJson, localStorageAdapter } from "@/src/lib/store/repository";
+import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
 import type { Character } from "@/src/lib/rules/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
@@ -20,6 +21,7 @@ import {
   recuperationComplete,
   descendreNiveau,
   drInitial,
+  fusionnerEditionPersonnage,
   monterNiveau,
   normaliserPersonnage,
   recalculerPersonnage,
@@ -27,6 +29,7 @@ import {
   verifierPersonnage,
 } from "@/src/lib/rules/personnage";
 import { estEffective, etatCreation } from "@/src/lib/rules/creation";
+import { aUnLoup, ficheLoup, idFicheLoup, pvMaxLoup } from "@/src/lib/rules/compagnon";
 import { validerEquipement } from "@/src/lib/rules/equipement";
 import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
 import {
@@ -46,6 +49,7 @@ export default function CharactersPage() {
   const [creation, setCreation] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [drMessage, setDrMessage] = useState<Record<string, string>>({});
+  const [saveMessage, setSaveMessage] = useState<Record<string, string>>({});
 
   // Normalise les vieilles sauvegardes v2 (stats -> caracteristiques) pour l'affichage.
   const items = useMemo(() => raw.map((c) => normaliserPersonnage(c as unknown as Record<string, unknown>)), [raw]);
@@ -108,8 +112,9 @@ export default function CharactersPage() {
       return { ...c, desRecuperation: { ...dr, actuel: Math.max(0, Math.min(dr.max, dr.actuel + d)) } };
     });
   /**
-   * Récupération complète : +1 DR (plafond max) + mana à fond, puis proposition
-   * de dépenser aussitôt 1 DR en valeur max (+ ½ niveau, sans lancer le dé).
+   * Récupération complète : +1 DR (plafond max) + mana à fond + quotas journaliers
+   * (mineure, phénix, rétablissement...), puis proposition de dépenser aussitôt
+   * 1 DR en valeur max (+ ½ niveau, sans lancer le dé).
    */
   const recuperationCompleteUi = (id: string) => {
     const cible = items.find((x) => x.id === id);
@@ -124,17 +129,21 @@ export default function CharactersPage() {
     }
     const dr = restaure.desRecuperation;
     const mana = restaure.ressources?.mana;
-    patch(id, () => restaure);
-    const base = `Récupération complète : DR ${cible.desRecuperation?.actuel ?? 0} → ${dr?.actuel ?? 0}, mana ${cible.ressources?.mana?.actuel ?? 0} → ${mana?.actuel ?? 0}`;
+    // Le loup récupère tous ses PV après une récupération complète (DRS).
+    const avecLoup = aUnLoup(restaure)
+      ? { ...restaure, compagnon: { pv: pvMaxLoup(restaure.niveau) } }
+      : restaure;
+    patch(id, () => avecLoup);
+    const base = `Récupération complète : DR ${cible.desRecuperation?.actuel ?? 0} → ${dr?.actuel ?? 0}, mana ${cible.ressources?.mana?.actuel ?? 0} → ${mana?.actuel ?? 0}, quotas journaliers réinitialisés${avecLoup !== restaure ? ", 🐺 PV pleins" : ""}`;
     const bonus = Math.floor(restaure.niveau / 2);
     if (
-      restaure.pv < restaure.pvMax &&
+      avecLoup.pv < avecLoup.pvMax &&
       window.confirm(
-        `${restaure.nom} : récupération complète (DR et mana restaurés). Dépenser aussitôt 1 DR pour +${parseInt(dr?.type.slice(1) ?? "0", 10)}${bonus > 0 ? `+${bonus}` : ""} PV (valeur max, sans lancer le dé) ?`
+        `${avecLoup.nom} : récupération complète (DR et mana restaurés). Dépenser aussitôt 1 DR pour +${parseInt(dr?.type.slice(1) ?? "0", 10)}${bonus > 0 ? `+${bonus}` : ""} PV (valeur max, sans lancer le dé) ?`
       )
     ) {
       try {
-        const { personnage, resolution } = depenserDeRecuperationMax(restaure);
+        const { personnage, resolution } = depenserDeRecuperationMax(avecLoup);
         patch(id, () => personnage);
         const b = resolution.bonusNiveau > 0 ? `+${resolution.bonusNiveau}` : "";
         setDrMessage((m) => ({
@@ -154,6 +163,58 @@ export default function CharactersPage() {
 
   const recalculer = (id: string) => patch(id, (c) => recalculerPersonnage(c, stock));
   const toutRecalculer = () => setItems((prev) => prev.map((c) => recalculerPersonnage(normaliserPersonnage(c as unknown as Record<string, unknown>), stock)));
+  /**
+   * Sauvegarde explicite d'une fiche : recalcule les dérivés (PV/DEF/mana...),
+   * écrit aussitôt dans le stockage local puis relit pour vérifier.
+   * Rassure avant d'aller en Combat (le staging y est reconstruit depuis ces fiches).
+   */
+  const sauvegarder = (id: string) => {
+    const cible = items.find((x) => x.id === id);
+    if (!cible) return;
+    const fiche = recalculerPersonnage(cible, stock);
+    const next = items.map((c) => (c.id === id ? fiche : c));
+    setItems(next);
+    try {
+      localStorageAdapter.save(STORAGE_KEYS.characters, next);
+      const relu = localStorageAdapter.load<Character[]>(STORAGE_KEYS.characters)?.find((c) => c.id === id);
+      if (!relu || relu.niveau !== fiche.niveau || relu.pvMax !== fiche.pvMax || relu.nom !== fiche.nom) {
+        throw new Error("relecture différente de la fiche enregistrée");
+      }
+      const heure = new Date().toLocaleTimeString();
+      const sorts = fiche.sorts?.length ?? 0;
+      const talents = fiche.capacites?.length ?? 0;
+      const mana = fiche.ressources?.mana ? `${fiche.ressources.mana.actuel}/${fiche.ressources.mana.max}` : "—";
+      setSaveMessage((m) => ({
+        ...m,
+        [id]: `✅ Fiche sauvegardée à ${heure} — Niv. ${fiche.niveau}, ${fiche.pv}/${fiche.pvMax} PV, DEF ${fiche.defense}, mana ${mana}, ${talents} talent(s), ${sorts} sort(s). Reprise telle quelle en Combat.`,
+      }));
+    } catch (e) {
+      setSaveMessage((m) => ({
+        ...m,
+        [id]: `⚠ Sauvegarde locale impossible : ${e instanceof Error ? e.message : "stockage indisponible"}. La fiche reste en mémoire pour cette session.`,
+      }));
+    }
+  };
+  /** Sauvegarde explicite de toutes les fiches (recalcul + écriture vérifiée). */
+  const toutSauvegarder = () => {
+    const next = items.map((c) => recalculerPersonnage(c, stock));
+    setItems(next);
+    try {
+      localStorageAdapter.save(STORAGE_KEYS.characters, next);
+      const relu = localStorageAdapter.load<Character[]>(STORAGE_KEYS.characters);
+      if (!relu || relu.length !== next.length) throw new Error("relecture incomplète");
+      const heure = new Date().toLocaleTimeString();
+      setSaveMessage((m) => ({
+        ...m,
+        __tout: `✅ ${next.length} fiche(s) sauvegardée(s) à ${heure}. Reprises telles quelles en Combat.`,
+      }));
+    } catch (e) {
+      setSaveMessage((m) => ({
+        ...m,
+        __tout: `⚠ Sauvegarde locale impossible : ${e instanceof Error ? e.message : "stockage indisponible"}.`,
+      }));
+    }
+  };
   const remettreAZero = (id: string, nom: string) => {
     if (!window.confirm(`Remettre ${nom} à zéro (retour création : niveau 1, talents/sorts vidés, traits du peuple réinitialisés, inventaire de base restauré, PV/chance/mana au max) ?`)) return;
     const base = SEED_CHARACTERS.find((s) => s.id === id)?.inventaire ?? [];
@@ -168,6 +229,50 @@ export default function CharactersPage() {
     }));
   };
   const reset = () => setItems(SEED_CHARACTERS);
+  /** Suppression définitive d'une fiche (avec son loup éventuel, dérivé de la fiche). */
+  const supprimer = (id: string, nom: string) => {
+    if (!window.confirm(`Supprimer définitivement ${nom} (fiche, inventaire, sorts et loup éventuel) ?`)) return;
+    setItems((prev) => prev.filter((c) => c.id !== id));
+    setOpenId((o) => (o === id ? null : o));
+  };
+
+  /** Loups compagnons (pseudo-fiches dérivées) : cibles de soins hors combat. */
+  const loups = items.flatMap((m) => ficheLoup(m) ?? []);
+  /** Répartit les mises à jour du panneau hors combat (fiches + loups vers maîtres). */
+  const routerMajHorsCombat = (next: Character[]) => {
+    const parId = new Map(next.map((c) => [c.id, c]));
+    setItems((prev) =>
+      prev.map((m) => {
+        const maj = parId.get(m.id);
+        const base = maj ?? m;
+        const loup = parId.get(idFicheLoup(m.id));
+        if (!loup || !aUnLoup(base)) return base;
+        const max = pvMaxLoup(base.niveau);
+        return { ...base, compagnon: { pv: Math.max(0, Math.min(max, loup.pv)) } };
+      })
+    );
+  };
+  /** ±1 PV au loup compagnon (persistés sur la fiche maître). */
+  const degatLoup = (id: string) =>
+    patch(id, (c) => {
+      if (!aUnLoup(c)) return c;
+      const cur = c.compagnon?.pv ?? pvMaxLoup(c.niveau);
+      return { ...c, compagnon: { pv: Math.max(0, cur - 1) } };
+    });
+  const soinLoup = (id: string) =>
+    patch(id, (c) => {
+      if (!aUnLoup(c)) return c;
+      const max = pvMaxLoup(c.niveau);
+      const cur = c.compagnon?.pv ?? max;
+      return { ...c, compagnon: { pv: Math.min(max, cur + 1) } };
+    });
+  /** Nouveau compagnon (accord MJ : mort du précédent) : repart avec tous ses PV. */
+  const nouveauCompagnon = (id: string) => {
+    const cible = items.find((x) => x.id === id);
+    if (!cible || !aUnLoup(cible)) return;
+    if (!window.confirm(`Nouveau compagnon pour ${cible.nom} (mort du précédent, accord MJ) : repartir avec tous ses PV (${pvMaxLoup(cible.niveau)}) ?`)) return;
+    patch(id, (c) => ({ ...c, compagnon: { pv: pvMaxLoup(c.niveau) } }));
+  };
 
   /** Changement de peuple : les traits de l'ancien peuple ne suivent pas (état canonique du nouveau). */
   const changePeuple = (peuple: string) => {
@@ -208,7 +313,7 @@ export default function CharactersPage() {
     const norm = normaliserPersonnage(editing as unknown as Record<string, unknown>);
     // Garde classe synchronisée avec le profil (compat combat / anciens exports).
     norm.classe = norm.profil || norm.classe;
-    setItems((prev) => prev.map((c) => (c.id === norm.id ? norm : c)));
+    setItems((prev) => prev.map((c) => (c.id === norm.id ? fusionnerEditionPersonnage(c, norm) : c)));
     setEditing(null);
   };
 
@@ -219,6 +324,7 @@ export default function CharactersPage() {
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => setCreation(true)} className="px-3 py-1.5 rounded bg-amber-400 text-black text-sm font-bold hover:bg-amber-300">+ Nouveau personnage</button>
           <button onClick={toutRecalculer} title="INIT=10+PER · DEF=10+AGI+Équip+Mod · PV=base+CON · Chance=2+CHA(+1 Aventurier) · DR=2+CON(+1 Mystique) · Mana=VOL+sorts" className="px-3 py-1.5 rounded bg-zinc-800 text-sm font-semibold hover:bg-zinc-700">↻ Recalculer</button>
+          <button onClick={toutSauvegarder} title="Recalcule toutes les fiches, écrit aussitôt dans le stockage local et vérifie par relecture. Le Combat repart de ces fiches." className="px-3 py-1.5 rounded bg-blue-800 text-sm font-semibold hover:bg-blue-700">💾 Tout sauvegarder</button>
           <button onClick={toutRemettreAZero} title="Retour création : niveau 1, talents/sorts vidés, traits et inventaires de base restaurés, PV/chance/mana au max" className="px-3 py-1.5 rounded bg-green-800 text-sm font-semibold hover:bg-green-700">✦ Remise à zéro</button>
           <button onClick={() => exportJson("personnages.json", items)} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Export JSON</button>
           <button onClick={reset} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Réinitialiser</button>
@@ -233,7 +339,12 @@ export default function CharactersPage() {
         Niveau : PV +gain+CON (rétroactif), attaques +1 (max niv. 10), +2 pts à dépenser, mana via nouveaux sorts, dé évolutif d4→d6 (6)→d8 (9)→…
       </p>
 
-      <HorsCombatPanel characters={items} onUpdate={(next) => setItems(next)} />
+      <HorsCombatPanel characters={[...items, ...loups]} onUpdate={routerMajHorsCombat} />
+      {saveMessage.__tout && (
+        <div className="rounded-lg border border-green-700 bg-green-900/40 p-3 text-sm text-green-200">
+          {saveMessage.__tout}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-3">
         {items.map((c) => {
@@ -253,11 +364,18 @@ export default function CharactersPage() {
                   )}
                 </div>
                 <div className="flex gap-1.5 shrink-0">
+                  <button onClick={() => sauvegarder(c.id)} title="Recalcule la fiche (PV/DEF/mana...), l'écrit aussitôt dans le stockage local et vérifie par relecture. Le Combat repart de cette fiche." className="text-sm px-2.5 py-1 rounded bg-blue-800 hover:bg-blue-700 font-semibold">💾</button>
                   <button onClick={() => remettreAZero(c.id, c.nom)} title="Remise à zéro : niveau 1, talents/sorts vidés, traits et inventaire de base restaurés" className="text-sm px-2.5 py-1 rounded bg-green-900 hover:bg-green-800">✦</button>
                   <button onClick={() => recalculer(c.id)} title="Resynchroniser PV/DEF/Init/Chance/DR/Mana depuis les formules" className="text-sm px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700">↻</button>
                   <button onClick={() => setEditing({ ...c })} className="text-sm px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700">Éditer</button>
+                  <button onClick={() => supprimer(c.id, c.nom)} title="Supprimer définitivement cette fiche (avec son loup éventuel)" className="text-sm px-2.5 py-1 rounded bg-red-900 hover:bg-red-800 font-semibold">🗑</button>
                 </div>
               </div>
+              {saveMessage[c.id] && (
+                <div className="text-xs rounded px-2.5 py-1.5 border border-green-800/40 bg-green-950/30 text-green-300/90">
+                  {saveMessage[c.id]}
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-1.5 text-xs font-mono">
                 {CARACS.map((k) => (
@@ -385,6 +503,31 @@ export default function CharactersPage() {
                   onUpdate={(updated) => setItems((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
                 />
               )}
+              {(() => {
+                const loup = ficheLoup(c);
+                if (!loup) return null;
+                const mort = loup.pv <= 0;
+                return (
+                  <div className="rounded border border-zinc-800 bg-zinc-950 p-2.5 space-y-1.5">
+                    <div className="flex justify-between items-center gap-2 text-sm">
+                      <span className="font-semibold">🐺 {loup.nom} <span className="text-zinc-500 font-normal">· DEF {loup.defense} · Morsure au bonus magique</span></span>
+                      <span className="font-mono">{loup.pv}/{loup.pvMax} PV</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => degatLoup(c.id)} disabled={loup.pv <= 0} title="Infliger 1 DM au loup (persisté sur la fiche)" className="flex-1 py-1.5 rounded bg-red-900 hover:bg-red-800 text-sm font-bold disabled:opacity-40">−1 PV</button>
+                      <button onClick={() => soinLoup(c.id)} disabled={loup.pv >= loup.pvMax} title="Soigner 1 PV au loup (persisté sur la fiche)" className="flex-1 py-1.5 rounded bg-green-900 hover:bg-green-800 text-sm font-bold disabled:opacity-40">+1 PV</button>
+                    </div>
+                    {mort ? (
+                      <div className="flex gap-2 items-center flex-wrap">
+                        <span className="text-xs text-red-300/90 flex-1">À 0 PV : fuite en nature (retour 8 h, MJ) ou à soigner comme un personnage.</span>
+                        <button onClick={() => nouveauCompagnon(c.id)} className="text-xs px-2.5 py-1 rounded bg-green-900 hover:bg-green-800 font-semibold">🐺 Nouveau compagnon</button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500">Soins : sorts hors combat ci-dessus (bénéficiaire/patient), magie en combat, Lien empathique, ou récupération complète (PV pleins).</p>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex gap-2 pt-1">
                 <button onClick={() => damage(c.id, 1)} className="flex-1 py-2 rounded bg-red-900 hover:bg-red-800 font-bold">−1 PV</button>
                 <button onClick={() => heal(c.id, 1)} className="flex-1 py-2 rounded bg-green-900 hover:bg-green-800 font-bold">+1 PV</button>

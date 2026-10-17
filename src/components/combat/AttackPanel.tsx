@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
@@ -14,16 +14,17 @@ interface Props {
   attackId: string | null;
   targetId: string | null;
   last: AttackResolution | null;
-  onAttacker: (id: string) => void;
   onAttack: (id: string) => void;
   onTarget: (id: string) => void;
   onRoll: (opts?: AttaqueOpts, paiement?: PaiementSort) => void;
   onChance: () => void;
+  /** Posture tactique (défenses, riposte, soutenir) : appliquée sans jet. */
+  onTactique: (cibleId: string, cle: string, duree: number | null) => void;
   /** Lancement multi-cibles / zone (sinon repli mono-cible). */
   onMulti?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts, paiement?: PaiementSort) => void;
 }
 
-export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttacker, onAttack, onTarget, onRoll, onChance, onMulti }: Props) {
+export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onTactique }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
   const bloque = attacker !== null && !canAct(attacker.effets);
@@ -37,6 +38,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [modeFleche, setModeFleche] = useState<"dm" | "statut">("dm");
   const [statutFleche, setStatutFleche] = useState("aveugle");
   const [eclair, setEclair] = useState(false);
+  const [equipeContact, setEquipeContact] = useState(false);
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
   const [cibles, setCibles] = useState<string[] | null>(null);
@@ -62,16 +64,29 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   if (cleMemorisee !== cleSelection) {
     setCleMemorisee(cleSelection);
     setCibles(null);
+    setEquipeContact(false);
   }
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
-  const [tactique, setTactique] = useState<"normale" | "assuree" | "precise" | "violente">("normale");
+  const [tactique, setTactique] = useState<"normale" | "assuree" | "precise" | "violente" | "defense-partielle" | "defense-totale" | "riposte" | "soutenir">("normale");
   const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
   const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
   const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
   const connaitMille = talents.has(normaliserNomCapacite("Dans le mille"));
   const connaitFleche = talents.has(normaliserNomCapacite("Flèche de mort"));
   const connaitEclair = talents.has(normaliserNomCapacite("Attaque éclair"));
+  // Travail d'équipe (Rôdeur) : si l'attaquant est le loup et son maître a le
+  // talent, proposer le dé bonus (adjacence déclarée par le MJ, pas de positions suivies).
+  // Trois cas affichés : proposition (talent OK), astuce R2 (sans talent),
+  // diagnostic (maître introuvable : staging à reconstruire).
+  const loupAttaquant = attacker && estLoupCompagnon(attacker) ? attacker : null;
+  const maitreLoup = loupAttaquant ? trouverMaitreLoup(participants, loupAttaquant) : undefined;
+  const maitreATalent = !!maitreLoup && (maitreLoup.capacites ?? []).some((t) => normaliserNomCapacite(t) === normaliserNomCapacite("Travail d'équipe"));
+  const deBonusActif = !!attacker && getModifier(attacker.effets, "deBonus") > 0;
+  const propositionEquipe = propositionTravailEquipe(participants, attackerId);
+  const proposeEquipe = propositionEquipe != null;
+  const loupSansTalent = !!loupAttaquant && !!maitreLoup && !maitreATalent && !deBonusActif;
+  const loupSansMaitre = !!loupAttaquant && !maitreLoup;
   const STATUTS_FLECHE = [
     { cle: "aveugle", nom: "Aveuglé" },
     { cle: "affaibli", nom: "Affaibli" },
@@ -101,6 +116,9 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       if (modeFleche === "dm") opts.degatsBonus = [...(opts.degatsBonus ?? []), "1d4°"];
       else opts.effetSupp = { cle: statutFleche, duree: 1 };
     }
+    if (equipeContact && proposeEquipe) {
+      opts.deBonus = true;
+    }
     if (eclair && connaitEclair && attacker) {
       const agi = attacker.caracs?.AGI ?? 0;
       opts.bonusOverride = attacker.niveau + agi;
@@ -118,8 +136,10 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     const coutEff = concOk ? Math.max(0, selCout - 2) : selCout;
     const burnOk = !!selSort && !selSort.soin && coutEff > 0 && (attacker?.ressources["mana"]?.actuel ?? 0) === 0
       && !!attacker?.deRecuperation && modeLancement === "brulure";
-    // Option tactique (A) : armes au contact ou à distance, jamais sur attaque magique.
-    const tactiqueEff = selSort ? "normale" : tactique;
+    // Option tactique : armes au contact ou à distance pour les attaques,
+    // jamais sur attaque magique. Défenses, riposte (self-buff) et soutenir
+    // (un allié) : postures appliquées sans jet.
+    const tactiqueEff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && selSort ? "normale" : tactique;
     if (tactiqueEff === "assuree") {
       opts.modAttaque = (opts.modAttaque ?? 0) + 5;
       opts.diviseDM = 2;
@@ -132,6 +152,24 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       opts.modAttaque = (opts.modAttaque ?? 0) - 7;
       opts.degatsBonus = [...(opts.degatsBonus ?? []), "2d4°"];
       opts.tactique = "violente";
+    }
+    // Postures : sans jet, journalisées comme effets 1 round.
+    if ((tactiqueEff === "defense-partielle" || tactiqueEff === "defense-totale") && attacker) {
+      onTactique(attacker.instanceId, tactiqueEff, 1);
+      setTactique("normale");
+      return;
+    }
+    if (tactiqueEff === "riposte" && attacker) {
+      onTactique(attacker.instanceId, "riposte-posture", 1);
+      setTactique("normale");
+      return;
+    }
+    if (tactiqueEff === "soutenir" && attacker) {
+      const cible = participants.find((p) => p.instanceId === targetId);
+      if (!cible || cible.instanceId === attacker.instanceId || cible.camp !== attacker.camp || cible.statut !== "actif") return;
+      onTactique(cible.instanceId, "soutien-tactique", 1);
+      setTactique("normale");
+      return;
     }
     const paiement: PaiementSort = {
       mode: burnOk ? "brulure" : "mana",
@@ -155,13 +193,6 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
       <h2 className="font-bold text-sm uppercase text-zinc-400">Attaque</h2>
-      <label className="block text-sm">Attaquant
-        <select value={attackerId ?? ""} onChange={(e) => onAttacker(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-          {participants.map((p) => (
-            <option key={p.instanceId} value={p.instanceId}>{p.nom} ({p.pv}/{p.pvMax})</option>
-          ))}
-        </select>
-      </label>
       {attacker && (() => {
         const mana = attacker.ressources["mana"];
         const selId = attackId ?? attacker.attaques[0]?.id;
@@ -270,10 +301,29 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           {attacker?.nom} ne peut pas agir (Étourdi/Paralysé/Surpris) — retirez l&apos;effet ou passez son tour.
         </div>
       )}
+      {proposeEquipe && (
+        <div className="rounded border border-amber-700 bg-amber-950/40 p-2 text-sm space-y-1">
+          <div className="text-xs uppercase text-amber-300 font-bold">🐺 Travail d&apos;équipe</div>
+          <label className="flex items-center gap-2" title="Le loup est au contact du rôdeur (positions non suivies : à déclarer par le MJ). Le dé bonus du rôdeur aux tests de pistage et anti-surprise reste au MJ.">
+            <input type="checkbox" checked={equipeContact} onChange={(e) => setEquipeContact(e.target.checked)} />
+            <span>Au contact de {propositionEquipe?.maitreNom} : dé bonus en attaque</span>
+          </label>
+        </div>
+      )}
+      {loupSansTalent && (
+        <p className="text-xs text-zinc-500" title="Le dé bonus au contact vient de Travail d'équipe (R2 du Rôdeur, fiche Personnages). Le rôdeur garde son dé bonus de pistage/anti-surprise au MJ.">
+          💡 Travail d&apos;équipe (R2) non connu : aucun dé bonus proposé. Le talent s&apos;apprend sur la fiche du rôdeur.
+        </p>
+      )}
+      {loupSansMaitre && (
+        <p className="text-xs text-red-400" title="Le loup n'est lié à aucun rôdeur du combat : retirez les participants et ré-ajoutez le PJ en préparation (ou ↻ Actualiser).">
+          ⚠ Loup sans maître retrouvé : ré-ajoutez le rôdeur en préparation pour réparer le lien (Travail d&apos;équipe, Tactiques).
+        </p>
+      )}
       <label className="block text-sm">Cible{choixMultiples ? `s (${ciblesAffichees.length}${maxCibles != null ? `/${maxCibles}` : ""})` : ""}
         {choixMultiples ? (
           <div className="mt-1 space-y-1 max-h-40 overflow-auto rounded border border-zinc-800 p-2">
-            {vivants.filter((p) => p.instanceId !== attackerId).map((p) => (
+            {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0).map((p) => (
               <label key={p.instanceId} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
@@ -289,12 +339,15 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           </div>
         ) : (
           <select value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-            {vivants.filter((p) => p.instanceId !== attackerId).map((p) => (
+            {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0).map((p) => (
               <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</option>
             ))}
           </select>
         )}
       </label>
+      {vivants.some((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") > 0) && (
+        <p className="text-xs text-zinc-500">Enseveli : inciblable, masqué des cibles (MJ).</p>
+      )}
       {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair) && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
           <div className="text-xs uppercase text-zinc-500 font-bold">Coup spécial</div>
@@ -350,20 +403,57 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         </div>
       )}
       <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
-        <div className="text-xs uppercase text-zinc-500 font-bold">Option tactique (A){estMagiqueTop ? " — indisponible (attaque magique)" : ""}</div>
-        {( [["normale", "Normale"], ["assuree", "Assurée (+5 en attaque, DM/2)"], ["precise", "Précise (−3 en attaque, +1d4° DM)"], ["violente", "Violente (−7 en attaque, +2d4° DM)"]] as const ).map(([v, label]) => (
-          <label key={v} className={`flex items-center gap-2 ${estMagiqueTop && v !== "normale" ? "opacity-40" : ""}`} title={v === "normale" ? "Attaque normale" : "Armes au contact ou à distance uniquement — jamais sur attaque magique"}>
-            <input type="radio" checked={(estMagiqueTop ? "normale" : tactique) === v} disabled={estMagiqueTop && v !== "normale"} onChange={() => setTactique(v)} />
-            <span>{label}</span>
-          </label>
-        ))}
+        <div className="text-xs uppercase text-zinc-500 font-bold">Option tactique{estMagiqueTop ? " — attaques indisponibles (magie)" : ""}</div>
+        {( [["normale", "⚔️ Normale", "Attaque normale"], ["assuree", "🎯 Assurée (+5 en attaque, DM/2)", "Armes au contact ou à distance — jamais sur attaque magique"], ["precise", "🏹 Précise (−3 en attaque, +1d4° DM)", "Armes au contact ou à distance — jamais sur attaque magique"], ["violente", "💥 Violente (−7 en attaque, +2d4° DM)", "Armes au contact ou à distance — jamais sur attaque magique"], ["defense-partielle", "🛡️ Défense partielle (A, +3 DEF)", "Self-buff 1 round, sans jet : +3 DEF (générale)"], ["defense-totale", "🏰 Défense totale (L, +5 DEF)", "Self-buff 1 round, sans jet : +5 DEF (générale)"], ["riposte", "↩️ Riposte (L ou A, posture)", "Self-buff 1 round, sans jet : riposte immédiate si attaqué au contact (MJ)"], ["soutenir", "🤝 Soutenir un allié (L, +5)", "La cible (allié actif) gagne +5 en attaque au contact, sans jet"]] as const ).map(([v, label, aide]) => {
+          const estAttaque = v === "assuree" || v === "precise" || v === "violente";
+          const indisponible = estMagiqueTop && estAttaque;
+          const valeur = estAttaque && estMagiqueTop ? "normale" : tactique;
+          return (
+            <label key={v} className={`flex items-center gap-2 ${indisponible ? "opacity-40" : ""}`} title={v === "normale" ? "Attaque normale" : aide}>
+              <input type="radio" checked={valeur === v} disabled={indisponible} onChange={() => setTactique(v)} />
+              <span>{label}</span>
+            </label>
+          );
+        })}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Prédilection +1, Double/Circulaire −2…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
         <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
       </div>
-      <button onClick={lancer} disabled={!attackerId || (!choixMultiples && !targetId) || (choixMultiples && ciblesAffichees.length === 0) || bloque} className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 font-bold disabled:opacity-40">
-        {choixMultiples ? `Lancer sur ${ciblesAffichees.length} cible${ciblesAffichees.length > 1 ? "s" : ""}` : "Lancer l'attaque"}
+      <button
+        onClick={lancer}
+        disabled={(() => {
+          if (!attackerId || bloque) return true;
+          const eff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && estMagiqueTop ? "normale" : tactique;
+          if (eff === "defense-partielle" || eff === "defense-totale" || eff === "riposte") return false;
+          if (eff === "soutenir") {
+            const cible = participants.find((p) => p.instanceId === targetId);
+            return !cible || cible.instanceId === attackerId || cible.camp !== attacker?.camp || cible.statut !== "actif";
+          }
+          if (choixMultiples) return ciblesAffichees.length === 0;
+          return !targetId;
+        })()}
+        title={(() => {
+          const eff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && estMagiqueTop ? "normale" : tactique;
+          if (eff === "soutenir") return "Soutenir exige un allié actif ciblé (pas soi-même)";
+          return undefined;
+        })()}
+        className="w-full py-2.5 rounded bg-red-600 hover:bg-red-500 font-bold disabled:opacity-40"
+      >
+        {(() => {
+          const eff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && estMagiqueTop ? "normale" : tactique;
+          if (choixMultiples && (eff === "normale" || eff === "assuree" || eff === "precise" || eff === "violente")) {
+            return `⚔️ Lancer sur ${ciblesAffichees.length} cible${ciblesAffichees.length > 1 ? "s" : ""}`;
+          }
+          if (eff === "defense-partielle") return "🛡️ Défense partielle (+3 DEF)";
+          if (eff === "defense-totale") return "🏰 Défense totale (+5 DEF)";
+          if (eff === "riposte") return "↩️ Se mettre en riposte";
+          if (eff === "soutenir") {
+            const cible = participants.find((p) => p.instanceId === targetId);
+            return cible ? `🤝 Soutenir ${cible.nom} (+5)` : "🤝 Soutenir un allié";
+          }
+          return "⚔️ Lancer l'attaque";
+        })()}
       </button>
       {last && (
         <div className="rounded bg-zinc-950 border border-zinc-800 p-3 text-sm space-y-0.5">

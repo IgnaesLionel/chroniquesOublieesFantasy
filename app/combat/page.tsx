@@ -9,20 +9,17 @@ import type { Character, MonsterTemplate } from "@/src/lib/rules/types";
 import type { AttackResolution, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, appliquerResultatsCombat, castSoutien, depenserChanceApresCoup, frapperCibles, frapperZone, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, appliquerResultatsCombat, castSoutien, depenserChanceApresCoup, frapperCibles, frapperZone, protegerAllie, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, tenterSortieEnseveli, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/rules/combat/staging";
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
-import { normaliserPersonnage } from "@/src/lib/rules/personnage";
+import { maxZombiesControles, normaliserNomCapacite, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { CombatTable } from "@/src/components/combat/CombatTable";
-import { AttackPanel } from "@/src/components/combat/AttackPanel";
-import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
-import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
 import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
-import { TactiquePanel } from "@/src/components/combat/TactiquePanel";
+import { ActionPanel } from "@/src/components/combat/ActionPanel";
 
 export default function CombatPage() {
   const { items: characters, setItems: setCharacters } = useCharacters();
@@ -111,6 +108,14 @@ export default function CombatPage() {
       characters.map((c) => [c.id, c.ressources?.chance?.actuel ?? null])
     );
     const next = appliquerResultatsCombat(characters, combat.participants);
+    const loupDe = (ficheId: string) => {
+      const maitre = combat!.participants.find((x) => x.camp === "pj" && x.templateId === ficheId);
+      return combat!.participants.find(
+        (x) =>
+          x.templateId === `compagnon:loup:${ficheId}` ||
+          (maitre != null && x.compagnonDe === maitre.instanceId)
+      );
+    };
     const nomsDoublons = new Set(
       next.filter((c, i) => next.findIndex((x) => x.nom === c.nom) !== i).map((c) => c.nom)
     );
@@ -125,6 +130,11 @@ export default function CombatPage() {
         const chanceN = c.ressources?.chance?.actuel;
         if (chanceA != null && chanceN != null && chanceA !== chanceN) morceaux.push(`chance ${chanceA} → ${chanceN}`);
         if (nomsDoublons.has(c.nom)) morceaux.push("⚠ nom en double : vérifiez chaque carte");
+        const loup = loupDe(c.id);
+        if (loup) {
+          const avant = characters.find((x) => x.id === c.id)?.compagnon?.pv;
+          morceaux.push(`🐺 ${loup.nom} : ${avant ?? "?"} → ${loup.pv} PV (persistés)`);
+        }
         return morceaux.join(", ");
       });
     setCharacters(next);
@@ -315,7 +325,7 @@ export default function CombatPage() {
               const nbSorts = p.attaques.filter((a) => a.id.startsWith("sort:")).length;
               return (
                 <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) (${p.attaques.map((a) => a.nom).join(", ") || "aucune"}) dont ${nbSorts} sort(s)}`}>
-                  {p.templateId.startsWith("compagnon:loup") ? "🐺 " : ""}{p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span> <button onClick={() => removeStaging(p.instanceId)} className="text-red-400 ml-1">✕</button>
+                  {p.templateId.startsWith("compagnon:loup") ? "🐺 " : ""}{p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span>{p.bouclierBonus != null && <span className="text-sky-300" title={`Bouclier manié (+${p.bouclierBonus} DEF)`}> 🛡+{p.bouclierBonus}</span>} <button onClick={() => removeStaging(p.instanceId)} className="text-red-400 ml-1">✕</button>
                 </span>
               );
             })}
@@ -350,6 +360,19 @@ export default function CombatPage() {
               </button>
             </div>
           )}
+          {(() => {
+            const cible = staging.find((p) => p.instanceId === etatCible) ?? staging[0];
+            const aEquipe = !!cible && (cible.capacites ?? []).some((t) => normaliserNomCapacite(t) === normaliserNomCapacite("Travail d'équipe"));
+            const loupPresent = !!cible && staging.some((p) =>
+              (p.templateId.startsWith("compagnon:loup") || p.compagnonDe === cible.instanceId) && p.camp === cible.camp
+            );
+            if (etatCle !== "surpris" || !aEquipe || !loupPresent || !cible) return null;
+            return (
+              <p className="text-xs text-amber-300/90 mt-2">
+                🐺 Travail d&apos;équipe : {cible.nom} a droit à un dé bonus au test pour éviter la surprise (vigilance, loup au contact — test manuel MJ).
+              </p>
+            );
+          })()}
           <div className="flex gap-2 mt-3">
             <button onClick={resyncStaging} title="Reconstruit chaque PJ depuis sa fiche (attaques, sorts, talents, loup)" className="px-4 py-2 rounded bg-zinc-800 text-sm">↻ Actualiser</button>
             <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>
@@ -454,7 +477,7 @@ export default function CombatPage() {
           <CombatLog log={combat.log} />
         </div>
         <div className="space-y-3">
-          <AttackPanel
+          <ActionPanel
             participants={combat.participants}
             attackerId={attackerId}
             attackId={attackId ?? combat.participants.find((p) => p.instanceId === attackerId)?.attaques[0]?.id ?? null}
@@ -470,23 +493,27 @@ export default function CombatPage() {
             onRoll={rollAttack}
             onMulti={(lanceurId, sortId, cibleIds, opts, paiement) => rollMulti(lanceurId, sortId, cibleIds, opts, paiement)}
             onChance={useChance}
-          />
-          <EquipementPanel
-            participants={combat.participants}
-            lanceurId={attackerId}
-            characters={characters}
-            catalogue={catalogue}
-            onToggle={toggleEquipe}
-          />
-          <SoutienPanel
-            participants={combat.participants}
-            lanceurId={attackerId}
-            onCast={(lanceurId, cibleId, sort, paiement) => {
+            onCastSoutien={(lanceurId, cibleId, sort, paiement) => {
               try {
+                // Invocation sur profil bestiaire (ex: Zombie) + contrôle max.
+                const modele = sort.invocation?.modeleNom
+                  ? monsters.find((m) => m.nom === sort.invocation!.modeleNom)
+                  : undefined;
+                if (sort.invocation?.modeleNom && !modele) {
+                  throw new Error(`${sort.invocation.modeleNom} : profil introuvable au bestiaire (MJ).`);
+                }
+                const fiche = characters.find((c) => {
+                  const part = combat?.participants.find((p) => p.instanceId === lanceurId);
+                  return part && c.id === part.templateId;
+                });
+                const max = sort.id === "sort-animation-morts" && fiche
+                  ? maxZombiesControles(fiche.capacites)
+                  : undefined;
+                const invocation = sort.invocation ? { modele, max } : undefined;
                 // Frappe de zone (Armée des morts) : tous les ennemis.
                 const { state } = sort.zone
                   ? frapperZone(combat, lanceurId, sort, undefined, paiement)
-                  : castSoutien(combat, lanceurId, cibleId, sort, undefined, paiement);
+                  : castSoutien(combat, lanceurId, cibleId, sort, undefined, paiement, invocation);
                 setCombat(state);
                 setLast(null);
               } catch (e) {
@@ -496,15 +523,20 @@ export default function CombatPage() {
                 );
               }
             }}
-          />
-          <CapacitesPanel
-            participants={combat.participants}
-            lanceurId={attackerId}
-            onUtiliser={(lanceurId, cibleId, talentNom, opts) => {
+            onUtiliserCapacite={(lanceurId, cibleId, talentNom, opts) => {
               try {
+                if (opts.actionSpeciale === "lien-empathique") {
+                  if (opts.lienMontant == null) throw new Error("Lien empathique : saisissez les PV à dépenser.");
+                  const { state } = transfererVieAuLoup(combat, lanceurId, cibleId, opts.lienMontant);
+                  setCombat(state);
+                  setLast(null);
+                  return;
+                }
                 const { state } = opts.actionSpeciale === "renvoi"
                   ? renvoyerSort(combat, lanceurId, cibleId)
-                  : utiliserCapacite(combat, lanceurId, cibleId, talentNom, {
+                  : opts.actionSpeciale === "proteger"
+                    ? protegerAllie(combat, lanceurId, cibleId)
+                    : utiliserCapacite(combat, lanceurId, cibleId, talentNom, {
                       effetCle: opts.effetCle,
                       dureeTours: opts.dureeTours,
                       mods: opts.mods,
@@ -512,6 +544,8 @@ export default function CombatPage() {
                       soin: opts.soin,
                       soinFixe: opts.soinFixe,
                       nettoie: opts.nettoie,
+                      outrepasserSoin: (opts as { outrepasserSoin?: boolean }).outrepasserSoin,
+                      modeVigueur: (opts as { modeVigueur?: "auto" | "test" }).modeVigueur,
                     });
                 setCombat(state);
                 setLast(null);
@@ -522,6 +556,16 @@ export default function CombatPage() {
                 );
               }
             }}
+            onTactique={(cibleId, cle, duree) =>
+              setCombat((c) => (c ? addParticipantEffect(c, cibleId, createEffect(cle, { dureeTours: duree, source: "Tactique" })) : c))
+            }
+          />
+          <EquipementPanel
+            participants={combat.participants}
+            lanceurId={attackerId}
+            characters={characters}
+            catalogue={catalogue}
+            onToggle={toggleEquipe}
           />
           <EffectsPanel
             participant={selectedParticipant}
@@ -531,12 +575,16 @@ export default function CombatPage() {
             onRemove={(effetId) =>
               setCombat((c) => (c && attackerId ? removeParticipantEffect(c, attackerId, effetId) : c))
             }
-          />
-          <TactiquePanel
-            participants={combat.participants}
-            acteurId={attackerId}
-            onAppliquer={(cibleId, cle, duree) =>
-              setCombat((c) => (c ? addParticipantEffect(c, cibleId, createEffect(cle, { dureeTours: duree, source: "Tactique" })) : c))
+            onSortie={(cibleId, carac, aides) =>
+              setCombat((c) => {
+                if (!c) return c;
+                try {
+                  return tenterSortieEnseveli(c, cibleId, carac, aides, Math.random).state;
+                } catch (e) {
+                  const message = e instanceof Error ? e.message : "Sortie impossible.";
+                  return { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] };
+                }
+              })
             }
           />
           {opponentsOf.length > 0 && attackerId && (

@@ -3,7 +3,7 @@ import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { categoriesMonstre } from "@/src/lib/rules/categories";
 import { substituerDeEvolutif, substituerDesEvolutifs, substituerStats, dureeEffetSort, resoudreFormuleSort } from "@/src/lib/rules/dice/roller";
-import { deEvolutif, deriverPersonnage, niveauAttaque, rangMaxVoie } from "@/src/lib/rules/personnage";
+import { bonusBouclier, deEvolutif, deriverPersonnage, niveauAttaque, rangMaxVoie } from "@/src/lib/rules/personnage";
 import { compterCapacites, niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { completerSortsDepuisGrimoire } from "@/src/lib/rules/personnage";
 
@@ -50,7 +50,7 @@ export function attaqueFromSort(sort: Sort, bonusMagique = 0, caracs: Record<str
         ...(sort.effetSauvegarde.moitieDM ? { moitieDM: true as const } : {}),
       }
     : undefined;
-  const duree = dureeEffetSort(sort.effetDuree, caracs, rangVoie);
+  const duree = dureeEffetSort(sort.effetDuree, caracs, rangVoie, niveauDe);
   return {
     id: `sort:${sort.id}`,
     nom: `✦ ${sort.nom}`,
@@ -122,10 +122,14 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     ressources: { ...c.ressources },
     niveau: c.niveau,
     statut: c.pv <= 0 ? "ko" : "actif",
+    // Bouclier manié (mod. DEF) : prérequis Voie du bouclier, figé à l'entrée.
+    bouclierBonus: bonusBouclier(c.inventaire ?? [], catalogue),
     bonusMagique: magique,
     caracs: { ...c.caracteristiques },
     profil: c.profil || c.classe,
     usagesSorts: {},
+    // Compteurs journaliers de la fiche (mineure, phénix...) : suivis en combat.
+    ...(c.usagesJournaliers ? { usagesJournaliers: { ...c.usagesJournaliers } } : {}),
     // Dé de récupération de la fiche : sert à la brûlure de mana (1 DR par PM).
     ...(c.desRecuperation ? { deRecuperation: c.desRecuperation.type } : {}),
   };
@@ -184,6 +188,8 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     ressources: {},
     niveau: template.niveau,
     statut: "actif" as const,
+    // Pas d'inventaire : aucun bouclier (les monstres à bouclier passent par le MJ).
+    bouclierBonus: null,
     usagesSorts: {},
     // Caracs DRS (000 si fiche incomplète, à compléter par le MJ) :
     // tests contre les monstres (10+CON...).

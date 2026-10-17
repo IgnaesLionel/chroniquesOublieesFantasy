@@ -49,11 +49,39 @@ export interface CombatParticipant {
   usagesSorts?: Record<string, { n: number; cibles: string[] }>;
   /** Sort absorbé (Absorber) en attente de renvoi. */
   sortAbsorbe?: SortAbsorbe;
+  /**
+   * Modificateur de DEF du bouclier manié (null = pas de bouclier).
+   * Voie du bouclier : requis pour Protéger/Parer/Absorber/Renvoi et le
+   * bonus passif. Figé à l'entrée en combat (resync depuis la fiche).
+   */
+  bouclierBonus?: number | null;
+  /** Taille (bestiaire : Minuscule... Énorme) : Ensevelissement (moyenne ou moins). Absente = compatible (MJ). */
+  taille?: string;
+  /** Serviteur invoqué : qui l'a appelé + espèce (comptage, poussière des zombies). */
+  invoque?: { par: string; espece: string };
+  /**
+   * Compagnon animal : instanceId du maître (rôdeur) en combat.
+   * Posé à la construction (staging ou appel) : sert à Tactiques de meute
+   * (même cible même manche) et au Lien empathique. Repli historique :
+   * templateId `compagnon:loup:<templateId du maître>` ou nom `Loup (Nom)`.
+   */
+  compagnonDe?: string;
   /** Dernier coup porté (Double peine : 2e touche même cible même round). */
   dernierCoup?: { cibleId: string; manche: number; enchaine: boolean };
+  /**
+   * Compteurs journaliers recopiés de la fiche (quotas 1/jour, mineure...) :
+   * incrémentés en combat, réécrits vers la fiche à "Appliquer aux fiches".
+   */
+  usagesJournaliers?: Record<string, number>;
+  /**
+   * Soin magique déjà reçu ce combat (règle de table LDB : un seul soin
+   * magique par cible et par combat, potions incluses côté MJ).
+   * Posé après tout soin de sort/capacité ; MJ peut outrepasser.
+   */
+  soinMagiqueRecu?: boolean;
 }
 
-/** Sort absorbé par un bouclier, renvoyable (Renvoi de sort, sauf zones). */
+/** Sort absorbé par un bouclier, renvoyable (Renvoi de sort ; zones rejouées en mono-cible, MJ au cas par cas). */
 export interface SortAbsorbe {
   nom: string;
   bonus: number;

@@ -8,6 +8,11 @@ import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
 import { apprendreTalentComplet, compterCapacites, desapprendreTalentComplet, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
 import { ACTION_LABEL, infererAction, voiesDe } from "@/src/lib/data/capacites";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
+import { ITEM_CATEGORIES, type ItemCategorie } from "@/src/lib/rules/world/types";
+
+function normaliserRecherche(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
 
 interface Props {
   character: Character;
@@ -17,6 +22,8 @@ interface Props {
 
 export function EquipagePanel({ character, stock, onUpdate }: Props) {
   const [addId, setAddId] = useState("");
+  const [rechercheObjet, setRechercheObjet] = useState("");
+  const [filtreObjet, setFiltreObjet] = useState<"toutes" | ItemCategorie>("toutes");
   const [equipMsg, setEquipMsg] = useState<string | null>(null);
   const [voieOuverte, setVoieOuverte] = useState<string | null>(null);
   const inv = character.inventaire ?? [];
@@ -157,17 +164,47 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
             );
           })}
         </div>
-        {stock.length > 0 && (
-          <div className="flex gap-2 mt-2">
-            <select value={addId} onChange={(e) => setAddId(e.target.value)} className="flex-1 bg-zinc-800 rounded px-2 py-1.5 text-sm">
-              <option value="">+ Objet du stock…</option>
-              {stock.filter((o) => !inv.some((e) => e.itemId === o.id)).map((o) => (
-                <option key={o.id} value={o.id}>{o.nom}{o.estArme ? " (arme)" : ""}{(o.bonusDefense ?? 0) > 0 ? ` (+${o.bonusDefense} DEF)` : ""}{o.magique ? " ✦" : ""}</option>
-              ))}
-            </select>
-            <button onClick={addItem} disabled={!addId} className="px-3 py-1.5 rounded bg-zinc-800 text-sm disabled:opacity-40">Ajouter</button>
-          </div>
-        )}
+        {stock.length > 0 && (() => {
+          const aiguille = normaliserRecherche(rechercheObjet.trim());
+          const candidats = stock
+            .filter((o) => !inv.some((e) => e.itemId === o.id))
+            .filter((o) => filtreObjet === "toutes" || o.categorie === filtreObjet)
+            .filter((o) => aiguille === "" || normaliserRecherche(o.nom).includes(aiguille));
+          const selectionValide = candidats.some((o) => o.id === addId) ? addId : "";
+          return (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex gap-2">
+                <input
+                  value={rechercheObjet}
+                  onChange={(e) => setRechercheObjet(e.target.value)}
+                  placeholder="Rechercher un objet par son nom…"
+                  className="flex-1 bg-zinc-800 rounded px-2 py-1.5 text-sm"
+                />
+                <select value={filtreObjet} onChange={(e) => setFiltreObjet(e.target.value as "toutes" | ItemCategorie)} title="Filtrer par catégorie" className="bg-zinc-800 rounded px-2 py-1.5 text-sm max-w-32">
+                  <option value="toutes">Toutes</option>
+                  {ITEM_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              {(aiguille !== "" || filtreObjet !== "toutes") && (
+                <p className="text-xs text-zinc-500">{candidats.length} résultat{candidats.length > 1 ? "s" : ""}</p>
+              )}
+              <div className="flex gap-2">
+                <select value={selectionValide} onChange={(e) => setAddId(e.target.value)} className="flex-1 bg-zinc-800 rounded px-2 py-1.5 text-sm">
+                  <option value="">+ Objet du stock…</option>
+                  {candidats.map((o) => (
+                    <option key={o.id} value={o.id}>{o.nom}{o.estArme ? " (arme)" : ""}{(o.bonusDefense ?? 0) > 0 ? ` (+${o.bonusDefense} DEF)` : ""}{o.magique ? " ✦" : ""}</option>
+                  ))}
+                </select>
+                <button onClick={addItem} disabled={!selectionValide} className="px-3 py-1.5 rounded bg-zinc-800 text-sm disabled:opacity-40">Ajouter</button>
+              </div>
+              {candidats.length === 0 && (
+                <p className="text-xs text-zinc-500">Aucun objet ne correspond à cette recherche.</p>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <div>

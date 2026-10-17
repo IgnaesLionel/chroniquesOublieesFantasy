@@ -38,6 +38,9 @@ export function decrireModificateurs(mods: Record<string, number>): string[] {
   push("defense", (v) => `${v > 0 ? "+" : ""}${v} en DEF`);
   push("pvParTour", (v) => `${v > 0 ? "+" : ""}${v} PV au début de son tour`);
   if ((mods["empecheAgir"] ?? 0) > 0) lignes.push("ne peut pas agir (tour sauté)");
+  if ((mods["inciblable"] ?? 0) > 0) lignes.push("inciblable (attaques extérieures impossibles)");
+  if ((mods["moribond"] ?? 0) > 0) lignes.push("moribond (décès au prochain tour sauf libération/soin)");
+  if ((mods["protection"] ?? 0) > 0) lignes.push("protection : bonus consommé à la prochaine attaque subie");
   if ((mods["paralyse"] ?? 0) > 0) lignes.push("touché automatiquement, critique subi");
   if ((mods["deBonus"] ?? 0) > 0) lignes.push("dé bonus (2d20, garder le meilleur)");
   if ((mods["deMalus"] ?? 0) > 0) lignes.push("dé malus (2d20, garder le pire)");
@@ -49,7 +52,7 @@ export function decrireModificateurs(mods: Record<string, number>): string[] {
   if ((mods["parade"] ?? 0) > 0) lignes.push("parade (test opposé, capacité)");
   if ((mods["absorption"] ?? 0) > 0) lignes.push("absorption de sort (capacité)");
   for (const cle of Object.keys(mods).sort()) {
-    if (["attaque", "attaqueDistance", "defense", "pvParTour", "empecheAgir", "paralyse", "deBonus", "deMalus", "pasDeDeplacement", "actionUnique", "ripostePosture", "deplacementMax", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
+    if (["attaque", "attaqueDistance", "defense", "pvParTour", "empecheAgir", "inciblable", "moribond", "protection", "paralyse", "deBonus", "deMalus", "pasDeDeplacement", "actionUnique", "ripostePosture", "deplacementMax", "seuilCrit", "parade", "absorption"].includes(cle)) continue;
     lignes.push(`${cle} ${mods[cle]}`);
   }
   return lignes;

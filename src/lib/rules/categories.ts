@@ -67,6 +67,19 @@ export function estDeCategorie(
 }
 
 /**
+ * Cible vivante ? Les PJ le sont ; les monstres ne le sont pas s'ils sont
+ * morts-vivants ou construits (ex: Pied dans la tombe). Élémentaires et cas
+ * limites non taggés : au MJ.
+ */
+export function estVivant(
+  participant: { camp?: string; categories?: string[] } | null | undefined
+): boolean {
+  if (!participant) return true;
+  if (participant.camp === "pj") return true;
+  return !estDeCategorie(participant, "mort-vivant") && !estDeCategorie(participant, "construit");
+}
+
+/**
  * Le sort frappe-t-il cette cible ? Sans restriction d'espèce (champ absent
  * ou vide) : toujours. Sinon la cible doit appartenir à l'une des espèces
  * listées (ex: Destruction du mal -> ["Mort-vivant"]).

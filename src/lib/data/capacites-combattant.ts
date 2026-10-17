@@ -113,11 +113,11 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
     {
       voie: "Voie du bouclier",
       capacites: [
-        { nom: "Protéger un allié", rang: 1, resume: "Bouclier requis. Action gratuite (G) : +2 DEF à un allié au contact contre 1 attaque/round (annoncer avant le résultat). Rang+2 anti-surprise (MJ)." },
-        { nom: "Parer un coup", rang: 2, resume: "Bouclier requis. (M) : posture — la prochaine attaque réussie est bloquée sur test opposé auto (niv+FOR/AGI). Énorme/colossale : moitié DM (MJ). Rang 5 : (G) 1/round avec dé malus (MJ)." },
-        { nom: "Défense au bouclier", rang: 3, resume: "Bouclier requis. Passif : +1 DEF auto (+2 avec Renvoi appris) ; -rang aux DM de zone, sauf surpris (MJ)." },
-        { nom: "Absorber un sort", rang: 4, resume: "Bouclier requis. Après parade préparée : le prochain sort réussi est annulé sur test opposé auto (zones : autres affectés, MJ). Stocké pour Renvoi." },
-        { nom: "Renvoi de sort", rang: 5, resume: "Action gratuite (G) : renvoie le sort absorbé contre son lanceur (pas les zones)." },
+        { nom: "Protéger un allié", rang: 1, resume: "Bouclier requis. Action gratuite (G) : mod. DEF du bouclier à un allié au contact contre la prochaine attaque (1/round, annoncer avant le résultat) ; le guerrier garde son bonus ; pas si surpris. Rang+2 anti-surprise (MJ)." },
+        { nom: "Parer un coup", rang: 2, resume: "Bouclier requis. (M) : posture — la prochaine attaque réussie (contact ou distance, pas les touches auto) est bloquée sur test opposé d'attaque au contact auto (niv + FOR/AGI + arme + mods). Énorme/colossale : moitié DM (MJ). Rang 5 : (G) 1/round avec dé malus (MJ)." },
+        { nom: "Défense au bouclier", rang: 3, resume: "Bouclier manié requis. Passif : +1 DEF auto (+2 au rang 5) ; -rang aux DM de zone et souffles, sauf surpris." },
+        { nom: "Absorber un sort", rang: 4, resume: "Bouclier requis. Remplace une parade préparée : test d'attaque au contact (FOR/AGI) opposé à l'attaque magique ; sort annulé sur le guerrier et absorbé par le bouclier (zones : autres affectés). Stocké pour Renvoi." },
+        { nom: "Renvoi de sort", rang: 5, resume: "Bouclier requis. Action gratuite (G) : renvoie le sort absorbé contre son lanceur, effets appliqués (zones rejouées en mono-cible, MJ)." },
       ],
     },
     {
