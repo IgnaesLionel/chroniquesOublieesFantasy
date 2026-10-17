@@ -156,6 +156,12 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   // 2) Tour du nouvel actif (aucun tick : déjà appliqué en fin de tour).
   const actif = participants[idx];
   log.push(entry(manche, `Tour de ${actif?.nom ?? "—"} (manche ${manche}).`));
+  // Signaux d'attaque gratuite : les marques consommées des manches passées
+  // sont purgées (le 1/round se juge sur la manche en cours uniquement).
+  participants = participants.map((p) => {
+    if (!p.attaquesGratuites?.some((g) => g.lancee != null && g.lancee < manche)) return p;
+    return { ...p, attaquesGratuites: p.attaquesGratuites.filter((g) => !g.lancee || g.lancee >= manche) };
+  });
   return checkEnd({ ...state, participants, tourIndex: idx, manche, log });
 }
 

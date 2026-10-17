@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import type { AttackDef } from "@/src/lib/rules/types";
 import type { ArmeFamille } from "@/src/lib/rules/world/types";
-import { createCombat } from "@/src/lib/rules/combat/initiative";
+import { createCombat, nextTurn } from "@/src/lib/rules/combat/initiative";
 import {
   attaqueGratuiteDisponible,
   ecarterAttaqueGratuite,
@@ -143,5 +143,23 @@ describe("attaques gratuites (G) : signaux et quotas", () => {
       "teigneux",
       3
     )).toBe(false);
+  });
+
+  it("nextTurn : les marques consommées des manches passées sont purgées", () => {
+    const s0 = createCombat([combattant("A"), combattant("B")]);
+    const id = s0.participants[0].instanceId;
+    // Consommé en manche 1, signal reste affiché en ✓ au fil de la manche 2.
+    const s1 = marquerAttaqueGratuiteLancee(
+      signalerAttaqueGratuite(s0, id, "riposte"),
+      id,
+      { type: "riposte", manche: 1 }
+    );
+    expect(s1.participants[0].attaquesGratuites![0].lancee).toBe(1);
+    const t1 = nextTurn(s1); // tour de B, toujours manche 1
+    expect(t1.manche).toBe(1);
+    expect(t1.participants[0].attaquesGratuites).toHaveLength(1);
+    const t2 = nextTurn(t1); // retour à A : manche 2 -> purge
+    expect(t2.manche).toBe(2);
+    expect(t2.participants[0].attaquesGratuites).toHaveLength(0);
   });
 });
