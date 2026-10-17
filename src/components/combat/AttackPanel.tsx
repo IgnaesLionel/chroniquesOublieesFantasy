@@ -4,6 +4,8 @@ import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
 import { etatLimite, sortUtilisable, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
+import { PopupValidationMJ, type QuestionMJ } from "@/src/components/combat/PopupValidationMJ";
+import { mjFiltrerAValider } from "@/src/lib/ui/validations-mj";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
@@ -22,9 +24,11 @@ interface Props {
   onTactique: (cibleId: string, cle: string, duree: number | null) => void;
   /** Lancement multi-cibles / zone (sinon repli mono-cible). */
   onMulti?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts, paiement?: PaiementSort) => void;
+  /** Trace « MJ a validé » au journal de combat. */
+  onLogMJ?: (message: string) => void;
 }
 
-export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onTactique }: Props) {
+export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onTactique, onLogMJ }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
   const bloque = attacker !== null && !canAct(attacker.effets);
@@ -42,6 +46,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
   const [cibles, setCibles] = useState<string[] | null>(null);
+  /** Questions MJ en attente (pop-up ouverte) : bloque la résolution. */
+  const [attenteMj, setAttenteMj] = useState<QuestionMJ[] | null>(null);
   // Sort sélectionné : zone et multi-cibles affichent des cases à cocher.
   const selIdTop = attackId ?? attacker?.attaques[0]?.id;
   const selAttaqueTop = attacker?.attaques.find((x) => x.id === selIdTop);
@@ -65,6 +71,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     setCleMemorisee(cleSelection);
     setCibles(null);
     setEquipeContact(false);
+    setAttenteMj(null);
   }
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
@@ -93,7 +100,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     { cle: "ralenti", nom: "Ralenti" },
     { cle: "immobilise", nom: "Immobilisé" },
   ];
-  const lancer = () => {
+  const lancer = (force = false) => {
     const opts: AttaqueOpts = {};
     const modN = Number(mod);
     if (mod.trim() !== "" && Number.isFinite(modN) && modN !== 0) opts.modAttaque = modN;
@@ -140,6 +147,29 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     // jamais sur attaque magique. Défenses, riposte (self-buff) et soutenir
     // (un allié) : postures appliquées sans jet.
     const tactiqueEff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && selSort ? "normale" : tactique;
+    // Validation MJ (pop-up) : l'arme n'a portée/contact/zone pas suivies par
+    // le moteur. Toute condition (Parfaite = arme de prédilection, Flèche de
+    // mort = NC inférieur, Éclair = déplacement, Soutenir = au contact, zone
+    // de sort, question propre au sort `questionMJ`) est constatée ici, puis
+    // journalisée. L'option « ne plus redemander » saute la pop-up.
+    const questionsActives: QuestionMJ[] = [
+      ...(parfaite && connaitParfaite ? [{ cle: "att:parfaite", question: "Attaque parfaite : l'arme en main est-elle votre arme de prédilection ?" }] : []),
+      ...(fleche && connaitFleche ? [{ cle: "att:fleche", question: "Flèche de mort : la cible est-elle d'un NC strictement inférieur au vôtre ?" }] : []),
+      ...(eclair && connaitEclair ? [{ cle: "att:eclair", question: "Attaque éclair : le déplacement jusqu'à la cible est-il possible (≤ 10 m, +10 m au rang 5) ?" }] : []),
+      ...(tactiqueEff === "soutenir" && attacker ? [{ cle: "att:soutenir", question: "Soutenir un allié : l'allié est-il au contact de son adversaire ?" }] : []),
+      ...(selSort ? (selSort.questionMJ
+        ? [{ cle: `sort:${selSort.id}`, question: selSort.questionMJ }]
+        : (choixMultiples && (estZoneTop || estMultiTop)) ? [{ cle: "att:zone", question: "Zone / cibles multiples : les placements dans l'aire (allies compris) sont-ils validés ?" }] : []) : []),
+    ];
+    const questions = mjFiltrerAValider(questionsActives);
+    if (questions.length > 0 && !force) {
+      setAttenteMj(questions);
+      return;
+    }
+    if (questionsActives.length > 0) {
+      const contexte = tactiqueEff === "soutenir" ? "Soutenir un allié" : (selAttaque?.nom ?? "attaque");
+      onLogMJ?.(`⚖️ MJ validé — ⚔️ ${contexte} (${attacker?.nom ?? ""}) : ${questionsActives.map((q) => q.question).join(" / ")}`);
+    }
     if (tactiqueEff === "assuree") {
       opts.modAttaque = (opts.modAttaque ?? 0) + 5;
       opts.diviseDM = 2;
@@ -421,7 +451,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
       </div>
       <button
-        onClick={lancer}
+        onClick={() => lancer()}
         disabled={(() => {
           if (!attackerId || bloque) return true;
           const eff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && estMagiqueTop ? "normale" : tactique;
@@ -491,6 +521,17 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             </>
           )}
         </div>
+      )}
+      {attenteMj && (
+        <PopupValidationMJ
+          titre={`Attaque — ${attacker?.nom ?? ""}`}
+          questions={attenteMj}
+          onValider={() => {
+            setAttenteMj(null);
+            lancer(true);
+          }}
+          onAnnuler={() => setAttenteMj(null)}
+        />
       )}
     </div>
   );

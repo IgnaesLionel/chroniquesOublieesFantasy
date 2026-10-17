@@ -6,6 +6,8 @@ import { canAct } from "@/src/lib/rules/effects/effects";
 import { sortUtilisable, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { usagesMineureRestants, quotaMineureParJour, rangVoieSoins, nbRang3AutresVoiesPretre } from "@/src/lib/rules/soins";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
+import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
+import { mjDejaValide } from "@/src/lib/ui/validations-mj";
 
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
 
@@ -13,9 +15,11 @@ interface Props {
   participants: CombatParticipant[];
   lanceurId: string | null;
   onCast: (lanceurId: string, cibleId: string, sort: Sort, paiement?: PaiementSort) => void;
+  /** Trace « MJ a validé » au journal de combat. */
+  onLogMJ?: (message: string) => void;
 }
 
-export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
+export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props) {
   const lanceur = participants.find((p) => p.instanceId === lanceurId) ?? null;
   const soutiens = (lanceur?.sorts ?? []).filter((s) => s.type !== "offensif");
   const [sortId, setSortId] = useState<string | null>(null);
@@ -23,6 +27,8 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
   const [outrepasserSoin, setOutrepasserSoin] = useState(false);
+  /** Question MJ en attente (pop-up ouverte) : bloque la résolution. */
+  const [attenteMj, setAttenteMj] = useState<string | null>(null);
 
   if (!lanceur || soutiens.length === 0) return null;
   const jouables = soutiens.filter((s) => sortUtilisable(lanceur.niveau, s).ok);
@@ -51,6 +57,13 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
   const burnPossible = raisonBrulure() === null;
   const burnActive = modeLancement === "brulure" && burnPossible;
 
+  /** Résolution du lancer (après validation MJ éventuelle). */
+  const executerLancement = () => {
+    if (!cible) return;
+    if (sort.questionMJ) onLogMJ?.(`⚖️ MJ validé — 🛡️ ${sort.nom} : ${sort.questionMJ}`);
+    onCast(lanceur.instanceId, cible.instanceId, sort, { mode: burnActive ? "brulure" : "mana", concentration: concActive, outrepasserSoin });
+  };
+
   return (
     <div className="rounded-lg border border-violet-900 bg-zinc-900 p-4 space-y-2.5">
       <h2 className="font-bold text-sm uppercase text-violet-300">
@@ -62,7 +75,7 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
         </div>
       )}
       <label className="block text-sm">Sort
-        <select value={sort.id} onChange={(e) => setSortId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+        <select value={sort.id} onChange={(e) => { setSortId(e.target.value); setAttenteMj(null); }} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
           {soutiens.map((s) => {
             const u = sortUtilisable(lanceur.niveau, s);
             const flags = [
@@ -86,6 +99,11 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
       {estRituel && (
         <div className="text-xs text-amber-300/90 bg-amber-950 border border-amber-800 rounded px-2 py-1.5">
           ⚠ {sort.nom} : rituel hors combat (10 min, CHA patients au repos dans 5 m, 1/jour, concentration interdite) — à lancer hors combat.
+        </div>
+      )}
+      {sort.questionMJ && (
+        <div className="text-xs text-zinc-400" title="Question posée en pop-up avant le lancer (positions non suivies par le moteur).">
+          ⚖️ {sort.questionMJ}
         </div>
       )}
       {estMineure && quotaMineure != null && restantsMineure != null && (
@@ -133,13 +151,32 @@ export function SoutienPanel({ participants, lanceurId, onCast }: Props) {
         </div>
       )}
       <button
-        onClick={() => { if (cible) onCast(lanceur.instanceId, cible.instanceId, sort, { mode: burnActive ? "brulure" : "mana", concentration: concActive, outrepasserSoin }); }}
+        onClick={() => {
+          const question = sort.questionMJ;
+          if (!cible) return;
+          if (question && !mjDejaValide(`sort:${sort.id}`)) {
+            setAttenteMj(question);
+            return;
+          }
+          executerLancement();
+        }}
         disabled={bloque || !cible || estRituel || cibleDejaSoignee || (estMineure && (restantsMineure ?? 1) <= 0)}
         className="w-full py-2.5 rounded bg-violet-700 hover:bg-violet-600 font-bold disabled:opacity-40"
         title={estRituel ? "Rituel hors combat — lancez hors combat" : cibleDejaSoignee ? "Cible déjà soignée ce combat (outrepasser MJ pour forcer)" : undefined}
       >
         Lancer {sort.nom}
       </button>
+      {attenteMj && (
+        <PopupValidationMJ
+          titre={sort.nom}
+          questions={[{ cle: `sort:${sort.id}`, question: attenteMj }]}
+          onValider={() => {
+            setAttenteMj(null);
+            executerLancement();
+          }}
+          onAnnuler={() => setAttenteMj(null)}
+        />
+      )}
     </div>
   );
 }

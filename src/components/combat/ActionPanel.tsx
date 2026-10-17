@@ -42,6 +42,8 @@ interface Props {
     }
   ) => void;
   onTactique: (cibleId: string, cle: string, duree: number | null) => void;
+  /** Trace « MJ a validé » au journal de combat (pop-up de validation). */
+  onLogMJ?: (message: string) => void;
 }
 
 /**
@@ -122,6 +124,7 @@ export function ActionPanel(props: Props) {
               onMulti={props.onMulti}
               onChance={props.onChance}
               onTactique={props.onTactique}
+              onLogMJ={props.onLogMJ}
             />
           )}
           {onglet === "capacites" && (
@@ -129,6 +132,7 @@ export function ActionPanel(props: Props) {
               participants={props.participants}
               lanceurId={props.attackerId}
               onUtiliser={props.onUtiliserCapacite}
+              onLogMJ={props.onLogMJ}
             />
           )}
           {onglet === "soutien" && (
@@ -136,6 +140,7 @@ export function ActionPanel(props: Props) {
               participants={props.participants}
               lanceurId={props.attackerId}
               onCast={props.onCastSoutien}
+              onLogMJ={props.onLogMJ}
             />
           )}
         </>

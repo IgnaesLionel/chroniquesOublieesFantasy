@@ -811,6 +811,7 @@ export const SEED_SORTS: Sort[] = [
     familles: ["Magicien"],
     degats: "4d4°+INT",
     effetSauvegarde: { carac: "AGI", difficulte: "10+INT", moitieDM: true },
+    questionMJ: "Le point d'impact est-il validé ? (point à 30 m, rayon 5 m — les alliés pris dans le rayon subissent les DM)",
     cout: { ressource: "mana", montant: 4 },
   },
   {
@@ -818,7 +819,9 @@ export const SEED_SORTS: Sort[] = [
     voie: "Voie de la magie destructrice", rang: 5,
     description: "Un seul test d'attaque magique : toutes les cibles choisies dans 10 m dont la DEF est atteinte subissent 2d4+INT DM.",
     familles: ["Magicien"],
-    degats: "2d4°+INT", ciblesLibres: true, cout: { ressource: "mana", montant: 5 },
+    degats: "2d4°+INT", ciblesLibres: true,
+    questionMJ: "Toutes les cibles choisies sont-elles dans la même zone de 10 m ?",
+    cout: { ressource: "mana", montant: 5 },
   },
   {
     id: "sort-asphyxie", nom: "Asphyxie", type: "offensif",

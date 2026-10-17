@@ -200,6 +200,12 @@ export interface Sort {
    * Sur une autre espèce : 0 DM, effet non appliqué, log explicite.
    */
   cibleEspeces?: string[];
+  /**
+   * Question posée au MJ en pop-up avant le lancer (zone, positions,
+   * conditions narratives) : le moteur ne suit pas les positions. Absent =
+   * lancé sans validation.
+   */
+  questionMJ?: string;
 }
 
 export interface ActiveEffect {

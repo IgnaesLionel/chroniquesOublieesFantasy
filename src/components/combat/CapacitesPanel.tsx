@@ -5,6 +5,8 @@ import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-us
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { canAct } from "@/src/lib/rules/effects/effects";
+import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
+import { mjDejaValide } from "@/src/lib/ui/validations-mj";
 
 interface Props {
   participants: CombatParticipant[];
@@ -27,6 +29,8 @@ interface Props {
       lienMontant: number | undefined;
     }
   ) => void;
+  /** Trace « MJ a validé » au journal de combat. */
+  onLogMJ?: (message: string) => void;
 }
 
 function defautPour(nom: string) {
@@ -34,7 +38,7 @@ function defautPour(nom: string) {
   return CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q);
 }
 
-export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
+export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }: Props) {
   const lanceur = participants.find((p) => p.instanceId === lanceurId) ?? null;
   const [talentNom, setTalentNom] = useState<string | null>(null);
   const [cibleId, setCibleId] = useState<string | null>(null);
@@ -43,6 +47,8 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
   const [montant, setMontant] = useState<string>("");
   const [modeVigueur, setModeVigueur] = useState<"auto" | "test">("auto");
   const [outrepasserSoin, setOutrepasserSoin] = useState(false);
+  /** Question MJ en attente (pop-up ouverte) : bloque la résolution. */
+  const [attenteMj, setAttenteMj] = useState<{ cle: string; question: string; note?: string } | null>(null);
 
   if (!lanceur) return null;
   // Passifs, manœuvres du panneau Attaque et talents narratifs exclus :
@@ -75,6 +81,27 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
   const estPhenix = normaliserNomCapacite(talent) === "phénix";
   const phenixUtilise = lanceur.usagesJournaliers?.["phénix"] ?? 0;
 
+  /** Résolution de l'usage du talent (après validation MJ éventuelle). */
+  const executerUtilisation = () => {
+    if (!cible) return;
+    if (defaut?.questionMJ) onLogMJ?.(`⚖️ MJ validé — ✨ ${talent} : ${defaut.questionMJ}`);
+    const soinFixe = defaut?.montantMJ === "soin" && montant.trim() !== "" ? Number(montant) : undefined;
+    const lienMontant = defaut?.montantMJ === "lien" && montant.trim() !== "" ? Number(montant) : undefined;
+    onUtiliser(lanceur.instanceId, cible.instanceId, talent, {
+      effetCle: effetActif || null,
+      dureeTours: dureeActive,
+      mods: defaut?.mods,
+      coutPV: defaut?.coutPV,
+      actionSpeciale: defaut?.actionSpeciale,
+      soin: soinFixe !== undefined ? undefined : defaut?.soin,
+      soinFixe,
+      nettoie: estVigueur ? undefined : defaut?.nettoie,
+      outrepasserSoin,
+      modeVigueur: estVigueur ? modeVigueur : undefined,
+      lienMontant,
+    });
+  };
+
   return (
     <div className="rounded-lg border border-amber-900 bg-zinc-900 p-4 space-y-2.5">
       <h2 className="font-bold text-sm uppercase text-amber-300">Capacités</h2>
@@ -93,12 +120,13 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       <label className="block text-sm">Talent
         <select
           value={talent}
-          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); }}
+          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); setAttenteMj(null); }}
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
         >
-          {lancables.map((t) => (
-            <option key={t} value={t}>◈ {t}</option>
-          ))}
+          {lancables.map((t) => {
+            const q = CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === normaliserNomCapacite(t))?.questionMJ;
+            return <option key={t} value={t}>◈ {t}{q ? " ⚖️" : ""}</option>;
+          })}
         </select>
       </label>
       {defaut && (
@@ -106,6 +134,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
           {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
+          {defaut.questionMJ ? ` ⚖️ ${defaut.questionMJ}` : ""}
         </p>
       )}
       <label className="block text-sm">Cible
@@ -180,29 +209,30 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser }: Props) {
       )}
       <button
         onClick={() => {
-          if (cible) {
-            const soinFixe = defaut?.montantMJ === "soin" && montant.trim() !== "" ? Number(montant) : undefined;
-            const lienMontant = defaut?.montantMJ === "lien" && montant.trim() !== "" ? Number(montant) : undefined;
-            onUtiliser(lanceur.instanceId, cible.instanceId, talent, {
-              effetCle: effetActif || null,
-              dureeTours: dureeActive,
-              mods: defaut?.mods,
-              coutPV: defaut?.coutPV,
-              actionSpeciale: defaut?.actionSpeciale,
-              soin: soinFixe !== undefined ? undefined : defaut?.soin,
-              soinFixe,
-              nettoie: estVigueur ? undefined : defaut?.nettoie,
-              outrepasserSoin,
-              modeVigueur: estVigueur ? modeVigueur : undefined,
-              lienMontant,
-            });
+          const question = defaut?.questionMJ;
+          if (question && !mjDejaValide(`cap:${normaliserNomCapacite(talent)}`)) {
+            setAttenteMj({ cle: `cap:${normaliserNomCapacite(talent)}`, question, note: defaut?.note });
+            return;
           }
+          executerUtilisation();
         }}
         disabled={bloque || !cible}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
         Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}
       </button>
+      {attenteMj && (
+        <PopupValidationMJ
+          titre={talent}
+          questions={[{ cle: attenteMj.cle, question: attenteMj.question }]}
+          note={attenteMj.note}
+          onValider={() => {
+            setAttenteMj(null);
+            executerUtilisation();
+          }}
+          onAnnuler={() => setAttenteMj(null)}
+        />
+      )}
     </div>
   );
 }

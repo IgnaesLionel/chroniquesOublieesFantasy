@@ -28,6 +28,12 @@ export interface CapaciteUsable {
   nettoie?: boolean;
   /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort, "proteger" de Protéger un allié). */
   actionSpeciale?: "renvoi" | "proteger" | "vigueur" | "lien-empathique";
+  /**
+   * Question posée au MJ en pop-up avant d'utiliser le talent (positions,
+   * contact, jugement au cas par cas) : le moteur ne suit pas les positions.
+   * Absent = utilisable sans validation.
+   */
+  questionMJ?: string;
   /** Écart éventuel avec le texte DRS (approximation moteur). */
   note?: string;
 }
@@ -38,6 +44,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: 1,
     cibles: "allies",
     actionSpeciale: "proteger",
+    questionMJ: "L'allié protégé est-il au contact de la créature qui va l'attaquer ?",
     note: "Guerrier (G, bouclier requis) : mod. DEF du bouclier à un allié au contact (MJ) contre la prochaine attaque (1/round, annoncée avant le résultat) ; le guerrier garde son bonus ; pas si surpris.",
   },
   {
@@ -356,6 +363,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: 1,
     cibles: "soi",
     mods: { parade: 1 },
+    questionMJ: "La parade est-elle préparée maintenant, avant l'attaque adverse ? (bouclier en main, guerrier non surpris)",
     note: "Guerrier (M, bouclier requis) : posture sur soi — la prochaine attaque réussie (contact ou distance, pas les touches auto) est bloquée sur test opposé d'attaque au contact (niv + FOR/AGI + arme + mods). Rang 5 : (G) 1/round avec dé malus (MJ). Énorme/colossale : moitié DM (MJ).",
   },
   {
@@ -380,6 +388,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: null,
     cibles: "soi",
     mods: { seuilCrit: 19 },
+    questionMJ: "L'arme utilisée est-elle votre arme de prédilection ? (sinon, critique sur 20 seulement)",
     note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer sur soi quand l'arme convient.",
   },
   {

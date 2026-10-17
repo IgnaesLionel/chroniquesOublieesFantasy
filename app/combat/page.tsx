@@ -493,6 +493,11 @@ export default function CombatPage() {
             onRoll={rollAttack}
             onMulti={(lanceurId, sortId, cibleIds, opts, paiement) => rollMulti(lanceurId, sortId, cibleIds, opts, paiement)}
             onChance={useChance}
+            onLogMJ={(message) => {
+              setCombat((c) =>
+                c ? { ...c, log: [...c.log, { id: `mj-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+              );
+            }}
             onCastSoutien={(lanceurId, cibleId, sort, paiement) => {
               try {
                 // Invocation sur profil bestiaire (ex: Zombie) + contrôle max.
