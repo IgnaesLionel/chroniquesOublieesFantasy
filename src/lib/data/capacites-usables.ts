@@ -388,8 +388,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: null,
     cibles: "soi",
     mods: { seuilCrit: 19 },
-    questionMJ: "L'arme utilisée est-elle votre arme de prédilection ? (sinon, critique sur 20 seulement)",
-    note: "Guerrier (arme de prédilection, MJ) : critique sur 19-20. À appliquer sur soi quand l'arme convient.",
+    note: "Guerrier (arme de prédilection) : critique sur 19-20. AUTO en combat quand la fiche porte la famille (Maître d'armes) et l'arme matche ; ce bouton reste le secours MJ (arme non posée, monstre).",
   },
   {
     talent: "Increvable",

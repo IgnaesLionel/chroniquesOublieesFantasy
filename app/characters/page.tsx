@@ -7,6 +7,7 @@ import { exportJson, localStorageAdapter } from "@/src/lib/store/repository";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
 import type { Character } from "@/src/lib/rules/types";
+import { ARME_FAMILLES, labelFamilleArme } from "@/src/lib/rules/world/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
 import { BoursePanel } from "@/src/components/characters/BoursePanel";
 import { CreateurPersonnage } from "@/src/components/characters/CreateurPersonnage";
@@ -28,7 +29,7 @@ import {
   remettreAZeroPersonnage,
   verifierPersonnage,
 } from "@/src/lib/rules/personnage";
-import { estEffective, etatCreation } from "@/src/lib/rules/creation";
+import { estEffective, etatCreation, normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { aUnLoup, ficheLoup, idFicheLoup, pvMaxLoup } from "@/src/lib/rules/compagnon";
 import { validerEquipement } from "@/src/lib/rules/equipement";
 import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
@@ -625,6 +626,43 @@ export default function CharactersPage() {
               <label className="text-sm">Équip. DEF<input type="number" value={editing.defenseEquipement ?? editing.armure?.def ?? 0} onChange={(e) => setEditing({ ...editing, defenseEquipement: Number(e.target.value) })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>
               <label className="text-sm">Mod. DEF<input type="number" value={editing.defenseMod ?? 0} onChange={(e) => setEditing({ ...editing, defenseMod: Number(e.target.value) })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>
             </div>
+            {(() => {
+              const normTalents = (editing.capacites ?? []).map(normaliserNomCapacite);
+              const maitreArmes =
+                normTalents.includes(normaliserNomCapacite("Armes de prédilection")) ||
+                normTalents.includes(normaliserNomCapacite("Spécialisation")) ||
+                normTalents.includes(normaliserNomCapacite("Science du critique"));
+              if (!maitreArmes) return null;
+              return (
+                <div className="rounded border border-amber-900/60 bg-zinc-900 p-2.5 space-y-1.5">
+                  <div className="text-sm font-semibold">Maître d&apos;armes{editing.famillePredilection ? ` — ${labelFamilleArme(editing.famillePredilection)}` : ""}</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-sm">Famille de prédilection
+                      <select
+                        value={editing.famillePredilection ?? ""}
+                        onChange={(e) => setEditing({ ...editing, famillePredilection: (e.target.value || undefined) as Character["famillePredilection"] })}
+                        title="Rang 1 (Voie du maître d'armes) : catégorie annoncée au MJ puis posée ici — +1 attaque, Science du critique 19-20 et Spécialisation appliqués automatiquement en combat sur ces armes (mains nues incluses, corrections LDB p88)."
+                        className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
+                      >
+                        <option value="">— non choisie (MJ : annoncer)</option>
+                        {ARME_FAMILLES.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                      </select>
+                    </label>
+                    {normTalents.includes(normaliserNomCapacite("Spécialisation")) && (
+                      <label className="text-sm">Spécialisation (+DM, max 6)
+                        <input
+                          type="number" min={0} max={6}
+                          value={editing.bonusSpecialisation ?? 0}
+                          onChange={(e) => setEditing({ ...editing, bonusSpecialisation: Math.min(6, Math.max(0, Number(e.target.value) || 0)) })}
+                          title="Rang 3 (Voie du maître d'armes) : +1 DM, +1 par rang 5 en voie au choix MJ (max +6) — ajouté automatiquement aux coups d'armes de prédilection."
+                          className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             {(() => {
               const voie = voiePeupleDe(editing.peuple);
               const montreMage = editing.famille === "Mage";

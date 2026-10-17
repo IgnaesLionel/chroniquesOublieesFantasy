@@ -4,6 +4,7 @@ import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
 import { etatLimite, sortUtilisable, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
+import { labelFamilleArme } from "@/src/lib/rules/world/types";
 import { PopupValidationMJ, type QuestionMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjFiltrerAValider } from "@/src/lib/ui/validations-mj";
 
@@ -296,6 +297,21 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               })}
             </select>
           </label>
+          {(() => {
+            const fam = attacker.famillePredilection ?? null;
+            if (!fam || !(selAttaque?.familles ?? []).includes(fam)) return null;
+            const spec = Math.min(6, Math.max(0, attacker.bonusSpecialisation ?? 0));
+            const connaitCritique = talents.has(normaliserNomCapacite("Science du critique"));
+            const connaitSpec = talents.has(normaliserNomCapacite("Spécialisation"));
+            return (
+              <div className="text-xs text-amber-300 mt-1" title="Maître d'armes : bonus appliqués automatiquement à la résolution (plus rien à saisir en Mod./Bonus DM).">
+                ◈ {labelFamilleArme(fam)} — prédilection : +1 attaque
+                {connaitCritique ? " · critique 19-20" : ""}
+                {connaitSpec && spec > 0 ? ` · Spécialisation +${spec} DM` : ""}
+                {" (auto)"}
+              </div>
+            );
+          })()}
           {selSort && coutBase > 0 && (
             <div className="rounded border border-zinc-800 p-2 mt-1.5 space-y-1.5 text-sm">
               <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>

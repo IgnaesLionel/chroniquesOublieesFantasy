@@ -133,9 +133,9 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
     {
       voie: "Voie du maître d'armes",
       capacites: [
-        { nom: "Armes de prédilection", rang: 1, resume: "Catégorie au choix (MJ : annoncer, ex. haches) : +1 en attaque (saisir +1 en Mod.) + rang+2 pour estimer armes et réputations (MJ)." },
-        { nom: "Science du critique", rang: 2, resume: "Avec prédilection : critique 19-20 (appliquer l'effet via Capacités, MJ)." },
-        { nom: "Spécialisation", rang: 3, resume: "Avec prédilection : +1 DM (saisir en Bonus DM ; +1 par rang 5 en voie, max +6, ou nouvelle catégorie, MJ)." },
+        { nom: "Armes de prédilection", rang: 1, resume: "Catégorie au choix (MJ : annoncer, ex. haches) : +1 en attaque auto si la fiche porte la famille (Éditer : Maître d'armes) + rang+2 pour estimer armes et réputations (MJ). Mains nues incluses (correction LDB)." },
+        { nom: "Science du critique", rang: 2, resume: "Avec prédilection : critique 19-20 auto (fiche : famille + talent) ; bouton secours MJ pour arme non posée." },
+        { nom: "Spécialisation", rang: 3, resume: "Avec prédilection : +1 DM auto (Éditer : Spécialisation) ; +1 par rang 5 en voie, max +6, ou nouvelle catégorie (MJ)." },
         { nom: "Attaque parfaite", rang: 4, resume: "Action limitée (L), prédilection : dé bonus + +1d4° DM, cocher dans le panneau (ou désarmer si NC < bonus de spécialisation, MJ)." },
         { nom: "Riposte", rang: 5, resume: "Action gratuite (G) : un adversaire qui rate au contact est signalé pour riposte immédiate (1/round, MJ : attaque manuelle)." },
       ],

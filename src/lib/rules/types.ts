@@ -289,6 +289,18 @@ export interface Character extends CreatureBase {
    */
   usagesJournaliers?: Record<string, number>;
   /**
+   * Voie du maître d'armes : famille d'armes de prédilection (clé ARME_FAMILLES,
+   * ex. "haches" ; "mains-nues" inclus — correction LDB p88). Portée en combat :
+   * +1 attaque, Science du critique 19-20 et Spécialisation (+N DM) appliqués
+   * automatiquement aux attaques de cette famille.
+   */
+  famillePredilection?: ArmeFamille;
+  /**
+   * Voie du maître d'armes (Spécialisation, rang 3+) : bonus DM fixe (0-6)
+   * avec l'arme de prédilection (+1 par rang 5 en voie au choix MJ, max +6).
+   */
+  bonusSpecialisation?: number;
+  /**
    * PV persistés du compagnon animal (loup du rôdeur) : survit entre les
    * combats (staging + "Appliquer aux fiches"), soignable hors combat.
    * pvMax recalculé (niv×4) ; seul le pv courant est stocké.

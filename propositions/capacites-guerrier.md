@@ -83,6 +83,13 @@ commune qui manque.
 
 ## 3. Proposition B — Buffs du maître d'armes attachés à la fiche
 
+> **✅ Implémenté** (levière : `famillePredilection`/`bonusSpecialisation` sur
+> la fiche, copiés en combat ; +1 attaque / critique 19-20 / +N DM appliqués
+> dans `resolveAttack` quand l'attaque est une arme de la famille et que le
+> talent correspondant est connu ; badge auto au panneau Attaque ;
+> Science du critique gardée en CAPACITES_USABLES comme secours MJ pour
+> arme non posée).
+
 **Problème** : trois talents génèrent des bonus que le joueur doit re-saisir
 par coup. Ils doivent vivre dans la fiche, pas dans la mémoire du joueur.
 

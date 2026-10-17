@@ -36,12 +36,17 @@ describe("Validation MJ — mémoire de session", () => {
 
 describe("Validation MJ — données des fiches", () => {
   it("les capacités Guerrier à condition portent une question MJ", () => {
-    for (const talent of ["Protéger un allié", "Parer un coup", "Science du critique"]) {
+    for (const talent of ["Protéger un allié", "Parer un coup"]) {
       const u = CAPACITES_USABLES.find((x) => x.talent === talent);
       expect(u, talent).toBeDefined();
       expect(u?.questionMJ, talent).toBeTruthy();
       expect(u?.questionMJ?.includes("?"), talent).toBe(true);
     }
+    // Science du critique : auto via la fiche (maître d'armes) — plus de
+    // validation à poser, le bouton est un secours MJ pour arme non posée.
+    const science = CAPACITES_USABLES.find((x) => x.talent === "Science du critique");
+    expect(science?.questionMJ).toBeUndefined();
+    expect(science?.note?.includes("AUTO")).toBe(true);
   });
 
   it("les sorts de zone à point/rayon portent une question MJ", () => {

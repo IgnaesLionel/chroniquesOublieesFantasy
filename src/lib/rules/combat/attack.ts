@@ -353,7 +353,12 @@ export function resolveAttack(
   const modDistance = estAttaqueDistance(attaque) ? getModifier(attaquant.effets, "attaqueDistance") : 0;
   const modDefense = getModifier(cible.effets, "defense");
   const bonusBase = attaqueOpts.bonusOverride ?? attaque.bonus;
-  const bonusEffectif = bonusBase + modAttaque + modDistance;
+  // Maître d'armes : la prédilection de la fiche couvre cette attaque ?
+  // (+1 attaque, Science du critique 19-20, Spécialisation +N DM — auto).
+  const matchPredilection =
+    !!attaquant.famillePredilection && estAttaqueArme(attaque) && (attaque.familles ?? []).includes(attaquant.famillePredilection);
+  const bonusPredilection = matchPredilection ? 1 : 0;
+  const bonusEffectif = bonusBase + modAttaque + modDistance + bonusPredilection;
   // Attaque assurée : DM divisés (après le critique, plancher entier).
   const diviseDM = attaqueOpts.diviseDM && attaqueOpts.diviseDM > 1 ? Math.floor(attaqueOpts.diviseDM) : 1;
   // Difficulté fixe du sort (ex: Saignements diff 10+CON de la cible) :
@@ -417,11 +422,13 @@ export function resolveAttack(
 
   let touche: boolean;
   let critique = false;
-  // Seuil de critique (Science du critique : 19 avec prédilection, MJ).
+  // Seuil de critique : effets posés (effet "Critique 19-20", secours MJ) ;
+  // AUTO maître d'armes : Science du critique connue + arme de prédilection.
   const seuils = attaquant.effets
     .map((e) => e.modificateurs["seuilCrit"])
     .filter((v): v is number => typeof v === "number");
-  const seuilCrit = seuils.length > 0 ? Math.min(...seuils) : 20;
+  const critiqueAuto = matchPredilection && talentConnu(attaquant, "Science du critique");
+  const seuilCrit = Math.min(...(seuils.length ? seuils : [20]), critiqueAuto ? 19 : 20);
   if (attaque.toucheAuto) {
     touche = true;
   } else if (critOpts.nat1EchecAuto && jetNaturel === 1) {
@@ -555,13 +562,18 @@ export function resolveAttack(
       tactiquesLog = `Tactiques de meute : +${Math.max(0, b.total)} DM [${b.rolls.join(", ")}] (même cible que ${tactiquesMaitre})`;
     }
     if (attaqueOpts.bonusDM) degatsTotal += attaqueOpts.bonusDM;
-    // Archer émérite (Rôdeur) : +PER aux DM à l’arc, permanent, sans activation.
+    // Archer émérite (Rôdeur) : +PER aux DM à l'arc, permanent, sans activation.
     const bonusEmerite = talentConnu(attaquant, "Archer émérite") && (attaque.familles ?? []).includes("arcs")
       ? (attaquant.caracs?.PER ?? 0)
       : 0;
     if (bonusEmerite) degatsTotal += bonusEmerite;
-    if (bonusDetails.length > 0 || attaqueOpts.bonusDM || bonusEmerite) {
-      const parties = [...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : []), ...(bonusEmerite ? [`${bonusEmerite} (Archer émérite)`] : [])];
+    // Maître d'armes : Spécialisation (+N DM fixes, fiche) avec la prédilection.
+    const bonusSpecialisation = matchPredilection && talentConnu(attaquant, "Spécialisation")
+      ? Math.min(6, Math.max(0, attaquant.bonusSpecialisation ?? 0))
+      : 0;
+    if (bonusSpecialisation) degatsTotal += bonusSpecialisation;
+    if (bonusDetails.length > 0 || attaqueOpts.bonusDM || bonusEmerite || bonusSpecialisation) {
+      const parties = [...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : []), ...(bonusEmerite ? [`${bonusEmerite} (Archer émérite)`] : []), ...(bonusSpecialisation ? [`${bonusSpecialisation} (Spécialisation)`] : [])];
       bonusLog = `+${parties.join(" + ")}${bonusDetails.length > 0 || attaqueOpts.bonusDM ? " (coup spécial)" : ""}`;
     }
     degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
@@ -676,7 +688,7 @@ export function resolveAttack(
     log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Automatique (sans jet, ${attaque.nom})` });
   } else {
     const des = avantage && jetSecondaire != null ? `${d1}, ${jetSecondaire} (dé ${avantage} -> ${jetNaturel}) + ` : `${jetNaturel} + `;
-    log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${bonusBase}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque})` : ""}${modDistance !== 0 ? ` (${modDistance} à distance)` : ""} = ${jetTotal}` });
+    log.push({ id: id("jet"), at: stamp(), manche: s.manche, message: `Jet : ${des}${bonusBase}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque})` : ""}${modDistance !== 0 ? ` (${modDistance} à distance)` : ""}${bonusPredilection ? " (+1 prédilection)" : ""} = ${jetTotal}` });
   }
   if (opposeMagique) {
     const desC = avantageCible && jetDefSecondaire != null ? `${jetDefNaturel}, ${jetDefSecondaire} (dé ${avantageCible} -> ${jetDefNaturel}) + ` : `${jetDefNaturel} + `;
@@ -1155,6 +1167,8 @@ export function resynchroniserDepuisFiche(
     caracs: frais.caracs,
     ressources,
     deRecuperation: frais.deRecuperation,
+    famillePredilection: frais.famillePredilection,
+    bonusSpecialisation: frais.bonusSpecialisation,
     ...(usagesJournaliers ? { usagesJournaliers } : {}),
   };
   const cleStructurelle = (p: CombatParticipant) =>
@@ -1168,6 +1182,8 @@ export function resynchroniserDepuisFiche(
       caracs: p.caracs,
       ressources: p.ressources,
       deRecuperation: p.deRecuperation,
+      famillePredilection: p.famillePredilection ?? null,
+      bonusSpecialisation: p.bonusSpecialisation ?? 0,
       usagesJournaliers: p.usagesJournaliers ?? {},
     });
   return { participant, nouvelles, manaInfo, modifie: cleStructurelle(cible) !== cleStructurelle(participant) };

@@ -2,6 +2,7 @@
 // Les règles COF V2 non confirmées sont isolées dans CombatOptions.
 
 import type { ActiveEffect, AttackDef, DeRecupType, Sort } from "@/src/lib/rules/types";
+import type { ArmeFamille } from "@/src/lib/rules/world/types";
 import type { Rng } from "@/src/lib/rules/dice/roller";
 
 export type Camp = "pj" | "monstre";
@@ -79,6 +80,14 @@ export interface CombatParticipant {
    * Posé après tout soin de sort/capacité ; MJ peut outrepasser.
    */
   soinMagiqueRecu?: boolean;
+  /**
+   * Voie du maître d'armes : famille d'armes de prédilection (copie de la
+   * fiche). +1 attaque, Science du critique 19-20 et Spécialisation (+N DM)
+   * auto quand l'attaque est de cette famille (resolveAttack). Absent = aucun.
+   */
+  famillePredilection?: ArmeFamille;
+  /** Spécialisation : bonus DM fixe (0-6) avec l'arme de prédilection. */
+  bonusSpecialisation?: number;
 }
 
 /** Sort absorbé par un bouclier, renvoyable (Renvoi de sort ; zones rejouées en mono-cible, MJ au cas par cas). */

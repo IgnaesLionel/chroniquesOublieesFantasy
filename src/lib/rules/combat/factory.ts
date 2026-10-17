@@ -132,6 +132,9 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     ...(c.usagesJournaliers ? { usagesJournaliers: { ...c.usagesJournaliers } } : {}),
     // Dé de récupération de la fiche : sert à la brûlure de mana (1 DR par PM).
     ...(c.desRecuperation ? { deRecuperation: c.desRecuperation.type } : {}),
+    // Maître d'armes (fiche) : prédilection + Spécialisation -> auto-moteur.
+    ...(c.famillePredilection ? { famillePredilection: c.famillePredilection } : {}),
+    ...(c.bonusSpecialisation ? { bonusSpecialisation: c.bonusSpecialisation } : {}),
   };
 }
 
