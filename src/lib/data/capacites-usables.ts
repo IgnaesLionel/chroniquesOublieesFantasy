@@ -136,14 +136,14 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     effetCle: null,
     dureeTours: null,
     cibles: "ennemis",
-    note: "Contact (L) : deux attaques à −2 (MJ : −2 en Mod. attaque, 2 lancers).",
+    note: "Contact (L) : case « Double attaque » au panneau — 2 lancers à −2 automatiques, aucun −2 à saisir en Mod.",
   },
   {
     talent: "Attaque circulaire",
     effetCle: null,
     dureeTours: null,
     cibles: "ennemis",
-    note: "Contact (L) : une attaque à −2 par adversaire au contact, 1 lancer chacun (MJ).",
+    note: "Contact (L) : case « Circulaire » au panneau — 1 lancer à −2 par ennemi pré-coché (tous par défaut, contact au MJ).",
   },
   {
     talent: "Charge",

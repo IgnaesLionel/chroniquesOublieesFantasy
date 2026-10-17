@@ -126,8 +126,8 @@ export const CAPACITES_COMBATTANT: Record<string, VoieDetail[]> = {
         { nom: "Vivacité", rang: 1, resume: "Passif : +3 Init auto et +3 pour éviter immobilisé/renversé (MJ), +1 mouvement/combat (MJ, réel)." },
         { nom: "Manœuvre", rang: 2, resume: "Dé bonus aux manœuvres en combat (MJ : jets manuels)." },
         { nom: "Attaque puissante", rang: 3, resume: "Avec une attaque (A) : dé malus + +2d4° DM (cumulable Double, Circulaire, Parfaite). En limitée (L) : +3d4°. Cocher dans le panneau Attaque." },
-        { nom: "Double attaque", rang: 4, resume: "Action limitée (L) : deux attaques au contact à -2 (saisir -2 en Mod. attaque, 2 lancers)." },
-        { nom: "Attaque circulaire", rang: 5, resume: "Action limitée (L) : une attaque à -2 par adversaire au contact (saisir -2, 1 lancer chacun)." },
+        { nom: "Double attaque", rang: 4, resume: "Action limitée (L) : case « Double attaque » au panneau (arme au contact) — 2 résolutions automatiques à −2 sur la même cible." },
+        { nom: "Attaque circulaire", rang: 5, resume: "Action limitée (L) : case « Circulaire » au panneau — 1 résolution à −2 par ennemi au contact (tous pré-cochés, contact au MJ, décochez au besoin)." },
       ],
     },
     {

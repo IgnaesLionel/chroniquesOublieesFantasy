@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable, estAttaqueContact, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { labelFamilleArme } from "@/src/lib/rules/world/types";
 import { PopupValidationMJ, type QuestionMJ } from "@/src/components/combat/PopupValidationMJ";
@@ -25,11 +25,15 @@ interface Props {
   onTactique: (cibleId: string, cle: string, duree: number | null) => void;
   /** Lancement multi-cibles / zone (sinon repli mono-cible). */
   onMulti?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts, paiement?: PaiementSort) => void;
+  /** Attaque double (L, arme au contact) : 2 résolutions à −2, même cible (page). */
+  onDouble?: () => void;
+  /** Attaque circulaire (L) : 1 résolution à −2 par cible armée cochée (page). */
+  onMultiArmes?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts) => void;
   /** Trace « MJ a validé » au journal de combat. */
   onLogMJ?: (message: string) => void;
 }
 
-export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onTactique, onLogMJ }: Props) {
+export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onDouble, onMultiArmes, onTactique, onLogMJ }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
   const bloque = attacker !== null && !canAct(attacker.effets);
@@ -43,6 +47,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [modeFleche, setModeFleche] = useState<"dm" | "statut">("dm");
   const [statutFleche, setStatutFleche] = useState("aveugle");
   const [eclair, setEclair] = useState(false);
+  const [double, setDouble] = useState(false);
+  const [circulaire, setCirculaire] = useState(false);
   const [equipeContact, setEquipeContact] = useState(false);
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
@@ -60,7 +66,20 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const estMultiTop = !!selSortTop && !estZoneTop && ((maxCibles ?? 1) > 1 || !!selSortTop.ciblesLibres);
   // Options tactiques (assurée/précise/violente) : armes uniquement, jamais sur attaque magique.
   const estMagiqueTop = !!selAttaqueTop?.id.startsWith("sort:");
-  const choixMultiples = !!onMulti && (estZoneTop || estMultiTop);
+  const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
+  const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
+  const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
+  const connaitMille = talents.has(normaliserNomCapacite("Dans le mille"));
+  const connaitFleche = talents.has(normaliserNomCapacite("Flèche de mort"));
+  const connaitEclair = talents.has(normaliserNomCapacite("Attaque éclair"));
+  // Voie du combat (R4/R5) : Double attaque et Attaque circulaire, armes au
+  // contact (estAttaqueContact exclut déjà les sorts et les armes à distance).
+  const connaitDoubleArme = talents.has(normaliserNomCapacite("Double attaque"));
+  const connaitCirculaireArme = talents.has(normaliserNomCapacite("Attaque circulaire"));
+  const armeContact = !!selAttaqueTop && estAttaqueContact(selAttaqueTop, !!selSortTop);
+  const proposeDouble = connaitDoubleArme && armeContact;
+  const proposeCirculaire = connaitCirculaireArme && armeContact;
+  const choixMultiples = (!!onMulti && (estZoneTop || estMultiTop)) || (circulaire && proposeCirculaire && !!onMultiArmes);
   const ennemisTop = (attacker ? participants.filter((p) => p.statut === "actif" && p.camp !== attacker.camp && p.instanceId !== attacker.instanceId) : []).map((p) => p.instanceId);
   // Pré-sélection : ennemis (plafonnée pour ×N). null = auto ; réinitialisée
   // à chaque attaquant/attaque (état dérivé au rendu, pas d'effet).
@@ -72,17 +91,13 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     setCleMemorisee(cleSelection);
     setCibles(null);
     setEquipeContact(false);
+    setDouble(false);
+    setCirculaire(false);
     setAttenteMj(null);
   }
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
   const [tactique, setTactique] = useState<"normale" | "assuree" | "precise" | "violente" | "defense-partielle" | "defense-totale" | "riposte" | "soutenir">("normale");
-  const talents = new Set((attacker?.capacites ?? []).map(normaliserNomCapacite));
-  const connaitPuissante = talents.has(normaliserNomCapacite("Attaque puissante"));
-  const connaitParfaite = talents.has(normaliserNomCapacite("Attaque parfaite"));
-  const connaitMille = talents.has(normaliserNomCapacite("Dans le mille"));
-  const connaitFleche = talents.has(normaliserNomCapacite("Flèche de mort"));
-  const connaitEclair = talents.has(normaliserNomCapacite("Attaque éclair"));
   // Travail d'équipe (Rôdeur) : si l'attaquant est le loup et son maître a le
   // talent, proposer le dé bonus (adjacence déclarée par le MJ, pas de positions suivies).
   // Trois cas affichés : proposition (talent OK), astuce R2 (sans talent),
@@ -134,6 +149,10 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       const des = courante?.degats.match(/^(\d*d\d+°?)(.*)$/);
       if (courante && des) opts.degatsOverride = `${des[1]}+${agi}`;
     }
+    // Voie du combat : Double (2 attaques à −2) et Circulaire (1 à −2 par
+    // cible) — armes au contact ; le −2 est passé aux résolutions de la page.
+    if (double && connaitDoubleArme) opts.modAttaque = (opts.modAttaque ?? 0) - 2;
+    if (circulaire && connaitCirculaireArme) opts.modAttaque = (opts.modAttaque ?? 0) - 2;
     // Mode de lancement du sort (incantation / brûlure + concentration éventuelle).
     const selAttaque = attacker?.attaques.find((x) => x.id === (attackId ?? attacker?.attaques[0]?.id));
     const selSort = attacker && selAttaque && selAttaque.id.startsWith("sort:")
@@ -157,6 +176,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       ...(parfaite && connaitParfaite ? [{ cle: "att:parfaite", question: "Attaque parfaite : l'arme en main est-elle votre arme de prédilection ?" }] : []),
       ...(fleche && connaitFleche ? [{ cle: "att:fleche", question: "Flèche de mort : la cible est-elle d'un NC strictement inférieur au vôtre ?" }] : []),
       ...(eclair && connaitEclair ? [{ cle: "att:eclair", question: "Attaque éclair : le déplacement jusqu'à la cible est-il possible (≤ 10 m, +10 m au rang 5) ?" }] : []),
+      ...(double && connaitDoubleArme ? [{ cle: "att:double", question: "Attaque double : les deux coups sont-ils portés au contact de la cible ?" }] : []),
+      ...(circulaire && connaitCirculaireArme ? [{ cle: "att:circ", question: "Attaque circulaire : tous les ennemis cochés sont-ils au contact ?" }] : []),
       ...(tactiqueEff === "soutenir" && attacker ? [{ cle: "att:soutenir", question: "Soutenir un allié : l'allié est-il au contact de son adversaire ?" }] : []),
       ...(selSort ? (selSort.questionMJ
         ? [{ cle: `sort:${selSort.id}`, question: selSort.questionMJ }]
@@ -206,6 +227,16 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       mode: burnOk ? "brulure" : "mana",
       concentration: concOk,
     };
+    // Voie du combat : cases Double / Circulaire (armes au contact, sans
+    // paiement de sort) — la page enchaîne les résolutions à −2.
+    if (double && connaitDoubleArme && onDouble && !circulaire) {
+      onDouble();
+      return;
+    }
+    if (circulaire && connaitCirculaireArme && onMultiArmes && attacker) {
+      onMultiArmes(attacker.instanceId, selAttaque?.id ?? "", ciblesAffichees, opts);
+      return;
+    }
     if (choixMultiples && attacker) {
       onMulti!(attacker.instanceId, selAttaque?.id ?? "", ciblesAffichees, opts, paiement);
       return;
@@ -394,7 +425,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       {vivants.some((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") > 0) && (
         <p className="text-xs text-zinc-500">Enseveli : inciblable, masqué des cibles (MJ).</p>
       )}
-      {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair) && (
+      {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair || proposeDouble || proposeCirculaire) && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
           <div className="text-xs uppercase text-zinc-500 font-bold">Coup spécial</div>
           {connaitPuissante && (
@@ -446,6 +477,26 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               <span>Attaque éclair (AGI)</span>
             </label>
           )}
+          {proposeDouble && (
+            <label className="flex items-center gap-2" title="Action limitée (L) : deux attaques au contact à −2 chacune, même cible — 2 résolutions successives (voie du combat R4)">
+              <input
+                type="checkbox"
+                checked={double}
+                onChange={(e) => { setDouble(e.target.checked); if (e.target.checked) setCirculaire(false); }}
+              />
+              <span>Double attaque (L) : 2 attaques à −2</span>
+            </label>
+          )}
+          {proposeCirculaire && (
+            <label className="flex items-center gap-2" title="Action limitée (L) : une attaque à −2 par adversaire au contact — tous les ennemis pré-cochés, décochez au besoin (voie du combat R5)">
+              <input
+                type="checkbox"
+                checked={circulaire}
+                onChange={(e) => { setCirculaire(e.target.checked); if (e.target.checked) { setDouble(false); } }}
+              />
+              <span>Circulaire (L) : 1 attaque à −2 par ennemi au contact</span>
+            </label>
+          )}
         </div>
       )}
       <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
@@ -463,7 +514,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         })}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Prédilection +1, Double/Circulaire −2…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
+        <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Mod. manuel résiduel : prédilection +1 et Spécialisation +N DM sont automatiques, Double/Circulaire ont leur case" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
         <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
       </div>
       <button

@@ -153,6 +153,18 @@ l'app ne les rend possibles autrement qu'en « MJ fait l'attaque à la main ».
 
 ## 5. Proposition D — Double attaque / Attaque circulaire auto-résolues
 
+> **✅ Implémenté** — cases « Double attaque (L) : 2 attaques à −2 » /
+> « Circulaire (L) : 1 attaque à −2 par ennemi au contact » au panneau
+> Attaque (arme au contact uniquement, talents connus). Double = 2
+> résolutions successives à −2, même cible (le second coup saute si la cible
+> est tombée) ; Circulaire = case multi-cibles des sorts étendue aux armes
+> (ennemis pré-cochés, cibles tombées sautées) — page `resolveAttack`
+> séquentielle, journal d'en-tête ⚔. Validation MJ pop-up : `att:double`
+> (contact) et `att:circ` (tous les cochés au contact).
+
+---
+
+**Modifications**
 - **Double attaque** (R4) : case « Double » au panneau Attaque quand la
   capacité est connue → le lancer lance 2 résolutions successives à −2 (le
   moteur re-s'utilise ; RNG séquentiels, les deux touches journalisées).

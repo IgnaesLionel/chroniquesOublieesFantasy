@@ -274,6 +274,81 @@ export default function CombatPage() {
   /** Pose un signal Teigneux (G) : le MJ choisit le fuyard au moment du lancement. */
   const poserGratuite = (id: string, type: TypeAttaqueGratuite) => setCombat((c) => (c ? signalerAttaqueGratuite(c, id, type) : c));
 
+  /** Attaque double (voie du combat R4, L, arme au contact) : deux résolutions
+   * successives à −2 contre la même cible (−2 déjà dans opts, posé par le
+   * panneau). Le second lancer saute si la cible est déjà tombée (règle MJ). */
+  const rollDouble = (opts?: AttaqueOpts) => {
+    if (!combat || !attackerId || !targetId) return;
+    const atk = combat.participants.find((p) => p.instanceId === attackerId);
+    const aid = attackId ?? atk?.attaques[0]?.id;
+    const cbl = combat.participants.find((p) => p.instanceId === targetId);
+    if (!atk || !aid || !cbl || cbl.statut !== "actif") {
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: "Cible invalide ou hors combat — re-sélectionnez la cible." }] } : c
+      );
+      return;
+    }
+    try {
+      const optsEff: AttaqueOpts = { ...opts, modAttaque: (opts?.modAttaque ?? 0) - 2 };
+      const s0: CombatState = {
+        ...combat,
+        log: [...combat.log, { id: `dbl-${Date.now()}`, at: new Date().toISOString(), manche: combat.manche, message: `⚔ Attaque double (L) : 2 lancers à −2 — ${atk.nom} → ${cbl.nom}` }],
+      };
+      const r1 = resolveAttack(s0, attackerId, targetId, aid, Math.random, DEFAULT_COMBAT_OPTIONS, optsEff);
+      const cible1 = r1.state.participants.find((p) => p.instanceId === targetId);
+      if (!cible1 || cible1.statut !== "actif") {
+        setCombat(r1.state);
+        setLast(r1.resolution);
+        setLastAttaque({ attackerId, targetId, attackId: aid });
+        return;
+      }
+      const r2 = resolveAttack(r1.state, attackerId, targetId, aid, Math.random, DEFAULT_COMBAT_OPTIONS, optsEff);
+      setCombat(r2.state);
+      setLast(r2.resolution);
+      setLastAttaque({ attackerId, targetId, attackId: aid });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Attaque double impossible.";
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+      );
+    }
+  };
+
+  /** Attaque circulaire (voie du combat R5, L) : une résolution à −2 par
+   * ennemi pré-coché (contact validé par le MJ via la pop-up). Les cibles
+   * tombées au fil des coups sont sautées ; le panneau pose le −2 dans opts. */
+  const rollCirculaire = (lanceurId: string, cibleAttackId: string, cibleIds: string[], opts?: AttaqueOpts) => {
+    if (!combat) return;
+    const atk = combat.participants.find((p) => p.instanceId === lanceurId);
+    const aid = cibleAttackId || atk?.attaques[0]?.id;
+    if (!atk || !aid || cibleIds.length === 0) return;
+    try {
+      const optsEff: AttaqueOpts = { ...opts, modAttaque: (opts?.modAttaque ?? 0) - 2 };
+      let s: CombatState = {
+        ...combat,
+        log: [...combat.log, { id: `cir-${Date.now()}`, at: new Date().toISOString(), manche: combat.manche, message: `⚔ Attaque circulaire (L) : 1 lancer à −2 par cible — ${atk.nom}` }],
+      };
+      let derniere: AttackResolution | null = null;
+      for (const idCible of cibleIds) {
+        const cible = s.participants.find((p) => p.instanceId === idCible);
+        if (!cible || cible.statut !== "actif") continue;
+        const r = resolveAttack(s, lanceurId, idCible, aid, Math.random, DEFAULT_COMBAT_OPTIONS, optsEff);
+        s = r.state;
+        derniere = r.resolution;
+      }
+      setCombat(s);
+      if (derniere) {
+        setLast(derniere);
+        setLastAttaque({ attackerId: lanceurId, targetId: derniere.cibleId, attackId: aid });
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Attaque circulaire impossible.";
+      setCombat((c) =>
+        c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+      );
+    }
+  };
+
   const useChance = () => {
     if (!combat || !last || !lastAttaque) return;
     try {
@@ -557,6 +632,8 @@ export default function CombatPage() {
             onTarget={(id) => setTargetId(id)}
             onRoll={rollAttack}
             onMulti={(lanceurId, sortId, cibleIds, opts, paiement) => rollMulti(lanceurId, sortId, cibleIds, opts, paiement)}
+            onDouble={() => rollDouble()}
+            onMultiArmes={(lanceurId, attackIdSel, cibleIds, opts) => rollCirculaire(lanceurId, attackIdSel, cibleIds, opts)}
             onChance={useChance}
             onLogMJ={(message) => {
               setCombat((c) =>

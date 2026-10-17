@@ -21,6 +21,10 @@ interface Props {
   onTarget: (id: string) => void;
   onRoll: (opts?: AttaqueOpts, paiement?: PaiementSort) => void;
   onMulti?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts, paiement?: PaiementSort) => void;
+  /** Attaque double (L, arme au contact) : 2 résolutions à −2, même cible (page). */
+  onDouble?: () => void;
+  /** Attaque circulaire (L) : 1 résolution à −2 par cible armée cochée (page). */
+  onMultiArmes?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts) => void;
   onChance: () => void;
   onCastSoutien: (lanceurId: string, cibleId: string, sort: Sort, paiement?: PaiementSort) => void;
   onUtiliserCapacite: (
@@ -122,6 +126,8 @@ export function ActionPanel(props: Props) {
               onTarget={props.onTarget}
               onRoll={props.onRoll}
               onMulti={props.onMulti}
+              onDouble={props.onDouble}
+              onMultiArmes={props.onMultiArmes}
               onChance={props.onChance}
               onTactique={props.onTactique}
               onLogMJ={props.onLogMJ}
