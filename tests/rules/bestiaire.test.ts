@@ -42,6 +42,11 @@ describe("bestiaire Notion importé", () => {
     }
   });
 
+  it("catalogue partagé : clés uniques (doublon = clé React dupliquée)", () => {
+    const cles = CAPACITES_PARTAGEES.map((c) => c.cle);
+    expect(new Set(cles).size).toBe(cles.length);
+  });
+
   it("vérification DRS : Chimère/Gorille PV, Ours brun NC, RD renseignées", () => {
     const chimere = SEED_MONSTERS.find((m) => m.id === "notion-nc-7-chimere")!;
     expect(chimere.pvMax).toBe(100); // DRS (la capture VTT affichait 0)

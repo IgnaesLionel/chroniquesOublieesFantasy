@@ -19,7 +19,7 @@ export const CAPACITES_PARTAGEES: CapacitePartagee[] = [
   { cle: "sergent", nom: "Sergent", resume: "1 action sup. à un allié ; 1x/combat ignore le coup fatal.", texte: "Donne 1 action supplémentaire par round à un allié ; 1x par combat ignore l'attaque qui l'amènerait à 0 PV." },
   { cle: "chef-bandit", nom: "Chef", resume: "+1 init/attaque/DM aux bandits en vue.", texte: "+1 en initiative, attaque et DM à tous les bandits à portée de vue." },
   { cle: "imparable", nom: "Imparable", resume: "15-20 (17-20 si 2 attaques) : auto réussie +2d4 DM.", texte: "15-20 au d20 (17-20 avec 2 attaques) : attaque automatiquement réussie +2d4 DM. Liée à Brise-genou." },
-  { cle: "brise-genou", nom: "Brise-genou", resume: "Liée à Imparable : effets de jambe brisée.", texte: "Capacité liée à Imparable (orcs, Chef Kobold). Voir fiche de la créature pour le détail." },
+  { cle: "brise-genou", nom: "Brise-genou", resume: "Liée à Imparable : effets de jambe brisée.", texte: "Transcription : fiche Vétéran (orcs). Utilisée aussi par Worg, Chef Orc, Chef Kobold. Voir fiche de la créature pour le détail." },
   { cle: "tape-dur", nom: "Tape dur", resume: "17-20 : auto réussie + CON 16 ou étourdie 1 round.", texte: "Texte de référence : Golem de chair. 17-20 : attaque auto réussie, CON 16 ou étourdie 1 round." },
   { cle: "teigneuse", nom: "Teigneuse", resume: "Attaque ratée : prochaine attaque dé bonus +2d6 DM.", texte: "Texte de référence : Chef Ogre. Attaque ratée : la prochaine attaque bénéficie d'un dé bonus +2d6 DM." },
   { cle: "attaque-en-meute", nom: "Attaque en meute", resume: "≥2 gobelins même cible : +2 attaque.", texte: "Lorsque au moins 2 gobelins attaquent la même cible en même temps, +2 en attaque (cumulable avec attaque groupée).", mecanique: "Bonus conditionnel appliqué manuellement par le MJ (voir panneau Effets : Bonus d'attaque)." },
@@ -69,6 +69,5 @@ export const CAPACITES_PARTAGEES: CapacitePartagee[] = [
   { cle: "inspirer-terreur", nom: "Inspirer la terreur", resume: "Effraie les adversaires (draconiques).", texte: "Capacité draconique partagée. Voir fiche du Dragon des forêts." },
   { cle: "sensible-lumiere", nom: "Sensible à la lumière", resume: "Gêné en pleine lumière (orcs).", texte: "Les orcs sont sensibles à la lumière. Voir fiche." },
   { cle: "tres-petit", nom: "Très petit", resume: "Bonus de petite taille (animaux).", texte: "Capacité partagée Animal petit / très petit. Voir fiches." },
-  { cle: "brise-genou", nom: "Brise-genou", resume: "Liée à Imparable (orcs, kobolds).", texte: "Capacité liée à Imparable : Worg, Chef Orc, Chef Kobold. Voir fiche de la créature." },
   { cle: "resistances-demon", nom: "Résistances (démon)", resume: "RD 5 armes non magiques + feu et acide.", texte: "RD 5 sur les armes non magiques ; résistance feu et acide. Sans armes appropriées, le NC des démons augmente de 1." },
 ];
