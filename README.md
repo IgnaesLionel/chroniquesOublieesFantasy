@@ -8,7 +8,7 @@ Copilote du MJ : personnages, monstres, dés, combat, scénarios à embranchemen
 npm install
 npm run dev      # http://localhost:3000
 npm run typecheck
-npm run test     # vitest : 309 tests règles
+npm run test     # vitest : 490 tests règles
 npm run build
 ```
 
@@ -27,15 +27,17 @@ src/lib/store/       # persistance
   collections.ts     # hooks typés : useCharacters/useMonsters/useNpcs/...
   backup.ts          # export/import JSON validé (STORAGE_KEYS)
   useLocalCollection.ts / useCatalogueObjets.ts
-src/lib/ui/          # helpers UI partagés (pv.ts)
-tests/rules/         # 30 fichiers vitest
+src/lib/ui/          # helpers UI partagés (pv.ts, famille.ts)
+tests/rules/         # 42 fichiers vitest
 ```
 
 Règles d'or :
 - l'UI ne parle qu'aux hooks `collections.ts`, jamais aux clés `"cof.*"` en dur ;
 - les règles sont pures et testées (`tests/rules/`) ;
 - `exportJson` (`repository.ts`) est la seule fonction d'export ;
-- couleurs PV centralisées dans `src/lib/ui/pv.ts`.
+- couleurs PV centralisées dans `src/lib/ui/pv.ts` ;
+- couleurs de famille centralisées dans `src/lib/ui/famille.ts` (variables `--fam-*` dans `app/globals.css`, badges `src/components/ui/Famille.tsx`) : Combattant rouge sang, Aventurier vert mousse, Mystique violet améthyste, Mage bleu arcanique ;
+- en combat, identité = famille (filet `fam-rail` + badge) et camp (PJ/MO) ; fonction = teinte fixe par panneau (⚔️ Attaque rouge, ✨ Capacités ambre, 🛡️ Soutien émeraude, ✦ Effets violet, 🎒 Équipement bleu ciel).
 
 ## Stockage
 

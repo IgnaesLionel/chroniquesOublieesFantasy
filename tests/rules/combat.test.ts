@@ -4,7 +4,7 @@ import type { AttackDef } from "@/src/lib/rules/types";
 import type { ArmeFamille } from "@/src/lib/rules/world/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, etatLimite, bonusOppositionContact, frapperCibles, frapperZone, invoquer, invoquerCompagnon, payerCoutSort, protegerAllie, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, tailleAcceptee, tenterSortieEnseveli, utiliserCapacite } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, estCadavre, estZombie, etatLimite, animerCadavre, animerCadavreProfil, profilAnimable, bonusOppositionContact, frapperCibles, frapperZone, invoquer, invoquerCompagnon, payerCoutSort, protegerAllie, raisonExigeVivant, raisonSeuilPv, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, tailleAcceptee, tenterSortieEnseveli, utiliserCapacite, MALUS_ANIMATION, NC_MAX_ANIMATION } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, nomBaseInstance, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { fixedRng, parseDiceExpression, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -225,22 +225,27 @@ describe("moteur de combat", () => {
   });
 
   it("factory : niveau transmis, niveauMin calculé (gratuité Mage déduite)", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const p = participantFromCharacter(mirabel, []);
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const p = participantFromCharacter(mae, []);
     expect(p.niveau).toBe(1);
     const sorts = Object.fromEntries(p.sorts.map((s) => [s.nom, s.niveauMin]));
-    // Malédiction / Saignements (R1) : niveau 1.
-    expect(sorts["Malédiction"]).toBe(1);
-    expect(sorts["Saignements"]).toBe(1);
-    // Maîtrise apprise en talent (gratuité R2 consommée) : sort à créer exigible au niveau 2.
+    // Un pied dans la tombe (Voie de l'outre-tombe R1) : niveau 1.
+    expect(sorts["Un pied dans la tombe"]).toBe(1);
+    // Maîtrise apprise en talent-sort avec la gratuité R2 consommée : lançable au
+    // niveau 1 (voie du mage adoptée + R2 gratuit), le niveau 2 étant exigé hors gratuité.
     const sortsMage = {
-      ...mirabel,
+      ...mae,
+      voieMage: true,
+      capacites: ["Malédiction", "Saignements", "Maîtrise de la magie"],
       sorts: [
         { id: "a", nom: "Maîtrise de la magie", type: "utilitaire" as const, voie: "Voie du mage", rang: 2, cout: { ressource: "mana", montant: 2 } },
       ],
     };
     const p2 = participantFromCharacter(sortsMage, []);
     expect(p2.sorts[0].niveauMin).toBe(1); // gratuité Mage : lançable au niv. 1
+    // Sans la voie du mage : même sort, niveau 2 requis.
+    const sansMage = { ...sortsMage, voieMage: undefined, capacites: ["Malédiction", "Saignements"] };
+    expect(participantFromCharacter(sansMage, []).sorts[0].niveauMin).toBe(2);
     // Monstres : niveau du template, sorts vides.
     const tpl = SEED_MONSTERS[0];
     const [m] = monsterInstances(tpl, 1);
@@ -254,12 +259,15 @@ describe("moteur de combat", () => {
   });
 
   it("protegerAllie : mod. DEF du bouclier contre la prochaine attaque, consommée (1/round)", () => {
-    const dorainSeed = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    const dorain = { ...participantFromCharacter(dorainSeed, []), bouclierBonus: 2 };
-    const s = createCombat([dorain, pj("Allié"), gobelin("G")]);
+    const thornakSeed = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // Graine : petit bouclier équipé -> +1 DEF en combat et Protéger un allié
+    // (Voie du bouclier R1) utilisable tel quel, sans bouclier à ajouter.
+    expect(participantFromCharacter(thornakSeed, SEED_ITEMS)).toMatchObject({ defense: 12, bouclierBonus: 1 });
+    const thornak = { ...participantFromCharacter(thornakSeed, []), bouclierBonus: 2 };
+    const s = createCombat([thornak, pj("Allié"), gobelin("G")]);
     const [lanceur, allie, monstre] = s.participants.map((p) => p.instanceId);
     // Sans bouclier manié : refusé.
-    const nu = createCombat([{ ...dorain, bouclierBonus: null }, pj("Allié2"), gobelin("G2")]);
+    const nu = createCombat([{ ...thornak, bouclierBonus: null }, pj("Allié2"), gobelin("G2")]);
     const [nuL, nuA] = nu.participants.map((p) => p.instanceId);
     expect(() => protegerAllie(nu, nuL, nuA)).toThrow(/bouclier requis/);
     // Protection +2 (bouclier), pas +2 fixe : effet ciblé 1 round.
@@ -268,7 +276,7 @@ describe("moteur de combat", () => {
     expect(garde.effets).toHaveLength(1);
     expect(garde.effets[0].nom).toBe("Protection");
     expect(garde.effets[0].toursRestants).toBe(1);
-    expect(garde.effets[0].source).toBe(dorain.nom);
+    expect(garde.effets[0].source).toBe(thornak.nom);
     expect(garde.effets[0].modificateurs).toMatchObject({ defense: 2, protection: 1 });
     expect(p1.resolution.talentNom).toBe("Protéger un allié");
     expect(p1.state.log.some((l) => l.message.includes("protège"))).toBe(true);
@@ -457,8 +465,8 @@ describe("sorcier (voies du livre)", () => {
   });
 
   it("factory : le participant porte le DR de la fiche (brûlure)", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    expect(participantFromCharacter(mirabel, []).deRecuperation).toBe("d6");
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    expect(participantFromCharacter(mae, []).deRecuperation).toBe("d6");
   });
 
   it("sacrifice PV évolutif (1d4° -> d6 au niv. 7)", () => {
@@ -1321,7 +1329,7 @@ describe("restriction d'espèce (Destruction du mal -> morts-vivants et démons)
   });
 
   it("fiche ancienne (sort appris avant la restriction) : complété depuis le grimoire, 0 DM sur Chef Kobold", () => {
-    const aelion = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
+    const isildeen = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
     // Snapshot tel qu'enregistré avant l'ajout de toucheAuto/cibleEspeces.
     const stale = {
       id: "sort-ancien-123", nom: "Destruction du mal", type: "offensif" as const,
@@ -1329,7 +1337,7 @@ describe("restriction d'espèce (Destruction du mal -> morts-vivants et démons)
       description: "ancien texte", familles: ["Prêtre"],
       degats: "2d4", cout: { ressource: "mana", montant: 3 },
     };
-    const fiche = { ...aelion, sorts: [...aelion.sorts, stale] };
+    const fiche = { ...isildeen, sorts: [...isildeen.sorts, stale] };
     const pretre = participantFromCharacter(fiche, []);
     // Le participant porte le sort complété, sans muter la fiche.
     expect(pretre.sorts.find((s) => s.nom === "Destruction du mal")?.cibleEspeces).toEqual(["Mort-vivant", "Démon"]);
@@ -1555,10 +1563,16 @@ describe("ciblage multiple et zone ajustable", () => {
 });
 
 describe("fusion capacités : usages valides et exécutables", () => {
-  it("chaque usage pointe un talent de nos voies, champs valides", () => {
+  it("chaque usage pointe un talent connu (voies d'aventurier ou capacité de monstre)", () => {
     const connus = new Set<string>();
     for (const voies of Object.values(CAPACITES)) {
       for (const v of voies) for (const t of v.capacites) connus.add(normaliserNomCapacite(t.nom));
+    }
+    // Pouvoirs de créature lançables (ex. « Animer un cadavre » du Sorcier et
+    // du Shaman orc) : listés dans les capacités du bestiaire, pas dans les
+    // voies d'aventurier.
+    for (const m of SEED_MONSTERS) {
+      for (const c of m.capacites ?? []) connus.add(normaliserNomCapacite(c));
     }
     for (const u of CAPACITES_USABLES) {
       expect(connus.has(normaliserNomCapacite(u.talent)), `talent inconnu : ${u.talent}`).toBe(true);
@@ -1646,15 +1660,16 @@ describe("options tactiques (LDB)", () => {
     expect(r.state.log.some((l) => l.message.includes("Violente"))).toBe(true);
   });
 
-  it("Saignements de Mirabel (seed) : DoT 1d4° pendant INT (2) rounds, sans dégâts immédiats", () => {
-    const mirabel = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
-    const lanceur = participantFromCharacter(mirabel, SEED_ITEMS);
+  it("Saignements (grimoire) : DoT 1d4° pendant INT (2) rounds, sans dégâts immédiats", () => {
+    const mae = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
+    const saignements = SEED_SORTS.find((s) => s.id === "sort-saignements")!;
+    const lanceur = participantFromCharacter({ ...mae, sorts: [saignements] }, SEED_ITEMS);
     const s = createCombat([lanceur, gobelin()]);
     const [a, t] = s.participants.map((p) => p.instanceId);
     // Difficulté fixe 10+CON (gobelin de test sans caracs : CON 0 = 10, DEF 15 ignorée) :
     // 11 naturel : 11+5 = 16 >= 10 -> touche ; pas de dégâts immédiats.
     // DoT 1d4° (niv. 1 -> d4) : 3 PV/round.
-    const r = resolveAttack(s, a, t, "sort:mirabel-saignements", fixedRng([0.5, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    const r = resolveAttack(s, a, t, "sort:sort-saignements", fixedRng([0.5, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
     expect(r.resolution.defenseCible).toBe(10);
     expect(r.resolution.touche).toBe(true);
     expect(r.resolution.degatsTotal).toBe(0);
@@ -1667,13 +1682,14 @@ describe("options tactiques (LDB)", () => {
   });
 
   it("difficulté fixe : la DEF est ignorée (cible blindée mais frêle touchée)", () => {
-    const mirabel = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
-    const lanceur = participantFromCharacter(mirabel, SEED_ITEMS);
+    const mae = SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!;
+    const saignements = SEED_SORTS.find((s) => s.id === "sort-saignements")!;
+    const lanceur = participantFromCharacter({ ...mae, sorts: [saignements] }, SEED_ITEMS);
     // DEF 20 mais CON 0 -> seuil 10 ; 5 naturel : 5+5 = 10 -> touche (raté vs DEF).
     const cible = { ...gobelin(), defense: 20, caracs: { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 } };
     const s = createCombat([lanceur, cible]);
     const [a, t] = s.participants.map((p) => p.instanceId);
-    const r = resolveAttack(s, a, t, "sort:mirabel-saignements", fixedRng([0.2, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
+    const r = resolveAttack(s, a, t, "sort:sort-saignements", fixedRng([0.2, 0.5, 0.5]), DEFAULT_COMBAT_OPTIONS);
     expect(r.resolution.defenseCible).toBe(10);
     expect(r.resolution.touche).toBe(true);
   });
@@ -1838,5 +1854,205 @@ describe("outre-tombe (corrections LDB)", () => {
     expect(s.participants[1].pv).toBe(r.state.participants[1].pv);
     const effet = r.state.participants[1].effets.find((e) => e.nom === "Armée des morts");
     expect(effet?.toursRestants).toBe(5);
+  });
+});
+
+describe("attaque conditionnée aux PV du lanceur (seuilPv)", () => {
+  const sigmeus = () => monsterInstances(SEED_MONSTERS.find((m) => m.id === "notion-sigmeus-le-necromant")!, 1)[0];
+
+  it("raisonSeuilPv : bloqué au-dessus, libre à la moitié ou moins", () => {
+    const baiser = { nom: "Baiser du vampire (L)", seuilPv: 0.5 };
+    expect(raisonSeuilPv({ pv: 32, pvMax: 32 }, baiser)).toContain("50 %");
+    expect(raisonSeuilPv({ pv: 17, pvMax: 32 }, baiser)).not.toBeNull();
+    expect(raisonSeuilPv({ pv: 16, pvMax: 32 }, baiser)).toBeNull();
+    // Sans seuilPv : toujours libre (les autres attaques ne changent pas).
+    expect(raisonSeuilPv({ pv: 32, pvMax: 32 }, { nom: "Main spectrale" })).toBeNull();
+  });
+
+  it("resolveAttack refuse le Baiser du vampire au-dessus de la moitié des PV", () => {
+    const sig = sigmeus(); // 32/32 PV
+    const heros = pj("Héros cible");
+    const s = createCombat([sig, heros]);
+    expect(() =>
+      resolveAttack(s, sig.instanceId, heros.instanceId, "notion-sigmeus-le-necromant-a1", fixedRng([0.9]))
+    ).toThrow(/Baiser du vampire/);
+  });
+
+  it("resolveAttack l'autorise (et soigne) à la moitié des PV ou moins", () => {
+    const sig = { ...sigmeus(), pv: 16 }; // 16/32 = moitié
+    const heros = pj("Héros cible");
+    const s = createCombat([sig, heros]);
+    const r = resolveAttack(s, sig.instanceId, heros.instanceId, "notion-sigmeus-le-necromant-a1", fixedRng([0.9]));
+    const lanceur = r.state.participants.find((p) => p.instanceId === sig.instanceId)!;
+    expect(r.resolution.touche).toBe(true);
+    expect(r.resolution.degatsTotal).toBeGreaterThan(0);
+    // Vol de vie : le nécromant remonte (plafonné à pvMax).
+    expect(lanceur.pv).toBeGreaterThan(16);
+    expect(lanceur.pv).toBeLessThanOrEqual(32);
+  });
+});
+
+describe("Animer un cadavre (Sorcier, Shaman orc : cadavre de zombie NC ≤ 2, −2 attaque/DEF/Init)", () => {
+  const modele = (id: string) => monsterInstances(SEED_MONSTERS.find((m) => m.id === id)!, 1)[0];
+  const sorcier = () => modele("notion-nc-5-sorcier");
+  const cadavre = () => ({ ...modele("notion-nc-1-zombie-humain"), statut: "ko" as const, pv: 0, initiative: 12 });
+
+  it("estZombie : famille zombie reconnue au nom (profil comme participant)", () => {
+    expect(estZombie({ nom: "Zombie humain" })).toBe(true);
+    expect(estZombie({ nom: "Zombies coriaces" })).toBe(true);
+    expect(estZombie({ nom: "Zombie choursette" })).toBe(true);
+    expect(estZombie(cadavre())).toBe(true);
+    // Morts-vivants qui ne sont pas des zombies.
+    expect(estZombie({ nom: "Squelette" })).toBe(false);
+    expect(estZombie({ nom: "Goule" })).toBe(false);
+    expect(estZombie({ nom: "Sigméus, le nécromant" })).toBe(false);
+    expect(estZombie({ nom: "Gobelin de base" })).toBe(false);
+  });
+
+  it("estCadavre : zombie hors combat, NC ≤ 2 et jamais animé", () => {
+    expect(estCadavre(cadavre())).toBe(true);
+    expect(estCadavre({ ...cadavre(), statut: "actif" })).toBe(false); // encore en combat
+    expect(estCadavre({ ...modele("notion-nc-4-zombie-choursette"), statut: "ko" as const })).toBe(false); // zombie NC > 2
+    expect(estCadavre({ ...cadavre(), reanime: { par: "x" } })).toBe(false); // déjà relevé
+    expect(estCadavre({ ...pj("Héros"), statut: "ko" })).toBe(false); // PJ inconscient ≠ cadavre
+    expect(estCadavre({ ...modele("notion-nc-0-gobelin-de-base"), statut: "ko" as const })).toBe(false); // pas un zombie
+  });
+
+  it("relève le cadavre : camp du lanceur, PV pleins, −2 attaque/DEF/Init", () => {
+    const sorc = sorcier();
+    const mort = cadavre();
+    const s = createCombat([sorc, mort, pj("Héros")]);
+    const bonusAvant = mort.attaques[0].bonus;
+    const r = animerCadavre(s, sorc.instanceId, mort.instanceId);
+    const releve = r.state.participants.find((p) => p.instanceId === mort.instanceId)!;
+    expect(releve.statut).toBe("actif");
+    expect(releve.camp).toBe("monstre");
+    expect(releve.pv).toBe(releve.pvMax);
+    expect(releve.defense).toBe(mort.defense - MALUS_ANIMATION);
+    expect(releve.attaques[0].bonus).toBe(bonusAvant - MALUS_ANIMATION);
+    expect(releve.initMod).toBe(mort.initMod - MALUS_ANIMATION);
+    expect(releve.initiative).toBe(12 - MALUS_ANIMATION);
+    expect(releve.reanime?.par).toBe(sorc.instanceId);
+    expect(r.resolution).toMatchObject({ cadavreNom: mort.nom, malus: MALUS_ANIMATION, pv: mort.pvMax });
+    expect(r.state.log.some((l) => l.message.includes("anime le cadavre"))).toBe(true);
+    expect(r.state.log.some((l) => l.message.includes("ne pourra plus être réanimé"))).toBe(true);
+  });
+
+  it("refus : PJ inconscient, non-zombie, zombie NC > 2, soi-même, cadavre déjà animé (non réanimable)", () => {
+    const sorc = sorcier();
+    const mort = cadavre();
+    const gobelin = { ...modele("notion-nc-0-gobelin-de-base"), statut: "ko" as const, pv: 0 };
+    const grosZombie = { ...modele("notion-nc-4-zombie-choursette"), statut: "ko" as const, pv: 0 };
+    const heros = pj("Héros");
+    const ko = { ...pj("Héros KO"), statut: "ko" as const, pv: 0 };
+    const s = createCombat([sorc, mort, gobelin, grosZombie, heros, ko]);
+    expect(() => animerCadavre(s, sorc.instanceId, heros.instanceId)).toThrow(/encore en combat/);
+    expect(() => animerCadavre(s, sorc.instanceId, ko.instanceId)).toThrow(/inconscient/);
+    expect(() => animerCadavre(s, sorc.instanceId, gobelin.instanceId)).toThrow(/n'est pas un zombie/);
+    expect(() => animerCadavre(s, sorc.instanceId, grosZombie.instanceId)).toThrow(new RegExp(`NC 4 > ${NC_MAX_ANIMATION}`));
+    expect(() => animerCadavre(s, sorc.instanceId, sorc.instanceId)).toThrow(/animer lui-même/);
+    const releve = animerCadavre(s, sorc.instanceId, mort.instanceId).state;
+    const retombe = {
+      ...releve,
+      participants: releve.participants.map((p) =>
+        p.instanceId === mort.instanceId ? { ...p, statut: "ko" as const, pv: 0 } : p
+      ),
+    };
+    expect(() => animerCadavre(retombe, sorc.instanceId, mort.instanceId)).toThrow(/déjà été animé/);
+  });
+
+  it("profilAnimable : zombie de NC ≤ 2 seulement", () => {
+    const profil = (nom: string, niveau: number) => ({ nom, niveau });
+    expect(profilAnimable(profil("Zombie humain", 1))).toBe(true);
+    expect(profilAnimable(profil("Zombies coriaces", 1))).toBe(true);
+    expect(profilAnimable(profil("Zombie choursette", 4))).toBe(false); // zombie NC > 2
+    expect(profilAnimable(profil("Goule", 2))).toBe(false); // mort-vivant, pas un zombie
+    expect(profilAnimable(profil("Gobelin de base", 0))).toBe(false);
+    expect(profilAnimable(SEED_MONSTERS.find((m) => m.nom === "Zombie humain")!)).toBe(true);
+    expect(profilAnimable(SEED_MONSTERS.find((m) => m.nom === "Squelette")!)).toBe(false);
+  });
+
+  it("animerCadavreProfil : relève un profil de zombie en fin d'ordre, −2 (NC ≤ 2)", () => {
+    const sorc = { ...sorcier(), initiative: 18 };
+    const s = createCombat([sorc, pj("Héros")]);
+    const zombie = SEED_MONSTERS.find((m) => m.nom === "Zombies coriaces")!;
+    const r = animerCadavreProfil(s, sorc.instanceId, zombie);
+    // Le serviteur rejoint le combat en dernier (fin d'ordre, comme une invocation).
+    expect(r.state.participants).toHaveLength(3);
+    const anime = r.state.participants[r.state.participants.length - 1];
+    expect(anime.nom).toBe(zombie.nom);
+    expect(anime.templateId).toBe(`anime:${zombie.id}`);
+    expect(anime.statut).toBe("actif");
+    expect(anime.camp).toBe("monstre");
+    expect(anime.pv).toBe(anime.pvMax);
+    expect(anime.attaques[0].bonus).toBe(zombie.attaques[0].bonus - MALUS_ANIMATION);
+    expect(anime.defense).toBe(zombie.defense - MALUS_ANIMATION);
+    expect(anime.initMod).toBe(zombie.initMod - MALUS_ANIMATION);
+    expect(anime.initiative).toBe(18 - MALUS_ANIMATION);
+    expect(anime.reanime?.par).toBe(sorc.instanceId);
+    expect(r.resolution).toMatchObject({
+      cadavreNom: zombie.nom, cadavreId: anime.instanceId, malus: MALUS_ANIMATION, pv: anime.pvMax,
+    });
+    expect(r.state.log.some((l) => l.message.includes("à la fin de l'ordre"))).toBe(true);
+    // Le vivant d'origine n'est pas touché (le relevé crée une instance).
+    expect(r.state.participants[0]).toMatchObject({ instanceId: sorc.instanceId, statut: "actif" });
+  });
+
+  it("animerCadavreProfil : refus non-zombie, zombie NC > 2 et lanceur entravé", () => {
+    const sorc = sorcier();
+    const s = createCombat([sorc, pj("Héros")]);
+    const goule = SEED_MONSTERS.find((m) => m.nom === "Goule")!;
+    const zombie = SEED_MONSTERS.find((m) => m.nom === "Zombies coriaces")!;
+    const grosZombie = SEED_MONSTERS.find((m) => m.nom === "Zombie choursette")!;
+    expect(() => animerCadavreProfil(s, sorc.instanceId, goule)).toThrow(/n'est pas un zombie/);
+    expect(() => animerCadavreProfil(s, sorc.instanceId, grosZombie)).toThrow(new RegExp(`NC 4 > ${NC_MAX_ANIMATION}`));
+    const etourdi = {
+      ...s,
+      participants: s.participants.map((p) =>
+        p.instanceId === sorc.instanceId ? { ...p, effets: [createEffect("etourdi")] } : p
+      ),
+    };
+    expect(() => animerCadavreProfil(etourdi, sorc.instanceId, zombie)).toThrow(/ne peut pas agir/);
+  });
+});
+
+describe("Vampirisation (L) : attaque à vol de vie, cible vivante (Sorcier, Shaman orc)", () => {
+  it("data : attaque limitée à vol de vie, cible vivante, et capacité « Animer un cadavre » lançable", () => {
+    const sorcier = SEED_MONSTERS.find((m) => m.id === "notion-nc-5-sorcier")!;
+    expect(sorcier.attaques.find((a) => a.nom === "Vampirisation (L)"))
+      .toMatchObject({ bonus: 10, degats: "2d8", action: "limitee", volDeVie: true, exigeVivant: true });
+    const shaman = SEED_MONSTERS.find((m) => m.id === "notion-nc-3-shaman-orc")!;
+    expect(shaman.attaques.find((a) => a.nom === "Vampirisation (L)"))
+      .toMatchObject({ bonus: 6, degats: "2d8", volDeVie: true, exigeVivant: true });
+    // Le suffixe « (Capacité) » est retiré des capacités listées pour que
+    // le pouvoir soit reconnu par le panneau Capacités (mêmes règles).
+    expect(sorcier.capacites).toContain("Animer un cadavre");
+    expect(shaman.capacites).toContain("Animer un cadavre");
+    expect(talentsLancables(sorcier.capacites)).toEqual(["Animer un cadavre"]);
+    expect(talentsLancables(shaman.capacites)).toEqual(["Animer un cadavre"]);
+    expect(CAPACITES_USABLES.find((u) => u.talent === "Animer un cadavre")?.actionSpeciale).toBe("animer");
+  });
+
+  it("refuse une cible non vivante (squelette)", () => {
+    const sorc = monsterInstances(SEED_MONSTERS.find((m) => m.id === "notion-nc-5-sorcier")!, 1)[0];
+    const squelette = monsterInstances(SEED_MONSTERS.find((m) => m.nom === "Squelette")!, 1)[0];
+    const vampirisation = { nom: "Vampirisation (L)", exigeVivant: true };
+    expect(raisonExigeVivant(vampirisation, squelette)).toContain("non vivante");
+    expect(raisonExigeVivant(vampirisation, pj("Héros"))).toBeNull();
+    const s = createCombat([sorc, squelette]);
+    expect(() => resolveAttack(s, sorc.instanceId, squelette.instanceId, "notion-nc-5-sorcier-a2", fixedRng([0.9])))
+      .toThrow(/non vivante/);
+  });
+
+  it("les DM infligés soignent le sorcier (vol de vie)", () => {
+    const sorc = { ...monsterInstances(SEED_MONSTERS.find((m) => m.id === "notion-nc-5-sorcier")!, 1)[0], pv: 10 };
+    const heros = pj("Héros cible");
+    const s = createCombat([sorc, heros]);
+    // 19 naturel +10 = 29 vs DEF 18 -> touché ; 2d8 : 8 + 8 = 16 DM rendus.
+    const r = resolveAttack(s, sorc.instanceId, heros.instanceId, "notion-nc-5-sorcier-a2", fixedRng([0.9, 0.9, 0.9]));
+    const lanceur = r.state.participants.find((p) => p.instanceId === sorc.instanceId)!;
+    expect(r.resolution.touche).toBe(true);
+    expect(r.resolution.degatsTotal).toBe(16);
+    expect(lanceur.pv).toBe(26);
   });
 });

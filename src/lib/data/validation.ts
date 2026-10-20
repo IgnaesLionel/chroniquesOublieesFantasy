@@ -29,6 +29,8 @@ const attackSchema = z.object({
   degatsAffiche: z.string().optional(),
   action: z.enum(["attaque", "mouvement", "limitee", "gratuite"]).optional(),
   volDeVie: z.boolean().optional(),
+  seuilPv: z.number().gt(0).lte(1).optional(),
+  exigeVivant: z.boolean().optional(),
   toucheAuto: z.boolean().optional(),
   demiDegatsSiRate: z.boolean().optional(),
   familles: z.array(z.enum(ARME_FAMILLE_KEYS)).optional(),

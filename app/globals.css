@@ -219,6 +219,60 @@ summary::marker {
   border: 1px solid var(--color-bronze-700);
 }
 
+/* ---------------------------------------------------------------------------
+   Familles de personnage : 4 accents pour lire une fiche d'un coup d'œil.
+   Base demandée — Combattant rouge sang #a83232, Aventurier vert mousse
+   #4f7a3d, Mystique violet améthyste #7a5ba8, Mage bleu arcanique #3b6ea5 —
+   adoucie pour la taverne : le TRAIT garde la base (rails, pastilles, filets),
+   le FOND en est une version translucide, le TEXTE une version éclaircie
+   (contraste ≥ 4.5:1 sur les cartes, vérifié par tests/rules/famille.test.ts).
+   Usage : « fam-mage » pose les variables, puis fam-chip (badge), fam-rail
+   (filet latéral), fam-texte (texte teinté) ou fam-pastille (point) les lit.
+   Ces classes sont hors @layer : elles gagnent sur les utilitaires Tailwind.
+   --------------------------------------------------------------------------- */
+.fam-combattant { --fam-trait: #a83232; --fam-fond: rgb(168 50 50 / 0.16); --fam-texte: #d68f8f; }
+.fam-aventurier { --fam-trait: #4f7a3d; --fam-fond: rgb(79 122 61 / 0.18); --fam-texte: #aac89d; }
+.fam-mystique { --fam-trait: #7a5ba8; --fam-fond: rgb(122 91 168 / 0.18); --fam-texte: #af9fc6; }
+.fam-mage { --fam-trait: #3b6ea5; --fam-fond: rgb(59 110 165 / 0.18); --fam-texte: #94b1d1; }
+/* Hors des 4 familles (profil inconnu, voie de peuple, custom MJ) : bronze neutre. */
+.fam-neutre { --fam-trait: var(--color-bronze-700); --fam-fond: rgb(0 0 0 / 0.25); --fam-texte: var(--color-zinc-300); }
+
+/* Badge de famille : pastille colorée + nom (couleur ET texte : lisible aussi
+   pour un daltonien). */
+.fam-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  vertical-align: middle;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--fam-texte);
+  background: var(--fam-fond);
+  border: 1px solid var(--fam-trait);
+}
+/* Point de couleur seul (listes denses : table de combat, en-têtes). */
+.fam-pastille {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  vertical-align: middle;
+  background: var(--fam-trait);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);
+}
+/* Filet latéral : la famille se voit sur toute la hauteur d'une carte/ligne. */
+.fam-rail {
+  border-left: 3px solid var(--fam-trait);
+}
+.fam-texte {
+  color: var(--fam-texte);
+}
+
 /* Barre de défilement assortie */
 ::-webkit-scrollbar {
   width: 10px;

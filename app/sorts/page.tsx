@@ -7,6 +7,8 @@ import { useCharacters, useSorts } from "@/src/lib/store/collections";
 import { exportJson } from "@/src/lib/store/repository";
 import type { ActionDRS, Sort, SortType } from "@/src/lib/rules/types";
 import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
+import { classeFamille, familleDuProfil, familleDuSort } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 import { ajouterCapacite, apprendreSort, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { apprendreTalentComplet, peutApprendre } from "@/src/lib/rules/creation";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
@@ -279,6 +281,7 @@ export default function SortsPage() {
             </optgroup>
           ))}
         </select>
+        {classeFiltree && <FamilleBadge famille={familleDuProfil(classeFiltree.profil)} titre={`Profil filtré : ${classeFiltree.profil}`} />}
         <select value={filtreVoie} onChange={(e) => setFiltreVoie(e.target.value)} className="bg-zinc-800 rounded px-2 py-1.5 text-sm">
           <option value="toutes">{classeFiltree ? `Voies du ${classeFiltree.profil}` : "Toutes voies"}</option>
           {classeFiltree ? (
@@ -298,7 +301,7 @@ export default function SortsPage() {
           <table className="w-full text-sm">
             <thead className="bg-zinc-900 text-zinc-400 text-xs uppercase">
               <tr>
-                <th className="text-left px-3 py-2">Sort</th>
+                <th className="text-left px-3 py-2 border-l-[3px] border-transparent">Sort</th>
                 <th className="text-left px-3 py-2">Type</th>
                 <th className="text-left px-3 py-2">Classes</th>
                 <th className="text-left px-3 py-2">Effet</th>
@@ -309,8 +312,9 @@ export default function SortsPage() {
             <tbody>
               {sortsVisibles.map((s) => (
                 <tr key={s.id} className="border-t border-zinc-800 bg-zinc-950">
-                  <td className="px-3 py-2">
+                  <td className={`px-3 py-2 fam-rail ${classeFamille(familleDuSort(s))}`}>
                     <span className="font-semibold">{s.type === "offensif" ? "✦ " : s.type === "defensif" ? "🛡 " : "🔮 "}{s.nom}</span>
+                    <FamilleBadge famille={familleDuSort(s)} className="ml-1.5" />
                     {s.rang !== undefined && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 font-mono">R{s.rang}</span>}
                     {s.ecole && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-violet-900/60 text-violet-200">{s.ecole}</span>}
                     {s.voie && <span className="block text-xs text-zinc-500">{s.voie}</span>}
@@ -344,7 +348,7 @@ export default function SortsPage() {
           <table className="w-full text-sm">
             <thead className="bg-zinc-900 text-zinc-400 text-xs uppercase">
               <tr>
-                <th className="text-left px-3 py-2">Capacité</th>
+                <th className="text-left px-3 py-2 border-l-[3px] border-transparent">Capacité</th>
                 <th className="text-left px-3 py-2">Classe</th>
                 <th className="text-left px-3 py-2">Action</th>
                 <th className="text-left px-3 py-2">Apprendre à…</th>
@@ -352,10 +356,12 @@ export default function SortsPage() {
             </thead>
             <tbody>
               {capacitesVisibles.map((c) => {
+                const famille = "profil" in c ? familleDuProfil(c.profil) : familleDuSort(c);
                 return (
                   <tr key={c.id} className="border-t border-zinc-800 bg-zinc-950">
-                    <td className="px-3 py-2">
+                    <td className={`px-3 py-2 fam-rail ${classeFamille(famille)}`}>
                       <span className="font-semibold">◈ {c.nom}</span>
+                      <FamilleBadge famille={famille} className="ml-1.5" />
                       <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 font-mono">R{c.rang}</span>
                       <span className="block text-xs text-zinc-500">{c.voie}</span>
                       <span className="block text-xs text-zinc-500">{"resume" in c ? c.resume : c.description}</span>
@@ -439,8 +445,8 @@ export default function SortsPage() {
               <div className="text-sm font-semibold mb-1.5">Classes (familles) — aucune case = toutes classes</div>
               <div className="grid sm:grid-cols-2 gap-x-3 gap-y-1">
                 {Object.entries(PROFILS_PAR_FAMILLE).map(([fam, profils]) => (
-                  <div key={fam}>
-                    <div className="text-[11px] uppercase text-zinc-500 mt-1">{fam}</div>
+                  <div key={fam} className={`fam-texte ${classeFamille(fam)}`}>
+                    <div className="text-[11px] uppercase mt-1">{fam}</div>
                     {profils.map((p) => (
                       <label key={p} className="flex items-center gap-2 text-sm py-0.5">
                         <input type="checkbox" checked={(editing.familles ?? []).includes(p)} onChange={() => toggleFamille(p)} />

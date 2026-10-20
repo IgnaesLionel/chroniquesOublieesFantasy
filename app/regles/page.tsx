@@ -10,6 +10,8 @@ import { NIVEAU_PROPRIETE, PROPRIETES_CONTACT, PROPRIETES_DISTANCE } from "@/src
 import { exempleProprieteArmure, PROPRIETES_ARMURES, type PlageProprieteArmure, type SorteProprieteArmure } from "@/src/lib/rules/armuresMagiques";
 import { ECHELLE_ARMURES, LIMITES_ARMURE, nomArmureLimite } from "@/src/lib/rules/limitesArmures";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
+import { classeFamille } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 type Source = "DRS" | "Fiches" | "Tableau" | "Règle LDB" | "Maison" | "Supposition";
 
@@ -132,7 +134,7 @@ export default function ReglesPage() {
           <li>Dé évolutif (°) : d4 (niv. 1-5), d6 (6-8), d8 (9-11), d10 (12-14), d12 (15+) — pas de relance au max <Src de="DRS" /></li>
           <li>Mages : la capacité de rang 2 gratuite (une voie du profil, ou Maîtrise de la magie) exige la Voie du mage adoptée — abandon de la voie du peuple (rang 1 conservé, rangs 2-5 bloqués) <Src de="Règle LDB" /></li>
           <li>2 points de capacité par niveau (cohérent avecWiki Foundry + création 2 pts) <Src de="Règle LDB" /></li>
-          <li>Robustesse (Guerrier) : PV max +rang+2 appliqué automatiquement par le moteur (ex. Dorain : 10+CON 3+3 = 16) ; +rang+2 aux tests pour résister aux efforts physiques, à la chaleur et au froid = manuel, au jugement du MJ <Src de="Règle LDB" /></li>
+          <li>Robustesse (Guerrier) : PV max +rang+2 appliqué automatiquement par le moteur (ex. Thornak : 10+CON 3+3 = 16) ; +rang+2 aux tests pour résister aux efforts physiques, à la chaleur et au froid = manuel, au jugement du MJ <Src de="Règle LDB" /></li>
           <li>Armes magiques : bonus +N = niveau N de l&apos;objet (ex. Arme niv. 2 → +2 ; niv. 1 → +1 sans propriété) <Src de="Règle LDB" /></li>
           <li>Armes magiques 11-12 : deux tirages 1-10 (pas de récursion), fusionnés en propriété doublée si identiques <Src de="Règle LDB" /></li>
           <li>Parade : +N DEF (= bonus de l&apos;arme), simple et cumulable (bouclier, armure), niveau += N ; tirée en plus à 10 % (d100) <Src de="Règle LDB" /><Src de="Supposition" /></li>
@@ -147,17 +149,21 @@ export default function ReglesPage() {
         <p>Vigueur : base + CON × niveau + gains. La CON est rétroactive (ex. Lhagva : 12 PV niv. 1, +7 = 19 au niv. 2).<Src de="Règle LDB" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
-            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Famille</th><th className="text-left px-2 py-1">Base niv. 1</th><th className="text-left px-2 py-1">Gain / niveau</th></tr></thead>
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1 border-l-[3px] border-transparent">Famille</th><th className="text-left px-2 py-1">Base niv. 1</th><th className="text-left px-2 py-1">Gain / niveau</th></tr></thead>
             <tbody>
               {FAMILLES.map((f) => (
                 <tr key={f} className="border-t border-zinc-800">
-                  <td className="px-2 py-1 font-semibold">{f}</td>
+                  <td className={`px-2 py-1 font-semibold fam-rail ${classeFamille(f)}`}><FamilleBadge famille={f} /></td>
                   <td className="px-2 py-1 font-mono">{PV_BASE_PAR_FAMILLE[f]} + CON</td>
                   <td className="px-2 py-1 font-mono">+{PV_GAIN_PAR_FAMILLE[f]} + CON</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-500">
+          Repère de couleur (partout : fiches, sorts, voies, capacités) :
+          {FAMILLES.map((f) => <FamilleBadge key={f} famille={f} />)}
         </div>
         <Formule>Chance = 2 + CHA (+1 si Aventurier, soit 3 + CHA) · 1 PC = +10 à un test, après le résultat, même sur un 1 naturel<Src de="Tableau" /><Src de="Règle LDB" /></Formule>
         <p>Dés de récupération : type selon famille ({FAMILLES.map((f) => `${f} ${DE_RECUP_PAR_FAMILLE[f]}${f === "Mystique" ? "+1" : ""}`).join(" · ")}), nombre 2 + CON (+1 si Mystique), réserve initiale sans le CON : 2 dés (3 si Mystique).<Src de="Tableau" /><Src de="Règle LDB" /></p>
@@ -189,14 +195,14 @@ export default function ReglesPage() {
         <p>4 peuples ({VOIES_PEUPLE.map((v) => v.peuple).join(", ")}, Demi-Elfe → voie sylvain), 14 profils, 70 voies de profils + 5 de peuple/mage, {NB_TALENTS} talents.<Src de="DRS" /></p>
         <div className="rounded border border-zinc-800 overflow-hidden">
           <table className="w-full text-xs">
-            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1">Profil</th><th className="text-left px-2 py-1">Famille</th><th className="text-left px-2 py-1">PV niv. 1</th><th className="text-left px-2 py-1">DR</th><th className="text-left px-2 py-1">Chance</th></tr></thead>
+            <thead className="bg-zinc-950 text-zinc-400 uppercase"><tr><th className="text-left px-2 py-1 border-l-[3px] border-transparent">Profil</th><th className="text-left px-2 py-1">Famille</th><th className="text-left px-2 py-1">PV niv. 1</th><th className="text-left px-2 py-1">DR</th><th className="text-left px-2 py-1">Chance</th></tr></thead>
             <tbody>
               {PROFILS.map((p) => {
                 const r = REGLES_PROFILS[p];
                 return (
                   <tr key={p} className="border-t border-zinc-800">
-                    <td className="px-2 py-1 font-semibold">{p}</td>
-                    <td className="px-2 py-1">{r.famille}</td>
+                    <td className={`px-2 py-1 font-semibold fam-rail ${classeFamille(r.famille)}`}>{p}</td>
+                    <td className="px-2 py-1"><FamilleBadge famille={r.famille} /></td>
                     <td className="px-2 py-1 font-mono">{PV_BASE_PAR_FAMILLE[r.famille]}+CON</td>
                     <td className="px-2 py-1 font-mono">{r.de}{r.bonusDR > 0 ? "+1" : ""}</td>
                     <td className="px-2 py-1 font-mono">{2 + r.bonusChance}+CHA</td>

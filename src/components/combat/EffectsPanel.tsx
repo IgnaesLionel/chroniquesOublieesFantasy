@@ -3,6 +3,8 @@ import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { canAct, decrireModificateurs } from "@/src/lib/rules/effects/effects";
+import { familleDuProfil } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 interface Props {
   participant: CombatParticipant | null;
@@ -30,8 +32,8 @@ export function EffectsPanel({ participant, onAdd, onRemove, onSortie }: Props) 
   const lignesMods = decrireModificateurs(modsFusionnes);
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
-      <h2 className="font-bold text-sm uppercase text-zinc-400">Effets — {participant.nom}</h2>
+    <div className="rounded-lg border border-violet-900 bg-zinc-900 p-4 space-y-3">
+      <h2 className="font-bold text-sm uppercase text-violet-300">✦ Effets — {participant.nom} <FamilleBadge famille={participant.camp === "pj" ? familleDuProfil(participant.profil) : null} className="ml-1" /></h2>
       {!canAct(participant.effets) && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">Ne peut pas agir (Étourdi/Paralysé/Surpris)</div>
       )}

@@ -5,6 +5,7 @@ import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { participantFromCharacter } from "@/src/lib/rules/combat/factory";
 import { construireLoupCompagnon, talentConnu } from "@/src/lib/rules/combat/attack";
+import { attaqueInterdite } from "@/src/lib/rules/effects/effects";
 import { normaliserPersonnage } from "@/src/lib/rules/personnage";
 
 /** PJ (+ loup éventuel) reconstruits depuis la fiche : attaques/sorts/talents à jour. */
@@ -51,15 +52,20 @@ export function rafraichirStaging(
   });
 }
 
-/** Re-cible si l'ancienne cible est invalide : priorité aux ennemis. */
+/** Re-cible si l'ancienne cible est invalide : priorité aux ennemis (hors cibles interdites par un effet, ex. Effroi). */
 export function recibrerCible(
   c: CombatState,
   attacker: string | null,
   prev: string | null
 ): string | null {
-  const opts = c.participants.filter((p) => p.statut === "actif" && p.instanceId !== attacker);
-  if (prev && opts.some((p) => p.instanceId === prev)) return prev;
   const atk = c.participants.find((p) => p.instanceId === attacker);
+  const opts = c.participants.filter(
+    (p) =>
+      p.statut === "actif" &&
+      p.instanceId !== attacker &&
+      !attaqueInterdite(atk?.effets ?? [], p.instanceId)
+  );
+  if (prev && opts.some((p) => p.instanceId === prev)) return prev;
   const foes = opts.filter((p) => p.camp !== atk?.camp);
   return (foes[0] ?? opts[0])?.instanceId ?? null;
 }

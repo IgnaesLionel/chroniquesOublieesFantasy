@@ -136,7 +136,7 @@ export default function MonstersPage() {
                 ))}
               </div>
             )}
-            <div className="font-mono text-green-400 text-sm">{m.pv}/{m.pvMax} PV · Déf {m.defense} · Init +{m.initMod}</div>
+            <div className="font-mono text-green-400 text-sm">{m.pv}/{m.pvMax} PV · Déf {m.defense} · Init {10 + m.initMod}</div>
             {(m.capacitesPartagees ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {(m.capacitesPartagees ?? []).slice(0, 4).map((ref) => (
@@ -186,9 +186,11 @@ export default function MonstersPage() {
               </div>
               <button onClick={() => setFicheId(null)} className="px-2.5 py-1 rounded bg-zinc-800">✕</button>
             </div>
-            <div className="font-mono text-sm text-green-400">
-              {fiche.pv}/{fiche.pvMax} PV · Déf {fiche.defense} · Init +{fiche.initMod}
-              {fiche.initiativeFiche ? <span className="text-zinc-500"> (fiche {fiche.initiativeFiche})</span> : null}
+            <div
+              className="font-mono text-sm text-green-400"
+              title={fiche.initiativeFiche ? `Valeur d'origine de la carte : ${fiche.initiativeFiche}` : undefined}
+            >
+              {fiche.pv}/{fiche.pvMax} PV · Déf {fiche.defense} · Init {10 + fiche.initMod}
               {fiche.rd ? ` · RD ${fiche.rd}` : ""}{fiche.deplacement ? ` · ${fiche.deplacement} m` : ""}
             </div>
             {fiche.caracteristiques ? (

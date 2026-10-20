@@ -1403,7 +1403,7 @@
    },
    {
     "id": "notion-nc-1-shaman-gobelin-a1",
-    "nom": "Attaque magique",
+    "nom": "Morsure des Ancêtres",
     "bonus": 4,
     "degats": "2d6",
     "degatsAffiche": "2d6 (30 m)"
@@ -1419,6 +1419,10 @@
    "attaque-en-meute"
   ],
   "capacitesDetails": [
+   {
+    "nom": "Morsure des Ancêtres",
+    "description": "La créature possède un pouvoir magique qui inflige 2d6 DM sur un test d'attaque magique réussi (portée 30 m) sur une cible unique."
+   },
    {
     "nom": "Attaque en meute (Capacité)",
     "description": "Voir transcription dans `nc-0-gobelin-de-base` : +2 en attaque si ≥2 gobelins sur la même cible.\n- `./images/img-1.webp` (profil)\n- `./images/img-2.webp` (Attaque en meute)\n- Capacités communes : Soutenir, Attaque en meute."
@@ -3658,12 +3662,22 @@
     "bonus": 6,
     "degats": "1d1",
     "degatsAffiche": "spécial (voir pouvoirs)"
+   },
+   {
+    "id": "notion-nc-3-shaman-orc-a2",
+    "nom": "Vampirisation (L)",
+    "bonus": 6,
+    "degats": "2d8",
+    "degatsAffiche": "2d8 (30 m)",
+    "action": "limitee",
+    "volDeVie": true,
+    "exigeVivant": true
    }
   ],
   "capacites": [
    "Soutenir",
    "Vampirisation",
-   "Vampirisation, Animer un cadavre (Capacités communes)"
+   "Animer un cadavre"
   ],
   "capacitesPartagees": [
    "soutenir",
@@ -4942,16 +4956,24 @@
     "bonus": 10,
     "degats": "1d1",
     "degatsAffiche": "spécial (voir pouvoirs)"
+   },
+   {
+    "id": "notion-nc-5-sorcier-a2",
+    "nom": "Vampirisation (L)",
+    "bonus": 10,
+    "degats": "2d8",
+    "degatsAffiche": "2d8 (30 m)",
+    "action": "limitee",
+    "volDeVie": true,
+    "exigeVivant": true
    }
   ],
   "capacites": [
    "Injonction mortelle",
    "Soutenir",
    "Vampirisation",
-   "Animer un cadavre (Capacité)",
-   "Injonction mortelle (Capacité)",
-   "Pas de l'ombre (Capacité)",
-   "Vampirisation (Capacité)"
+   "Animer un cadavre",
+   "Pas de l'ombre"
   ],
   "capacitesPartagees": [],
   "capacitesDetails": [
@@ -5907,7 +5929,7 @@
   "pv": 32,
   "pvMax": 32,
   "defense": 22,
-  "initMod": 3,
+  "initMod": 6,
   "caracteristiques": {
    "AGI": 3,
    "CON": 5,
@@ -5924,11 +5946,38 @@
     "bonus": 10,
     "degats": "1d6+5",
     "degatsAffiche": "1d6+5"
+   },
+   {
+    "id": "notion-sigmeus-le-necromant-a1",
+    "nom": "Baiser du vampire (L)",
+    "bonus": 10,
+    "degats": "2d6",
+    "degatsAffiche": "2d6",
+    "action": "limitee",
+    "volDeVie": true,
+    "seuilPv": 0.5
    }
   ],
-  "capacites": [],
+  "capacites": [
+   "Effroi",
+   "Main spectrale (L)",
+   "Baiser du vampire (L)"
+  ],
   "capacitesPartagees": [],
-  "capacitesDetails": [],
+  "capacitesDetails": [
+   {
+    "nom": "Effroi",
+    "description": "Lors du premier tour de combat, tous les adversaires du nécromant doivent effectuer un test de SAG difficulté 10. Ceux qui échouent ne peuvent pas l'attaquer pendant 1d4 tours."
+   },
+   {
+    "nom": "Main spectrale (L)",
+    "description": "Une main spectrale attaque à distance."
+   },
+   {
+    "nom": "Baiser du vampire (L)",
+    "description": "Le nécromant effectue une attaque de Main spectrale contre un adversaire au contact. S'il réussit, il lui inflige 2d6 de DM et se soigne 2d6 PV perdus ! Utilisable seulement quand le nécromant est à la moitié de ses PV ou moins."
+   }
+  ],
   "description": "",
   "comportement": "",
   "taille": "",

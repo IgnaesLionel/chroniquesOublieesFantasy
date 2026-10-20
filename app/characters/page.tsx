@@ -6,6 +6,8 @@ import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 import { exportJson, localStorageAdapter } from "@/src/lib/store/repository";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
+import { classeFamille } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 import type { Character } from "@/src/lib/rules/types";
 import { ARME_FAMILLES, labelFamilleArme } from "@/src/lib/rules/world/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
@@ -355,11 +357,11 @@ export default function CharactersPage() {
           const chance = c.ressources?.chance ?? { max: d.chanceMax, actuel: d.chanceMax };
           const dr = c.desRecuperation ?? { type: d.drType, max: d.drNombre, actuel: drInitial(c.caracteristiques.CON, c.profil || c.classe, d.famille) };
           return (
-            <div key={c.id} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
+            <div key={c.id} className={`rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2 fam-rail ${classeFamille(d.famille)}`}>
               <div className="flex justify-between items-start gap-2">
                 <div>
-                  <div className="font-bold text-lg">{c.nom} {c.exemple && <span className="text-xs text-amber-400 font-normal">· exemple</span>}</div>
-                  <div className="text-sm text-zinc-400">{c.peuple} · {d.famille} · {c.profil || c.classe} · Niv. {c.niveau}{c.voieMage ? " · Voie du mage" : ""}</div>
+                  <div className="font-bold text-lg">{c.nom} <FamilleBadge famille={d.famille} /> {c.exemple && <span className="text-xs text-amber-400 font-normal">· exemple</span>}</div>
+                  <div className="text-sm text-zinc-400">{c.peuple} · {c.profil || c.classe} · Niv. {c.niveau}{c.voieMage ? " · Voie du mage" : ""}</div>
                   {(c.idealHeroique || c.travers) && (
                     <div className="text-xs text-zinc-500 italic">Idéal : {c.idealHeroique ?? "—"} · Travers : {c.travers ?? "—"} (narratif)</div>
                   )}
@@ -577,8 +579,8 @@ export default function CharactersPage() {
 
       {editing && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-bold">Éditer {editing.nom}</h2>
+          <div className={`bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto fam-rail ${classeFamille(editing.famille)}`}>
+            <h2 className="font-bold">Éditer {editing.nom} <FamilleBadge famille={editing.famille} /></h2>
             <div className="grid sm:grid-cols-2 gap-2">
               <label className="block text-sm">Nom<input value={editing.nom} onChange={(e) => setEditing({ ...editing, nom: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>
               <label className="block text-sm">Niveau<input type="number" min={1} value={editing.niveau} onChange={(e) => setEditing({ ...editing, niveau: Math.max(1, Number(e.target.value)) })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>

@@ -9,7 +9,9 @@ import type { Character, MonsterTemplate } from "@/src/lib/rules/types";
 import type { AttackResolution, AttaqueGratuite, CombatParticipant, CombatState, TypeAttaqueGratuite } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { appliquerAurasDebutCombat } from "@/src/lib/rules/combat/auras";
+import { AURAS_DEBUT_COMBAT } from "@/src/lib/data/auras-combat";
+import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, animerCadavre, animerCadavreProfil, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/rules/combat/staging";
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { maxZombiesControles, normaliserNomCapacite, normaliserPersonnage } from "@/src/lib/rules/personnage";
@@ -20,6 +22,8 @@ import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 import { ActionPanel } from "@/src/components/combat/ActionPanel";
+import { familleDuProfil, classeFamille } from "@/src/lib/ui/famille";
+import { FamilleBadge, FamillePastille } from "@/src/components/ui/Famille";
 
 export default function CombatPage() {
   const { items: characters, setItems: setCharacters } = useCharacters();
@@ -82,10 +86,13 @@ export default function CombatPage() {
     if (staging.length < 2) return;
     const frais = stagingAJour(staging);
     setStaging(frais);
-    const rolled = rollInitiatives(createCombat(frais));
+    // Auras de début de combat (ex. Effroi) : test avant tout tour, quel que
+    // soit l'ordre d'initiative (donc même si le monstre n'agit pas en premier).
+    const rolled = appliquerAurasDebutCombat(rollInitiatives(createCombat(frais)));
     setCombat(rolled);
-    setAttackerId(rolled.participants[rolled.tourIndex]?.instanceId ?? null);
-    setTargetId(rolled.participants.find((p) => p.instanceId !== rolled.participants[rolled.tourIndex]?.instanceId && p.statut === "actif")?.instanceId ?? null);
+    const premier = rolled.participants[rolled.tourIndex]?.instanceId ?? null;
+    setAttackerId(premier);
+    setTargetId(recibrerCible(rolled, premier, null));
     setAttackId(null);
     setLast(null);
     setTermineMessage(null);
@@ -462,6 +469,7 @@ export default function CombatPage() {
               const nbSorts = p.attaques.filter((a) => a.id.startsWith("sort:")).length;
               return (
                 <span key={p.instanceId} className="text-xs px-2 py-1 rounded bg-zinc-800" title={`${p.attaques.length} attaque(s) (${p.attaques.map((a) => a.nom).join(", ") || "aucune"}) dont ${nbSorts} sort(s)}`}>
+                  {p.camp === "pj" && <FamillePastille famille={familleDuProfil(p.profil)} className="mr-1.5" />}
                   {p.templateId.startsWith("compagnon:loup") ? "🐺 " : ""}{p.nom} <span className="text-zinc-500">⚔{p.attaques.length}{nbSorts > 0 ? ` ✦${nbSorts}` : ""}</span>{p.bouclierBonus != null && <span className="text-sky-300" title={`Bouclier manié (+${p.bouclierBonus} DEF)`}> 🛡+{p.bouclierBonus}</span>} <button onClick={() => removeStaging(p.instanceId)} className="text-red-400 ml-1">✕</button>
                 </span>
               );
@@ -510,6 +518,25 @@ export default function CombatPage() {
               </p>
             );
           })()}
+          {(() => {
+            const actives = AURAS_DEBUT_COMBAT.filter((a) =>
+              staging.some((p) =>
+                (p.capacites ?? []).some((t) => normaliserNomCapacite(t) === normaliserNomCapacite(a.capacite))
+              )
+            );
+            if (actives.length === 0) return null;
+            return (
+              <p className="text-xs text-amber-300/90 mt-2">
+                🌀 Au lancement —{" "}
+                {actives
+                  .map(
+                    (a) =>
+                      `${a.capacite} : chaque adversaire fait un test de ${a.statNom} difficulté ${a.difficulte} (échec : ${a.effetNom}, ne peut pas attaquer l'utilisateur pendant ${a.dureeDe} tours).`
+                  )
+                  .join(" ")}
+              </p>
+            );
+          })()}
           <div className="flex gap-2 mt-3">
             <button onClick={resyncStaging} title="Reconstruit chaque PJ depuis sa fiche (attaques, sorts, talents, loup)" className="px-4 py-2 rounded bg-zinc-800 text-sm">↻ Actualiser</button>
             <button onClick={() => setStaging([])} className="px-4 py-2 rounded bg-zinc-800 text-sm">Vider</button>
@@ -522,8 +549,8 @@ export default function CombatPage() {
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
             <h2 className="font-bold text-sm uppercase text-zinc-400">Personnages</h2>
             {characters.map((c) => (
-              <div key={c.id} className="flex justify-between items-center text-sm py-1 border-b border-zinc-800/50">
-                <span>{c.nom} <span className="text-zinc-500">({c.pv}/{c.pvMax})</span></span>
+              <div key={c.id} className={`flex justify-between items-center text-sm py-1 border-b border-zinc-800/50 fam-rail ${classeFamille(familleDuProfil(c.profil || c.classe))}`}>
+                <span>{c.nom} <FamilleBadge famille={familleDuProfil(c.profil || c.classe)} className="mx-1" /> <span className="text-zinc-500">({c.pv}/{c.pvMax})</span></span>
                 <button onClick={() => addPJ(c)} className="px-2.5 py-1 rounded bg-blue-900 text-xs hover:bg-blue-800">+ Ajouter</button>
               </div>
             ))}
@@ -549,7 +576,7 @@ export default function CombatPage() {
 
   return (
     <div className="space-y-3">
-      <div className={`rounded-lg p-4 text-center font-bold text-lg border ${combat.termine ? "bg-green-900/40 border-green-700" : "bg-amber-400 text-black"}`}>
+      <div className={`rounded-lg p-4 text-center font-bold text-lg border ${combat.termine ? "bg-green-900/40 border-green-700" : `bg-amber-400 text-black fam-rail ${classeFamille(familleDuProfil(active?.profil))}`}`}>
         {combat.termine
           ? `COMBAT TERMINÉ — ${combat.gagnant === "pj" ? "victoire des PJ" : combat.gagnant === "monstre" ? "victoire des monstres" : "égalité"}`
           : `TOUR : ${active?.nom?.toUpperCase() ?? "—"} — manche ${combat.manche}`}
@@ -558,6 +585,7 @@ export default function CombatPage() {
       {active && !combat.termine && (
         <div className="rounded-lg border border-amber-400/50 bg-zinc-900 p-3 text-sm flex flex-wrap gap-x-4 gap-y-1 items-center">
           <span className="font-bold text-amber-300">{active.nom}</span>
+          <FamilleBadge famille={active.camp === "pj" ? familleDuProfil(active.profil) : null} />
           <span className="font-mono">{active.pv}/{active.pvMax} PV · Déf {active.defense}</span>
           <span className="text-zinc-400">{active.attaques.map((a) => `${a.nom} +${a.bonus} (${a.degats})`).join(" · ")}</span>
           {active.effets.length > 0 && (
@@ -679,6 +707,19 @@ export default function CombatPage() {
                   setLast(null);
                   return;
                 }
+                if (opts.actionSpeciale === "animer") {
+                  // Cadavre choisi dans le panneau : créature hors combat
+                  // relevée sur place (NC ≤ 2) ou profil du bestiaire (cadavre
+                  // trouvé sur place, entré en jeu à la fin de l'ordre).
+                  const modele = opts.profilId ? monstres.find((m) => m.id === opts.profilId) : undefined;
+                  if (opts.profilId && !modele) throw new Error("Profil introuvable au bestiaire (MJ).");
+                  const { state } = modele
+                    ? animerCadavreProfil(combat, lanceurId, modele)
+                    : animerCadavre(combat, lanceurId, cibleId);
+                  setCombat(state);
+                  setLast(null);
+                  return;
+                }
                 const { state } = opts.actionSpeciale === "renvoi"
                   ? renvoyerSort(combat, lanceurId, cibleId)
                   : opts.actionSpeciale === "proteger"
@@ -706,6 +747,7 @@ export default function CombatPage() {
             onTactique={(cibleId, cle, duree) =>
               setCombat((c) => (c ? addParticipantEffect(c, cibleId, createEffect(cle, { dureeTours: duree, source: "Tactique" })) : c))
             }
+            profils={monstres}
           />
           <EquipementPanel
             participants={combat.participants}
@@ -735,7 +777,11 @@ export default function CombatPage() {
             }
           />
           {opponentsOf.length > 0 && attackerId && (
-            <div className="text-xs text-zinc-500">Cibles suggérées : {opponentsOf.map((p) => p.nom).join(", ")}</div>
+            <div className="text-xs text-zinc-500">Cibles suggérées : {opponentsOf.map((p) => (
+              <span key={p.instanceId} className="mr-2 whitespace-nowrap">
+                {p.camp === "pj" && <FamillePastille famille={familleDuProfil(p.profil)} className="mr-1" />}{p.nom}
+              </span>
+            ))}</div>
           )}
         </div>
       </div>

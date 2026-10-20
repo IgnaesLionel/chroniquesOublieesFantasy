@@ -76,14 +76,15 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const c = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
     const d = deriverPersonnage(c);
     expect(d.initiative).toBe(10);
-    expect(d.defense).toBe(11);
+    expect(d.defense).toBe(14); // 10 + AGI 1 + Armure d'os 3
     expect(d.pvMax).toBe(7);
     expect(d.chanceMax).toBe(1);
     expect(d.drType).toBe("d6");
     expect(d.drNombre).toBe(3);
-    expect(d.manaMax).toBe(6); // VOL 4 + 2 sorts connus
+    expect(d.manaMax).toBe(5); // VOL 4 + 1 sort connu
     expect(d.attaques).toEqual({ contact: 0, distance: 2, magique: 5 });
-    expect(c.ressources.mana.max).toBe(6);
+    expect(c.ressources.mana.max).toBe(5);
+    expect(c.capacites).toEqual(["Un pied dans la tombe", "Armure d'os"]);
     expect(verifierPersonnage(c)).toEqual([]);
   });
 
@@ -140,7 +141,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const r = recalculerPersonnage(c);
     expect(r.pvMax).toBe(7);
     expect(r.pv).toBe(2);
-    expect(r.defense).toBe(11);
+    expect(r.defense).toBe(14); // 10 + AGI 1 + Armure d'os 3
     expect(r.initMod).toBe(0);
     expect(r.ressources.chance.max).toBe(1);
     expect(r.desRecuperation).toEqual({ type: "d6", max: 3, actuel: 1 });
@@ -220,46 +221,58 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
   });
 
   it("remise à zéro : niveau 1, talents/sorts vidés, traits et inventaire de base restaurés", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     const modifie = {
-      ...dorain,
+      ...thornak,
       niveau: 5,
       pv: 3,
       pvMax: 99,
       capacites: ["Protéger un allié", "Robustesse", "Vivacité", "Truc maison"],
-      sorts: [...dorain.sorts],
+      sorts: [...thornak.sorts],
       traitsPeuple: ["Truc"],
       inventaire: [{ itemId: "item-potion", quantite: 9, equipe: false }],
       effets: [{ id: "e1", nom: "X", dureeTours: 1, toursRestants: 1, modificateurs: {} }],
     };
-    const r = remettreAZeroPersonnage(modifie, dorain.inventaire);
+    const r = remettreAZeroPersonnage(modifie, thornak.inventaire);
     expect(r.niveau).toBe(1);
     expect(r.pvMax).toBe(13); // reset : talents vidés, sans Robustesse (10 + CON 3)
     expect(r.pv).toBe(13);
     expect(r.capacites).toEqual([]);
     expect(r.sorts).toEqual([]);
     expect(r.traitsPeuple).toEqual(["Habitant des tunnels"]);
-    expect(r.inventaire).toEqual(dorain.inventaire);
-    expect(r.inventaire).not.toBe(dorain.inventaire); // copie, pas de partage
+    expect(r.inventaire).toEqual(thornak.inventaire);
+    expect(r.inventaire).not.toBe(thornak.inventaire); // copie, pas de partage
     expect(r.effets).toEqual([]);
     // Caracs / peuple / profil inchangés.
-    expect(r.caracteristiques).toEqual(dorain.caracteristiques);
+    expect(r.caracteristiques).toEqual(thornak.caracteristiques);
     expect(r.peuple).toBe("Nain");
 
     // Perso custom sans fiche d'origine : inventaire vidé.
     const custom = { ...modifie, id: "pj-custom", inventaire: [{ itemId: "item-potion", quantite: 2, equipe: false }] };
     expect(remettreAZeroPersonnage(custom).inventaire).toEqual([]);
 
-    // Voie du mage conservée, traits restaurés avec le rang 1 mage.
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    // Voie du mage conservée si adoptée, traits restaurés avec le rang 1 mage.
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const mage = {
+      ...mae,
+      voieMage: true,
+      traitsPeuple: [...(mae.traitsPeuple ?? []), "Capacité de peuple + occultisme"],
+    };
     const m = remettreAZeroPersonnage(
-      { ...mirabel, niveau: 3, capacites: ["X"], sorts: [...mirabel.sorts], traitsPeuple: [], inventaire: [] },
-      mirabel.inventaire
+      { ...mage, niveau: 3, capacites: ["X"], sorts: [...mae.sorts], traitsPeuple: [], inventaire: [] },
+      mae.inventaire
     );
     expect(m.voieMage).toBe(true);
     expect(m.traitsPeuple).toEqual(["Diversité", "Capacité de peuple + occultisme"]);
-    expect(m.inventaire).toEqual(mirabel.inventaire);
+    expect(m.inventaire).toEqual(mae.inventaire);
     expect(m.ressources.mana).toEqual({ max: 4, actuel: 4 }); // VOL 4 + 0 sort
+    // Sans Voie du mage (graine Maë) : la seule voie du peuple est restaurée.
+    const sansMage = remettreAZeroPersonnage(
+      { ...mae, niveau: 3, capacites: ["X"], sorts: [], traitsPeuple: [], inventaire: [] },
+      mae.inventaire
+    );
+    expect(sansMage.voieMage).toBeUndefined();
+    expect(sansMage.traitsPeuple).toEqual(["Diversité"]);
   });
 
   it("ajouterCapacite : apprend un talent sans doublon, PV et mana à fond (niveau)", () => {
@@ -276,44 +289,45 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(r2).toBe(r); // doublon : inchangé (pas de soin surprise)
     expect(ajouterCapacite(r, "  ").capacites).toEqual(r.capacites);
     // Talent pur sur un mage blessé : mana existant remis à fond, max inchangé.
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const blessee = { ...mirabel, pv: 1, ressources: { ...mirabel.ressources, mana: { max: 6, actuel: 2 } } };
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const blessee = { ...mae, pv: 1, ressources: { ...mae.ressources, mana: { max: 6, actuel: 2 } } };
     const r3 = ajouterCapacite(blessee, "Robustesse");
     expect(r3.pv).toBe(r3.pvMax);
     expect(r3.ressources.mana).toEqual({ max: 6, actuel: 6 });
   });
 
   it("changerFamille : vide les voies, recadre le profil, suit la voie du mage", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     // Même famille : identique.
-    expect(changerFamille(dorain, "Combattant")).toBe(dorain);
+    expect(changerFamille(thornak, "Combattant")).toBe(thornak);
     // Guerrier -> Mage : sorts/talents vidés, premier profil Mage, traits du peuple intacts.
-    const mage = changerFamille(dorain, "Mage");
+    const mage = changerFamille(thornak, "Mage");
     expect(mage.famille).toBe("Mage");
     expect(mage.profil).toBe("Ensorceleur");
     expect(mage.classe).toBe("Ensorceleur");
     expect(mage.capacites).toEqual([]);
     expect(mage.sorts).toEqual([]);
-    expect(mage.traitsPeuple).toEqual(dorain.traitsPeuple);
-    expect(dorain.capacites.length).toBeGreaterThan(0); // non muté
+    expect(mage.traitsPeuple).toEqual(thornak.traitsPeuple);
+    expect(thornak.capacites.length).toBeGreaterThan(0); // non muté
     // Guerrier -> Aventurier : profil recadré, traits réinitialisés au rang 1.
-    const avent = changerFamille(dorain, "Aventurier");
+    const avent = changerFamille(thornak, "Aventurier");
     expect(avent.profil).toBe("Arquebusier");
     expect(avent.traitsPeuple).toEqual(["Habitant des tunnels"]);
     expect(avent.voieMage).toBeUndefined();
     // Quitter Mage retire la voie du mage.
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const guerriere = changerFamille({ ...mirabel, voieMage: true }, "Combattant");
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const guerriere = changerFamille({ ...mae, voieMage: true }, "Combattant");
     expect(guerriere.profil).toBe("Barbare");
     expect(guerriere.voieMage).toBeUndefined();
     expect(guerriere.traitsPeuple).toEqual(["Diversité"]);
   });
 
   it("verifierPersonnage : signale un profil impossible (ex. Aventurier Sorcier)", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    expect(verifierPersonnage(dorain)).toEqual([]);
-    const impossible = { ...dorain, famille: "Aventurier" as const, profil: "Sorcier", classe: "Sorcier" };
-    const ecarts = verifierPersonnage(impossible);
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // Catalogue fourni (comme la page Personnages) : l'équipement porté compte.
+    expect(verifierPersonnage(thornak, SEED_ITEMS)).toEqual([]);
+    const impossible = { ...thornak, famille: "Aventurier" as const, profil: "Sorcier", classe: "Sorcier" };
+    const ecarts = verifierPersonnage(impossible, SEED_ITEMS);
     expect(ecarts.some((e) => e.includes("Sorcier") && e.includes("Aventurier"))).toBe(true);
   });
 
@@ -344,19 +358,19 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
   });
 
   it("monter/descendreNiveau : PV +gain+CON, planchers respectés", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    expect(dorain.pvMax).toBe(16); // 10+CON 3 + Robustesse 3
-    const n2 = monterNiveau(dorain); // Guerrier CON+3 : +8 PV.
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    expect(thornak.pvMax).toBe(16); // 10+CON 3 + Robustesse 3
+    const n2 = monterNiveau(thornak); // Guerrier CON+3 : +8 PV.
     expect(n2.niveau).toBe(2);
     expect(n2.pvMax).toBe(24);
     expect(n2.pv).toBe(24);
-    expect(dorain.niveau).toBe(1); // non muté
+    expect(thornak.niveau).toBe(1); // non muté
     const n1 = descendreNiveau(n2);
     expect(n1.niveau).toBe(1);
     expect(n1.pvMax).toBe(16);
     expect(n1.pv).toBe(16);
     // Niveau 1 : descente sans effet ; PV plancher à 1.
-    expect(descendreNiveau(dorain)).toBe(dorain);
+    expect(descendreNiveau(thornak)).toBe(thornak);
     const ko = descendreNiveau({ ...n2, pvMax: 3, pv: 0 });
     expect(ko.pvMax).toBe(1);
     expect(ko.pv).toBe(0);
@@ -495,9 +509,9 @@ describe("édition fiche : le brouillon du modal n'écrase jamais l'équipement 
       inventaire: [bouclier],
       pv: 5,
     };
-    const brouillon = { ...courant, nom: "Dorain II", niveau: 2, pv: 16, inventaire: [], sorts: [] };
+    const brouillon = { ...courant, nom: "Thornak II", niveau: 2, pv: 16, inventaire: [], sorts: [] };
     const fusion = fusionnerEditionPersonnage(courant, brouillon);
-    expect(fusion.nom).toBe("Dorain II");
+    expect(fusion.nom).toBe("Thornak II");
     expect(fusion.niveau).toBe(2);
     expect(fusion.pv).toBe(16);
     expect(fusion.inventaire).toEqual([bouclier]);

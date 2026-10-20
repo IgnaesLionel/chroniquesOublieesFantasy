@@ -6,6 +6,8 @@ import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { VOIES_PEUPLE, VOIE_MAGE } from "@/src/lib/data/peuples";
 import { voiesDe, type Capacite } from "@/src/lib/data/capacites";
 import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
+import { classeFamille, familleDeLaVoie } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 function VoieBloc({ voie, capacites, ouvert, onToggle }: {
   voie: string;
@@ -14,13 +16,14 @@ function VoieBloc({ voie, capacites, ouvert, onToggle }: {
   onToggle: () => void;
 }) {
   const sorts = SEED_SORTS.filter((s) => s.voie === voie);
+  const famille = familleDeLaVoie(voie);
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-950">
+    <div className={`rounded border border-zinc-800 bg-zinc-950 fam-rail ${classeFamille(famille)}`}>
       <button
         onClick={onToggle}
         className="w-full text-left px-3 py-2 text-sm flex justify-between items-center gap-2"
       >
-        <span className="font-semibold">{voie}</span>
+        <span className={`font-semibold ${famille ? "fam-texte" : ""}`}>{voie}</span>
         <span className="text-xs text-zinc-400 shrink-0">
           {sorts.length > 0 ? `✦ ${sorts.length} sort${sorts.length > 1 ? "s" : ""}` : "talents uniquement"}
           {" "}{ouvert ? "▾" : "▸"}
@@ -82,10 +85,10 @@ export default function ClassesPage() {
         Seules les capacités à PM des voies sont des sorts (voir le grimoire).
       </p>
 
-      <div key={classe.profil} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
+      <div key={classe.profil} className={`rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3 fam-rail ${classeFamille(classe.famille)}`}>
         <div className="flex justify-between items-start flex-wrap gap-2">
           <div>
-            <div className="font-bold text-xl">{classe.profil}</div>
+            <div className="font-bold text-xl">{classe.profil} <FamilleBadge famille={classe.famille} /></div>
             <div className="text-sm text-zinc-400">Famille {classe.famille}</div>
           </div>
           <a href={classe.sourceUrl} target="_blank" rel="noreferrer" className="text-xs px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700">

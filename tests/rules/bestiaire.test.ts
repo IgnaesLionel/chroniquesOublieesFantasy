@@ -4,6 +4,7 @@ import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS } from "@/src/lib/data/seeds";
 import { monsterInstances } from "@/src/lib/rules/combat/factory";
 import { CAPACITES_PARTAGEES } from "@/src/lib/data/capacites-partagees";
+import { AURAS_DEBUT_COMBAT } from "@/src/lib/data/auras-combat";
 
 const CATALOG = new Set(CAPACITES_PARTAGEES.map((c) => c.cle));
 
@@ -84,6 +85,54 @@ describe("bestiaire Notion importé", () => {
     const gob = SEED_MONSTERS.find((m) => m.id === "notion-nc-0-gobelin-de-base")!;
     expect(gob.niveau).toBe(0);
     expect(gob.capacitesPartagees).toContain("attaque-en-meute");
+  });
+
+  it("Sigméus : Baiser du vampire = attaque à vol de vie, Effroi = aura de début de combat", () => {
+    const sigmeus = SEED_MONSTERS.find((m) => m.id === "notion-sigmeus-le-necromant")!;
+    // Sort (L) modélisé comme attaque : le moteur soigne le lanceur des DM infligés.
+    expect(sigmeus.attaques.find((a) => a.nom === "Baiser du vampire (L)"))
+      .toMatchObject({ bonus: 10, degats: "2d6", action: "limitee", volDeVie: true, seuilPv: 0.5 });
+    // Effroi : automatique au début du combat (test de SAG diff. 10), ce n'est
+    // pas un talent lancable depuis le panneau Capacités.
+    expect(sigmeus.capacites).toContain("Effroi");
+    expect(AURAS_DEBUT_COMBAT.some((a) => a.capacite === "Effroi" && a.carac === "PER" && a.difficulte === 10)).toBe(true);
+  });
+
+  it("Shaman Gobelin : pouvoir magique nommé « Morsure des Ancêtres » (2d6, 30 m, cible unique)", () => {
+    const shaman = SEED_MONSTERS.find((m) => m.id === "notion-nc-1-shaman-gobelin")!;
+    const pouvoir = shaman.attaques.find((a) => a.nom === "Morsure des Ancêtres")!;
+    expect(pouvoir).toBeDefined();
+    // Pouvoir de créature : jet d'attaque, 2d6, portée 30 m — ni mana ni rang de voie.
+    expect(pouvoir).toMatchObject({ bonus: 4, degats: "2d6", degatsAffiche: "2d6 (30 m)" });
+    expect(pouvoir.action).toBeUndefined();
+    // Le nom générique partagé par d'autres créatures a disparu de cette fiche.
+    expect(shaman.attaques.some((a) => a.nom === "Attaque magique")).toBe(false);
+    // Le nom est aussi visible sur la fiche (capacités détaillées).
+    expect(shaman.capacitesDetails?.some((c) => c.nom === "Morsure des Ancêtres")).toBe(true);
+  });
+
+  it("Sorcier NC 5 : Vampirisation (L) en attaque à vol de vie, « Animer un cadavre » lançable", () => {
+    const sorcier = SEED_MONSTERS.find((m) => m.id === "notion-nc-5-sorcier")!;
+    const vampirisation = sorcier.attaques.find((a) => a.nom === "Vampirisation (L)")!;
+    expect(vampirisation).toMatchObject({
+      bonus: 10, degats: "2d8", degatsAffiche: "2d8 (30 m)",
+      action: "limitee", volDeVie: true, exigeVivant: true,
+    });
+    // Capacités listées sans le suffixe « (Capacité) » (transcriptions gardées
+    // dans les capacités détaillées) : « Animer un cadavre » est reconnaissable
+    // par le panneau Capacités (CAPACITES_USABLES, action « animer »).
+    expect(sorcier.capacites).toEqual(
+      expect.arrayContaining(["Soutenir", "Vampirisation", "Animer un cadavre", "Pas de l'ombre"]));
+    expect(sorcier.capacites?.some((c) => c.includes("(Capacité)"))).toBe(false);
+    expect(sorcier.capacitesDetails?.some((c) => c.nom === "Animer un cadavre (Capacité)")).toBe(true);
+  });
+
+  it("Shaman orc NC 3 : mêmes pouvoirs (Vampirisation +6 à vol de vie, Animer un cadavre)", () => {
+    const shaman = SEED_MONSTERS.find((m) => m.id === "notion-nc-3-shaman-orc")!;
+    expect(shaman.attaques.find((a) => a.nom === "Vampirisation (L)"))
+      .toMatchObject({ bonus: 6, degats: "2d8", action: "limitee", volDeVie: true, exigeVivant: true });
+    expect(shaman.capacites).toEqual(expect.arrayContaining(["Soutenir", "Vampirisation", "Animer un cadavre"]));
+    expect(shaman.capacites?.some((c) => c.includes("(Capacité)"))).toBe(false);
   });
 
   it("caracs : les 99 fiches renseignées (aucune sans source)", () => {

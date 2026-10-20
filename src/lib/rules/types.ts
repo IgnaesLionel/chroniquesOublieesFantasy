@@ -59,6 +59,18 @@ export interface AttackDef {
   demiDegatsSiRate?: boolean;
   /** Le lanceur récupère autant de PV que de DM infligés (ex. Baiser du vampire). */
   volDeVie?: boolean;
+  /**
+   * Usage conditionné aux PV du lanceur : utilisable seulement quand
+   * pv <= pvMax × seuilPv (0 < seuilPv <= 1). Ex. 0.5 = à la moitié des PV ou
+   * moins (Baiser du vampire de Sigméus). Absent = toujours utilisable.
+   */
+  seuilPv?: number;
+  /**
+   * Cible vivante exigée (ex. Vampirisation du sorcier/Shaman orc) : refusée
+   * sur les morts-vivants et les construits (EST_VIVANT, MJ). Absent =
+   * utilisable sur tout le monde.
+   */
+  exigeVivant?: boolean;
   /** Effet appliqué à la cible si TOUCHÉ (ex: poison d'une arme). */
   effetTouche?: {
     cle: string;
@@ -217,6 +229,12 @@ export interface ActiveEffect {
   toursRestants: number | null;
   modificateurs: Record<string, number>;
   source?: string;
+  /**
+   * Effroi : instanceId que le porteur de cet effet n'a pas le droit
+   * d'attaquer tant que l'effet dure (source de l'aura de début de combat).
+   * Le moteur retire cette cible des cibles possibles (panneau Attaque).
+   */
+  interditCible?: string;
   /**
    * Tour (manche + index) où l'effet a été posé en combat.
    * Sert à ne pas consommer l'effet à la fin du tour pendant lequel il a

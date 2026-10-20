@@ -3,7 +3,9 @@ import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { LABEL_ATTAQUE_GRATUITE, type AttaqueGratuite, type TypeAttaqueGratuite } from "@/src/lib/rules/combat/types";
 import { getModifier } from "@/src/lib/rules/effects/effects";
 import { talentConnu } from "@/src/lib/rules/combat/attack";
-import { pvBarreColor } from "@/src/lib/ui/pv";
+import { pvBarreColor, pvTexteColor } from "@/src/lib/ui/pv";
+import { classeFamille, familleDuProfil } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 function tonEffet(e: { modificateurs: Record<string, number> }): string {
   const m = e.modificateurs ?? {};
@@ -32,7 +34,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
       <table className="w-full text-sm">
         <thead className="bg-zinc-900 text-zinc-400 text-xs uppercase">
           <tr>
-            <th className="text-left px-3 py-2">Init</th>
+            <th className="text-left px-3 py-2 border-l-[3px] border-transparent">Init</th>
             <th className="text-left px-3 py-2">Participant</th>
             <th className="text-left px-3 py-2">PV</th>
             <th className="text-left px-3 py-2">Déf</th>
@@ -56,7 +58,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   active ? "bg-amber-400/15 outline outline-1 outline-amber-400" : isAttacker ? "bg-zinc-800/60" : "bg-zinc-950"
                 } ${p.statut !== "actif" ? "opacity-50" : ""}`}
               >
-                <td className="px-3 py-2 font-mono font-bold text-amber-300">{p.initiative ?? "—"}</td>
+                <td className={`px-3 py-2 font-mono font-bold text-amber-300 fam-rail ${p.camp === "pj" ? classeFamille(familleDuProfil(p.profil)) : "fam-neutre"}`}>{p.initiative ?? "—"}</td>
                 <td className="px-3 py-2">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded mr-1.5 ${p.camp === "pj" ? "bg-blue-900 text-blue-200" : "bg-red-900 text-red-200"}`}>
                     {p.camp === "pj" ? "PJ" : "MO"}
@@ -66,7 +68,13 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                       🛡 +{p.bouclierBonus}
                     </span>
                   )}
+                  {p.reanime && (
+                    <span title="Cadavre animé (Animer un cadavre) — −2 attaque/DEF/Init ; tombé à nouveau, non réanimable" className="text-[10px] px-1.5 py-0.5 rounded mr-1.5 bg-purple-950 border border-purple-800 text-purple-200">
+                      ☠ animé
+                    </span>
+                  )}
                   <span className="font-semibold">{p.nom}</span>
+                  <FamilleBadge famille={p.camp === "pj" ? familleDuProfil(p.profil) : null} className="ml-1.5" />
                   {(p.sousCategories ?? []).length > 0 && (
                     <span className="block text-[10px] text-amber-300/80" title="Sous-catégories (dégâts bonus de certains sorts)">
                       💀 {(p.sousCategories ?? []).join(" · ")}
@@ -124,7 +132,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   {active && <span className="ml-2 text-[10px] font-bold text-amber-300">▶ TOUR</span>}
                 </td>
                 <td className="px-3 py-2">
-                  <div className="font-mono font-bold">{p.pv}/{p.pvMax}</div>
+                  <div className={`font-mono font-bold ${pvTexteColor(p.pv, p.pvMax)}`}>{p.pv}/{p.pvMax}</div>
                   <div className="w-20 h-1.5 bg-zinc-800 rounded mt-1">
                     <div className={`h-full rounded ${pvBarreColor(p.pv, p.pvMax)}`} style={{ width: `${p.pvMax ? (100 * p.pv) / p.pvMax : 0}%` }} />
                   </div>
@@ -136,7 +144,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   </div>
                 </td>
                 <td className="px-3 py-2 font-mono" title={modDef !== 0 ? `Base ${p.defense} (${modDef > 0 ? "+" : ""}${modDef} effets)` : "Défense (armure comprise)"}>
-                  {p.defense + modDef}{modDef !== 0 && <span className="text-xs text-zinc-500"> ({p.defense})</span>}
+                  <span className={modDef < 0 ? "text-red-300" : modDef > 0 ? "text-green-300" : ""}>{p.defense + modDef}</span>{modDef !== 0 && <span className="text-xs text-zinc-500"> ({p.defense})</span>}
                 </td>
                 <td className="px-3 py-2">
                   <span className={`text-xs px-2 py-0.5 rounded ${p.statut === "actif" ? "bg-green-900 text-green-200" : p.statut === "mort" ? "bg-black border border-zinc-700 text-zinc-400" : "bg-zinc-800 text-zinc-400"}`}>

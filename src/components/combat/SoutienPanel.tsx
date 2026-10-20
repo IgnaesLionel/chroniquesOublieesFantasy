@@ -8,6 +8,8 @@ import { usagesMineureRestants, quotaMineureParJour, rangVoieSoins, nbRang3Autre
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjDejaValide } from "@/src/lib/ui/validations-mj";
+import { classeFamille, familleDuProfil, familleDuSort } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
 
@@ -65,9 +67,9 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
   };
 
   return (
-    <div className="rounded-lg border border-violet-900 bg-zinc-900 p-4 space-y-2.5">
-      <h2 className="font-bold text-sm uppercase text-violet-300">
-        Sort de soutien{mana ? <span className="ml-2 font-mono normal-case">mana {mana.actuel}/{mana.max}</span> : null}
+    <div className="rounded-lg border border-emerald-900 bg-zinc-900 p-4 space-y-2.5">
+      <h2 className="font-bold text-sm uppercase text-emerald-300">
+        🛡️ Sort de soutien{mana ? <span className="ml-2 font-mono normal-case">mana {mana.actuel}/{mana.max}</span> : null} <FamilleBadge famille={familleDuSort(sort)} className="ml-1" />
       </h2>
       {bloque && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
@@ -119,6 +121,7 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
         </label>
       )}
       <label className="block text-sm">Bénéficiaire
+        {cible && <FamilleBadge famille={cible.camp === "pj" ? familleDuProfil(cible.profil) : null} className="ml-2" />}
         <select value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
           {allies.map((p) => (
             <option key={p.instanceId} value={p.instanceId}>{p.nom} — {p.pv}/{p.pvMax} PV</option>
@@ -126,7 +129,7 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
         </select>
       </label>
       {coutBase > 0 && (
-        <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
+        <div className={`rounded border border-zinc-800 p-2 space-y-1.5 text-sm fam-rail ${classeFamille(familleDuSort(sort))}`}>
           <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
           <label className="flex items-center gap-2" title="Incantation classique : paie le coût en mana">
             <input type="radio" checked={modeLancement === "mana"} onChange={() => setModeLancement("mana")} />

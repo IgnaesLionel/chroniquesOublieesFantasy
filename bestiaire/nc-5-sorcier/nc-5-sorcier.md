@@ -33,7 +33,7 @@ Le sorcier se fond dans les ombres et se téléporte à une distance maximum de 
 
 Le sorcier doit réussir un test opposé d'attaque magique contre une cible vivante à une distance maximum de 30 m. En cas de réussite, la cible subit 2d8 DM et le sorcier régénère autant de PV que de DM infligés. De plus, à chaque fois qu'une créature meurt à moins de 20 mètres de lui, il siphonne son énergie et gagne un nombre de PV égal au double du NC de la créature qui vient de mourir.
 
-Usage en jeu : l'action permet de réaliser l'attaque. Les DM sont infligés à la cible par le MJ et appliqués en soin au sorcier. La récupération de PV lorsqu'une créature meurt proche du sorcier est à réaliser manuellement.
+Usage en jeu (app) : « Vampirisation (L) » est une attaque du panneau Attaque (+10, 2d8, action limitée, 30 m) — le moteur soigne automatiquement le sorcier des DM infligés (vol de vie) et refuse une cible non vivante (morts-vivants, construits). Le gain de PV quand une créature meurt à moins de 20 m (+2 × NC) reste à faire au MJ. « Animer un cadavre » est lançable depuis le panneau Capacités et **ne relève que des cadavres de zombies** (NC ≤ 2) : on choisit soit le cadavre d'un zombie hors combat (jamais animé) — il rejoint le camp du sorcier, conserve son profil avec −2 en attaque, en DEF et en Initiative (initiative courante −2) et ne peut plus être réanimé s'il tombe à nouveau —, soit un **profil de zombie du bestiaire** (NC ≤ 2) quand le corps ne figure pas encore dans le combat : le serviteur est alors créé à la fin de l'ordre (comme une invocation), avec les mêmes −2. « Injonction mortelle » et « Pas de l'ombre » restent au MJ.
 
 ## Images
 
@@ -46,3 +46,5 @@ Usage en jeu : l'action permet de réaliser l'attaque. Les DM sont infligés à 
 ## Notes
 
 - Capacité commune : Soutenir.
+- App : attaques — Dague `notion-nc-5-sorcier-a0`, Attaque magique `notion-nc-5-sorcier-a1` (+10, 1 DM, support « voir pouvoirs » : Injonction mortelle), **Vampirisation (L)** `notion-nc-5-sorcier-a2` (+10, 2d8, action limitée, vol de vie, cible vivante — 30 m).
+- App : capacités listées sans le suffixe « (Capacité) » (transcriptions conservées dans les capacités détaillées) afin qu'**Animer un cadavre** soit lançable depuis le panneau Capacités (+ `capacitesUsables` : action « animer »). Le pouvoir **ne relève que des zombies** (`estZombie`, nom en « Zombie … » : Zombie humain, Zombies coriaces…) : le sélecteur de cadavre propose deux groupes — les zombies hors combat du combat en cours (relevés sur place) et les **profils de zombie du bestiaire NC ≤ 2** (corps trouvé sur place, serviteur créé en fin d'ordre) ; le relevé est marqué « ☠ animé » dans la table de combat. Un cadavre ou un profil non-zombie est refusé (message au journal).

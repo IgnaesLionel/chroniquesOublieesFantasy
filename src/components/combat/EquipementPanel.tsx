@@ -3,6 +3,8 @@ import type { Character } from "@/src/lib/rules/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { Item } from "@/src/lib/rules/world/types";
 import { labelFamilleArme } from "@/src/lib/rules/world/types";
+import { familleDuProfil } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 interface Props {
   participants: CombatParticipant[];
@@ -21,8 +23,8 @@ export function EquipementPanel({ participants, lanceurId, characters, catalogue
   if (inv.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
-      <h2 className="font-bold text-sm uppercase text-zinc-400">Équipement — {lanceur.nom}</h2>
+    <div className="rounded-lg border border-sky-900 bg-zinc-900 p-4 space-y-2">
+      <h2 className="font-bold text-sm uppercase text-sky-300">🎒 Équipement — {lanceur.nom} <FamilleBadge famille={familleDuProfil(lanceur.profil)} className="ml-1" /></h2>
       <div className="space-y-1">
         {inv.map((e) => {
           const item = catalogue.find((o) => o.id === e.itemId);

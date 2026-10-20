@@ -1,7 +1,7 @@
 "use client";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { useLocalCollection } from "@/src/lib/store/useLocalCollection";
-import { SEED_CHARACTERS, SEED_MONSTERS } from "@/src/lib/data/seeds";
+import { SEED_CHARACTERS, SEED_MONSTERS, migrerGrainesPersonnages } from "@/src/lib/data/seeds";
 import { SEED_SCENARIOS } from "@/src/lib/data/scenarioSeeds";
 import { SEED_NPCS } from "@/src/lib/data/worldSeeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
@@ -16,7 +16,12 @@ import type { Session } from "@/src/lib/rules/session/types";
 // Mémoire seule (données de jeu depuis le code) : monstres, PNJ, sorts,
 // scénarios, objets maison (perdus au rechargement).
 export function useCharacters() {
-  return useLocalCollection<Character>(STORAGE_KEYS.characters, SEED_CHARACTERS);
+  // migrer : les fiches graines renommées (id stable) suivent leur nouveau nom
+  // dans les sauvegardes locales, sans perdre niveau, PV, talents ni équipement
+  // (et les talents corrigés des graines, ex. Nyssa : Survie -> Le loup).
+  return useLocalCollection<Character>(STORAGE_KEYS.characters, SEED_CHARACTERS, {
+    migrer: migrerGrainesPersonnages,
+  });
 }
 
 export function useMonsters() {

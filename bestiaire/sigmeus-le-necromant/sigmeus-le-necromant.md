@@ -16,6 +16,20 @@ Sous une robe sombre d'un autre âge, une créature squelettique vous contemple 
 - Main spectrale (L) : une main spectrale attaque à distance.
 - Baiser du vampire (L) : le nécromant effectue une attaque de Main spectrale contre un adversaire au contact. S'il réussit, il lui inflige 2d6 de DM et se soigne 2d6 PV perdus !
 
+## Capacités
+
+### Effroi
+
+Lors du premier tour de combat, tous les adversaires du nécromant doivent effectuer un test de SAG difficulté 10. Ceux qui échouent ne peuvent pas l'attaquer pendant 1d4 tours.
+
+### Main spectrale (L)
+
+Une main spectrale attaque à distance.
+
+### Baiser du vampire (L)
+
+Le nécromant effectue une attaque de Main spectrale contre un adversaire au contact. S'il réussit, il lui inflige 2d6 de DM et se soigne 2d6 PV perdus !
+
 ## Images
 
 - `./images/img-1.webp` (bloc de stats)
@@ -23,3 +37,4 @@ Sous une robe sombre d'un autre âge, une créature squelettique vous contemple 
 ## Notes
 
 - Bloc au format d'édition antérieure. Boss nécromant (cf. Squelettes, Zombies, Goules).
+- App : « Baiser du vampire (L) » modélisé comme attaque (contact, +10, 2d6, vol de vie — le moteur soigne les DM infligés), **utilisable seulement quand Sigméus est à la moitié de ses PV ou moins** (`seuilPv: 0.5` : l'attaque est grisée dans le panneau Attaque avec la raison, et refusée par le moteur) ; « Effroi » **automatique au lancement du combat** (aura : chaque adversaire fait un test de SAG difficulté 10 — implémenté « d20 + PER », les vieilles cartes SAG étant stockées en PER ; échec = ne peut pas attaquer Sigméus pendant 1d4 tours, quel que soit l'ordre d'initiative) ; « Main spectrale (L) » couvert par l'attaque de base.

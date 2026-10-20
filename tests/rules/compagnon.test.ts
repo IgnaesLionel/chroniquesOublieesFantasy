@@ -12,6 +12,7 @@ import {
   utiliserCapacite,
 } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat } from "@/src/lib/rules/combat/staging";
+import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { talentsLancables } from "@/src/lib/data/capacites-usables";
 import { fixedRng } from "@/src/lib/rules/dice/roller";
 import {
@@ -167,7 +168,7 @@ describe("voie du compagnon animal (LDB)", () => {
 
   it("chaine fiche -> staging : Loup alpha nommé, DEF voie, caracs alpha", () => {
     const maitre: Character = {
-      id: "pj-r", kind: "personnage", nom: "Faelyn", classe: "Rôdeur", niveau: 5,
+      id: "pj-r", kind: "personnage", nom: "Nyssa", classe: "Rôdeur", niveau: 5,
       pvMax: 20, pv: 20, defense: 13, initMod: 2,
       caracteristiques: { AGI: 3, CON: 1, FOR: 1, PER: 2, CHA: 0, INT: 0, VOL: 0 },
       peuple: "Demi-Elfe", famille: "Aventurier", profil: "Rôdeur",
@@ -175,11 +176,24 @@ describe("voie du compagnon animal (LDB)", () => {
       ressources: {}, effets: [], inventaire: [], sorts: [], exemple: false,
     };
     const [pj, loup] = construirePJCombat(maitre, []);
-    expect(pj.nom).toBe("Faelyn");
-    expect(loup.nom).toBe("Loup alpha (Faelyn)");
+    expect(pj.nom).toBe("Nyssa");
+    expect(loup.nom).toBe("Loup alpha (Nyssa)");
     expect(loup.defense).toBe(16); // 12 + rang 4
     expect(loup.caracs).toMatchObject({ CON: 3, FOR: 5 });
     expect(loup.pv).toBe(20); // niv 5 × 4, pleins
+    expect(loup.compagnonDe).toBe(pj.instanceId);
+  });
+
+  it("graine Rôdeur : Le loup a remplacé Survie, le loup entre en préparation", () => {
+    const nyssa = SEED_CHARACTERS.find((c) => c.id === "pj-rodeur-demi-elfe")!;
+    expect(nyssa.capacites).toContain("Le loup");
+    expect(nyssa.capacites).not.toContain("Survie");
+    expect(aUnLoup(nyssa)).toBe(true);
+    const [pj, loup] = construirePJCombat(nyssa, []);
+    expect(pj.nom).toBe("Nyssa");
+    expect(loup.nom).toBe("Loup (Nyssa)");
+    expect(loup.defense).toBe(13); // 12 + rang 1 dans la voie
+    expect(loup.pvMax).toBe(4); // niveau 1 × 4
     expect(loup.compagnonDe).toBe(pj.instanceId);
   });
 

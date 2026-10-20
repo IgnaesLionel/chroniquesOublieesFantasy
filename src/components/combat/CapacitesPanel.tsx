@@ -1,16 +1,25 @@
 "use client";
 import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import type { MonsterTemplate } from "@/src/lib/rules/types";
 import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { canAct } from "@/src/lib/rules/effects/effects";
+import { estCadavre, profilAnimable, NC_MAX_ANIMATION } from "@/src/lib/rules/combat/attack";
 import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjDejaValide } from "@/src/lib/ui/validations-mj";
+import { familleDuProfil } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 interface Props {
   participants: CombatParticipant[];
   lanceurId: string | null;
+  /**
+   * Profils du bestiaire proposés comme cadavres (Animer un cadavre : NC ≤ 2,
+   * le MJ choisit la créature morte relevée). Absent = cadavres du combat seuls.
+   */
+  profils?: MonsterTemplate[];
   onUtiliser: (
     lanceurId: string,
     cibleId: string,
@@ -20,13 +29,15 @@ interface Props {
       dureeTours: number | null;
       mods: Record<string, number> | undefined;
       coutPV: string | undefined;
-      actionSpeciale: "renvoi" | "proteger" | "vigueur" | "lien-empathique" | undefined;
+      actionSpeciale: "renvoi" | "proteger" | "vigueur" | "lien-empathique" | "animer" | undefined;
       soin: string | undefined;
       soinFixe: number | undefined;
       nettoie: boolean | undefined;
       outrepasserSoin: boolean | undefined;
       modeVigueur: "auto" | "test" | undefined;
       lienMontant: number | undefined;
+      /** Cadavre relevé depuis un profil du bestiaire (id du template, action « animer »). */
+      profilId: string | undefined;
     }
   ) => void;
   /** Trace « MJ a validé » au journal de combat. */
@@ -38,10 +49,12 @@ function defautPour(nom: string) {
   return CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q);
 }
 
-export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }: Props) {
+export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, onLogMJ }: Props) {
   const lanceur = participants.find((p) => p.instanceId === lanceurId) ?? null;
   const [talentNom, setTalentNom] = useState<string | null>(null);
   const [cibleId, setCibleId] = useState<string | null>(null);
+  /** Cadavre choisi pour « Animer un cadavre » : "cadavre:<instanceId>" ou "profil:<templateId>". */
+  const [cadavreChoisi, setCadavreChoisi] = useState<string | null>(null);
   const [effetCle, setEffetCle] = useState<string>("");
   const [duree, setDuree] = useState<string>("");
   const [montant, setMontant] = useState<string>("");
@@ -60,11 +73,33 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
   const effetActif = effetCle || defaut?.effetCle || "";
   const dureeActive = duree !== "" ? Number(duree) : defaut?.dureeTours ?? null;
   const actifs = participants.filter((p) => p.statut === "actif");
+  // Animer un cadavre : la « cible » n'est pas un participant actif mais un
+  // cadavre de zombie — relevé sur place (hors combat, NC ≤ 2, jamais animé)
+  // ou choisi dans le bestiaire (le MJ déclare un corps de zombie sur place).
+  const estAnimer = normaliserNomCapacite(talent) === "animer un cadavre";
+  const cadavres = participants.filter((p) => p.instanceId !== lanceur.instanceId && estCadavre(p));
+  const profilsCadavres = (profils ?? [])
+    .filter((m) => profilAnimable(m))
+    .sort((a, b) => (a.niveau - b.niveau) || a.nom.localeCompare(b.nom));
+  const optionsCadavre = [
+    ...cadavres.map((p) => ({
+      valeur: `cadavre:${p.instanceId}`,
+      groupe: "Cadavres du combat (zombies hors combat, NC ≤ 2)",
+      label: `${p.nom} — NC ${p.niveau}${p.camp === lanceur.camp ? " · votre camp" : ""}`,
+    })),
+    ...profilsCadavres.map((m) => ({
+      valeur: `profil:${m.id}`,
+      groupe: "Bestiaire — zombies (corps trouvé sur place, NC ≤ 2)",
+      label: `${m.nom} — NC ${m.niveau} · ${m.pvMax} PV`,
+    })),
+  ];
+  const groupesCadavre = [...new Set(optionsCadavre.map((o) => o.groupe))];
+  const cadavre = optionsCadavre.find((o) => o.valeur === cadavreChoisi)?.valeur
+    ?? optionsCadavre[0]?.valeur ?? null;
   // Cibles proposées selon le type de capacité : "soi" = posture sur soi
   // (Parer, Absorber...), "allies" = alliés hors soi (Protéger...),
   // "ennemis" = camp adverse, "tous" = tout le monde.
-  const ciblesPossibles =
-    defaut?.cibles === "soi"
+  const ciblesPossibles = defaut?.cibles === "soi"
       ? actifs.filter((p) => p.instanceId === lanceur.instanceId)
       : defaut?.cibles === "allies"
         ? actifs.filter((p) => p.camp === lanceur.camp && p.instanceId !== lanceur.instanceId)
@@ -76,6 +111,9 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
   const cibles = ciblesPossibles;
   const cible = cibles.find((p) => p.instanceId === cibleId)
     ?? cibles[0] ?? null;
+  /** « Animer un cadavre » choisit dans `optionsCadavre`, les autres talents dans `cibles`. */
+  const choixValide = estAnimer ? !!cadavre : !!cible;
+  const choixVide = estAnimer ? !cadavre : cibles.length === 0;
   const bloque = !canAct(lanceur.effets);
   const estVigueur = normaliserNomCapacite(talent) === "vigueur divine";
   const estPhenix = normaliserNomCapacite(talent) === "phénix";
@@ -83,11 +121,19 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
 
   /** Résolution de l'usage du talent (après validation MJ éventuelle). */
   const executerUtilisation = () => {
-    if (!cible) return;
+    if (estAnimer ? !cadavre : !cible) return;
+    // « Animer un cadavre » : "cadavre:<instanceId>" (relevé sur place) ou
+    // "profil:<templateId>" (cadavre trouvé sur place, entré en fin d'ordre).
+    const sep = cadavre?.indexOf(":") ?? -1;
+    const genre = sep >= 0 ? cadavre!.slice(0, sep) : "";
+    const idCadavre = sep >= 0 ? cadavre!.slice(sep + 1) : "";
+    const cibleIdEffectif = estAnimer
+      ? (genre === "cadavre" ? idCadavre : "")
+      : cible!.instanceId;
     if (defaut?.questionMJ) onLogMJ?.(`⚖️ MJ validé — ✨ ${talent} : ${defaut.questionMJ}`);
     const soinFixe = defaut?.montantMJ === "soin" && montant.trim() !== "" ? Number(montant) : undefined;
     const lienMontant = defaut?.montantMJ === "lien" && montant.trim() !== "" ? Number(montant) : undefined;
-    onUtiliser(lanceur.instanceId, cible.instanceId, talent, {
+    onUtiliser(lanceur.instanceId, cibleIdEffectif, talent, {
       effetCle: effetActif || null,
       dureeTours: dureeActive,
       mods: defaut?.mods,
@@ -99,12 +145,13 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
       outrepasserSoin,
       modeVigueur: estVigueur ? modeVigueur : undefined,
       lienMontant,
+      profilId: estAnimer && genre === "profil" ? idCadavre : undefined,
     });
   };
 
   return (
     <div className="rounded-lg border border-amber-900 bg-zinc-900 p-4 space-y-2.5">
-      <h2 className="font-bold text-sm uppercase text-amber-300">Capacités</h2>
+      <h2 className="font-bold text-sm uppercase text-amber-300">✨ Capacités — {lanceur.nom} <FamilleBadge famille={lanceur.camp === "pj" ? familleDuProfil(lanceur.profil) : null} className="ml-1" /></h2>
       <p className="text-xs text-zinc-500" title="Talents connus du personnage (◈ = utilisable ici, · passif ou géré ailleurs : panneau Attaque, MJ)">
         Connus : {lanceur.capacites.length > 0
           ? lanceur.capacites.map((t, i) => (
@@ -120,7 +167,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
       <label className="block text-sm">Talent
         <select
           value={talent}
-          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); setAttenteMj(null); }}
+          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); setCadavreChoisi(null); setAttenteMj(null); }}
           className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
         >
           {lancables.map((t) => {
@@ -137,28 +184,42 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
           {defaut.questionMJ ? ` ⚖️ ${defaut.questionMJ}` : ""}
         </p>
       )}
-      <label className="block text-sm">Cible
-        <select value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-          {cibles.map((p) => (
-            <option key={p.instanceId} value={p.instanceId}>
-              {p.nom} — {p.pv}/{p.pvMax} PV{p.effets.length > 0 ? ` · ✦${p.effets.length}` : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-sm">Effet appliqué
-          <select value={effetActif} onChange={(e) => setEffetCle(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-            <option value="">Aucun (narratif)</option>
-            {EFFECT_CATALOG.map((t) => <option key={t.key} value={t.key}>{t.nom}</option>)}
+      <label className="block text-sm">{estAnimer ? `Cadavre de zombie (NC ≤ ${NC_MAX_ANIMATION})` : "Cible"}
+        {estAnimer ? (
+          <select value={cadavre ?? ""} onChange={(e) => setCadavreChoisi(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+            {groupesCadavre.map((g) => (
+              <optgroup key={g} label={g}>
+                {optionsCadavre.filter((o) => o.groupe === g).map((o) => (
+                  <option key={o.valeur} value={o.valeur}>{o.label}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
-        </label>
-        <label className="block text-sm">Durée (tours)<input
-          type="number" min={1} value={duree} placeholder={defaut?.dureeTours != null ? String(defaut.dureeTours) : "∞"}
-          onChange={(e) => setDuree(e.target.value)}
-          className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
-        /></label>
-      </div>
+        ) : (
+          <select value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+            {cibles.map((p) => (
+              <option key={p.instanceId} value={p.instanceId}>
+                {`${p.nom} — ${p.pv}/${p.pvMax} PV${p.effets.length > 0 ? ` · ✦${p.effets.length}` : ""}`}
+              </option>
+            ))}
+          </select>
+        )}
+      </label>
+      {!estAnimer && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-sm">Effet appliqué
+            <select value={effetActif} onChange={(e) => setEffetCle(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+              <option value="">Aucun (narratif)</option>
+              {EFFECT_CATALOG.map((t) => <option key={t.key} value={t.key}>{t.nom}</option>)}
+            </select>
+          </label>
+          <label className="block text-sm">Durée (tours)<input
+            type="number" min={1} value={duree} placeholder={defaut?.dureeTours != null ? String(defaut.dureeTours) : "∞"}
+            onChange={(e) => setDuree(e.target.value)}
+            className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5"
+          /></label>
+        </div>
+      )}
       {defaut?.montantMJ === "soin" && (
         <label className="block text-sm">Montant du soin (MJ, ex. NC du Siphon)
           <input
@@ -204,8 +265,12 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
           <span>{cible.nom} déjà soigné ce combat — outrepasser MJ</span>
         </label>
       )}
-      {cibles.length === 0 && (
-        <p className="text-xs text-red-400">Aucune cible valide pour ce talent (aucun allié actif).</p>
+      {choixVide && (
+        <p className="text-xs text-red-400">
+          {estAnimer
+            ? `Aucun cadavre de zombie utilisable (zombie hors combat jamais animé, ou profil de zombie du bestiaire, NC ≤ ${NC_MAX_ANIMATION}).`
+            : "Aucune cible valide pour ce talent (aucun allié actif)."}
+        </p>
       )}
       <button
         onClick={() => {
@@ -216,7 +281,7 @@ export function CapacitesPanel({ participants, lanceurId, onUtiliser, onLogMJ }:
           }
           executerUtilisation();
         }}
-        disabled={bloque || !cible}
+        disabled={bloque || !choixValide}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
         Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}

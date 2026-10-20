@@ -24,6 +24,34 @@ import {
   talentsRang2Gratuits,
 } from "@/src/lib/rules/creation";
 
+const graineMae = () => SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+
+/**
+ * Maë telle qu'avant la révision de sa graine : Voie du mage adoptée (rang 1
+ * « Capacité de peuple + occultisme ») et rang 2 gratuit consommé par Maîtrise
+ * de la magie. La graine a depuis abandonné la voie du mage (2 pts en Voie de
+ * l'outre-tombe) : cette référence sert aux règles de création Mage.
+ */
+function maeVoieMage(): Character {
+  return {
+    ...graineMae(),
+    voieMage: true,
+    traitsPeuple: ["Diversité", "Capacité de peuple + occultisme"],
+    capacites: ["Malédiction", "Saignements", "Maîtrise de la magie"],
+    sorts: [
+      { id: "mae-malediction", nom: "Malédiction", type: "offensif", voie: "Voie du démon", rang: 1, cout: { ressource: "mana", montant: 1 } },
+      { id: "mae-saignements", nom: "Saignements", type: "offensif", voie: "Voie du sang", rang: 1, cout: { ressource: "mana", montant: 1 } },
+    ],
+    defense: 11,
+    ressources: { mana: { max: 6, actuel: 6 }, chance: { max: 1, actuel: 1 } },
+  };
+}
+
+/** Maë sans Armure d'os (état d'avant l'apprentissage du talent). */
+function maeSansArmure(): Character {
+  return { ...graineMae(), capacites: ["Un pied dans la tombe"], defense: 11 };
+}
+
 describe("création niv. 1 : points de capacité (COF V2)", () => {
   it("config par profil : cas standard + 4 Mages", () => {
     expect(CREATION_DEFAUT).toEqual({ points: 2 });
@@ -54,14 +82,23 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("seeds conformes : 2 pts dépensés, gratuités OK, zéro alerte", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const e1 = etatCreation(mirabel)!;
+    const e1 = etatCreation(maeVoieMage())!;
     expect(e1.points).toBe(2);
     expect(e1.depense).toBe(2);
     expect(e1.restants).toBe(0);
     expect(e1.peupleOk).toBe(true);
     expect(e1.rang2Nom).toBe("Maîtrise de la magie");
     expect(e1.alertes).toEqual([]);
+
+    // Graine Maë : Voie du mage non adoptée -> plus de rang 2 gratuit. Les 2 pts
+    // passent en Voie de l'outre-tombe (Un pied dans la tombe R1 + Armure d'os R2) ;
+    // seul écart : le niveau, la table DRS n'ouvrant le rang 2 qu'au niveau 2 hors
+    // gratuité Mage (écart assumé, documenté dans la fiche).
+    const graine = etatCreation(graineMae())!;
+    expect(graine).toMatchObject({ depense: 2, restants: 0, peupleOk: true, rang2Nom: null });
+    expect(graine.alertes).toHaveLength(1);
+    expect(graine.alertes[0]).toContain("Armure d'os");
+    expect(graine.alertes[0]).toContain("niveau 2 requis");
 
     for (const id of ["pj-rodeur-demi-elfe", "pj-pretre-elfe-haut", "pj-guerrier-nain"]) {
       const e = etatCreation(SEED_CHARACTERS.find((x) => x.id === id)!)!;
@@ -74,12 +111,12 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("R2 gratuit : exige la Voie du mage adoptée (profil ou Maîtrise)", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const mae = maeVoieMage();
     // Référence : voie du mage adoptée + Maîtrise consommée -> gratuit.
-    expect(etatCreation(mirabel)!.rang2Nom).toBe("Maîtrise de la magie");
+    expect(etatCreation(mae)!.rang2Nom).toBe("Maîtrise de la magie");
     // Même fiche sans voie du mage : plus de gratuité (R2 payant + niveau requis).
     const sansVoie: Character = {
-      ...mirabel,
+      ...mae,
       voieMage: undefined,
       traitsPeuple: ["Diversité"],
     };
@@ -92,7 +129,7 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     );
     expect(refuse.gratuit).toBe(false);
     // Avec la voie adoptée : R2 de profil gratuit aussi (pas seulement Maîtrise).
-    const vierge = { ...mirabel, capacites: ["Malédiction", "Saignements"] };
+    const vierge = { ...mae, capacites: ["Malédiction", "Saignements"] };
     const freeProfil = peutApprendre(vierge, { nom: "Beauté de la succube", voie: "Voie du démon", rang: 2 });
     expect(freeProfil.ok).toBe(true);
     expect(freeProfil.gratuit).toBe(true);
@@ -141,15 +178,15 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("peutApprendre : le cas Frakzor (Armure lourde bloquée), prérequis et niveaux", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     // Guerrier niv. 1, 0 pt restant : Armure lourde (résistance R3) bloquée.
-    const bloque = peutApprendre(dorain, { nom: "Armure lourde", voie: "Voie de la résistance", rang: 3 });
+    const bloque = peutApprendre(thornak, { nom: "Armure lourde", voie: "Voie de la résistance", rang: 3 });
     expect(bloque.ok).toBe(false);
     expect(bloque.raisons.some((r) => r.includes("niveau 3 requis"))).toBe(true);
     expect(bloque.raisons.some((r) => r.includes("requiert") && r.includes("rang 2"))).toBe(true);
     expect(bloque.raisons.some((r) => r.includes("pas assez de points"))).toBe(true);
     // Chaîne valide au niv. 3 : R1+R2 connus, 6 pts au total.
-    const niv3 = { ...dorain, niveau: 3, capacites: ["Robustesse", "Résilient"] };
+    const niv3 = { ...thornak, niveau: 3, capacites: ["Robustesse", "Résilient"] };
     const ok = peutApprendre(niv3, { nom: "Armure lourde", voie: "Voie de la résistance", rang: 3 });
     expect(ok).toEqual({ ok: true, raisons: [], cout: 2, gratuit: false, connu: false });
     // Saut de rang interdit même avec points et niveau.
@@ -157,27 +194,27 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(saut.ok).toBe(false);
     expect(saut.raisons.some((r) => r.includes("requiert Voie de la résistance rang 2"))).toBe(true);
     // R2 non gratuit au niv. 1 : niveau requis même avec des points.
-    const faelyn1 = { ...SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!, capacites: ["Survie"] };
-    const r2 = peutApprendre(faelyn1, { nom: "Tir chirurgical", voie: "Voie de l'archer", rang: 2 });
+    const nyssa1 = { ...SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!, capacites: ["Survie"] };
+    const r2 = peutApprendre(nyssa1, { nom: "Tir chirurgical", voie: "Voie de l'archer", rang: 2 });
     expect(r2.ok).toBe(false);
     expect(r2.raisons.some((r) => r.includes("niveau 2 requis"))).toBe(true);
     // Gratuité Mage : contourne le niveau, pas le prérequis.
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const vierge = { ...mirabel, capacites: ["Malédiction", "Saignements"] };
+    const mae = maeVoieMage();
+    const vierge = { ...mae, capacites: ["Malédiction", "Saignements"] };
     const free = peutApprendre(vierge, { nom: "Maîtrise de la magie", voie: "Voie du mage", rang: 2 });
     expect(free.ok).toBe(true);
     expect(free.gratuit).toBe(true);
     // Hors voies accessibles.
-    const hors = peutApprendre(dorain, { nom: "Bénédiction", voie: "Voie de la prière", rang: 1 });
+    const hors = peutApprendre(thornak, { nom: "Bénédiction", voie: "Voie de la prière", rang: 1 });
     expect(hors.ok).toBe(false);
     expect(hors.raisons.some((r) => r.includes("hors voies accessibles"))).toBe(true);
     // Création maison (sans voie) : espace MJ, libre.
-    expect(peutApprendre(dorain, { nom: "Truc du MJ" }).ok).toBe(true);
+    expect(peutApprendre(thornak, { nom: "Truc du MJ" }).ok).toBe(true);
     // Déjà connue.
-    expect(peutApprendre(dorain, { nom: "Robustesse", voie: "Voie de la résistance", rang: 1 }).raisons).toContain("déjà connue");
+    expect(peutApprendre(thornak, { nom: "Robustesse", voie: "Voie de la résistance", rang: 1 }).raisons).toContain("déjà connue");
     // R4 exige le niveau 5 (table DRS), même avec points et prérequis.
     const r4 = peutApprendre(
-      { ...dorain, niveau: 4, capacites: ["Robustesse", "Résilient", "Armure lourde", "Constitution héroïque"] },
+      { ...thornak, niveau: 4, capacites: ["Robustesse", "Résilient", "Armure lourde", "Constitution héroïque"] },
       { nom: "Dur à cuire", voie: "Voie de la résistance", rang: 5 }
     );
     expect(r4.ok).toBe(false);
@@ -185,26 +222,26 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("compterCapacites : sorts comptés, customs ignorés, peuple R1 gratuit", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     const avecSort = {
-      ...dorain,
+      ...thornak,
       sorts: [{ id: "s1", nom: "Bénédiction", type: "defensif" as const, voie: "Voie de la prière", rang: 1, cout: { ressource: "mana", montant: 1 } }],
     };
     const cpt = compterCapacites(avecSort);
     expect(cpt.depense).toBe(3); // 2 talents + 1 sort compté
     expect(cpt.alertes.some((a) => a.includes("Bénédiction"))).toBe(true);
     // Talent doublon d'un sort connu : compté une seule fois.
-    const dup = compterCapacites({ ...avecSort, capacites: [...dorain.capacites, "Bénédiction"] });
+    const dup = compterCapacites({ ...avecSort, capacites: [...thornak.capacites, "Bénédiction"] });
     expect(dup.depense).toBe(3);
   });
   it("sélecteurs : rangs 1 apprenables + gratuité R2 Mage", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     // 2/2 dépensés : plus de rang 1 à prendre (5 voies = 5 rangs 1, 2 pris).
-    expect(talentsRang1Disponibles(dorain)).toHaveLength(3);
-    expect(talentsRang2Gratuits(dorain)).toEqual([]);
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    expect(talentsRang2Gratuits(mirabel)).toEqual([]); // gratuité consommée
-    const vierge = { ...mirabel, capacites: ["Malédiction", "Saignements"] };
+    expect(talentsRang1Disponibles(thornak)).toHaveLength(3);
+    expect(talentsRang2Gratuits(thornak)).toEqual([]);
+    const mae = maeVoieMage();
+    expect(talentsRang2Gratuits(mae)).toEqual([]); // gratuité consommée
+    const vierge = { ...mae, capacites: ["Malédiction", "Saignements"] };
     // Rangs 2 Sorcier (Beauté, Masque, Baiser...) + mage (Maîtrise) proposés.
     const noms = talentsRang2Gratuits(vierge).map((o) => o.nom);
     expect(noms).toContain("Beauté de la succube");
@@ -212,8 +249,8 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("peutDesapprendre : du haut vers le bas, jamais de saut", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    const avance = { ...dorain, niveau: 3, capacites: ["Robustesse", "Résilient", "Armure lourde"] };
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const avance = { ...thornak, niveau: 3, capacites: ["Robustesse", "Résilient", "Armure lourde"] };
     // R2 bloqué tant que le R3 est connu.
     const bloque = peutDesapprendre(avance, "Résilient", "talents");
     expect(bloque.ok).toBe(false);
@@ -222,19 +259,19 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(peutDesapprendre(avance, "Armure lourde", "talents")).toEqual({ ok: true, raisons: [] });
     expect(peutDesapprendre({ ...avance, capacites: ["Robustesse", "Résilient"] }, "Résilient", "talents").ok).toBe(true);
     // R1 seul : libre.
-    expect(peutDesapprendre(dorain, "Robustesse", "talents").ok).toBe(true);
+    expect(peutDesapprendre(thornak, "Robustesse", "talents").ok).toBe(true);
     // Inconnue : retirable (corrige l'écart).
-    const inconnue = { ...dorain, capacites: [...dorain.capacites, "Boule de feu"] };
+    const inconnue = { ...thornak, capacites: [...thornak.capacites, "Boule de feu"] };
     expect(peutDesapprendre(inconnue, "Boule de feu", "talents").ok).toBe(true);
     // Absente : non.
-    expect(peutDesapprendre(dorain, "Vivacité", "talents")).toEqual({ ok: false, raisons: ["non apprise"] });
+    expect(peutDesapprendre(thornak, "Vivacité", "talents")).toEqual({ ok: false, raisons: ["non apprise"] });
     // Sort maison (sans voie) : libre.
-    const custom = { ...dorain, sorts: [{ id: "x", nom: "Truc", type: "utilitaire" as const }] };
+    const custom = { ...thornak, sorts: [{ id: "x", nom: "Truc", type: "utilitaire" as const }] };
     expect(peutDesapprendre(custom, "Truc", "sorts").ok).toBe(true);
-    // Sort à voie bloqué par un rang supérieur connu.
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    // Sort à voie bloqué par un rang supérieur connu (Voie du mage adoptée).
+    const mae = maeVoieMage();
     const sortsMage = {
-      ...mirabel,
+      ...mae,
       sorts: [
         { id: "a", nom: "Maîtrise de la magie", type: "utilitaire" as const, voie: "Voie du mage", rang: 2, cout: { ressource: "mana", montant: 2 } },
         { id: "b", nom: "Tour de magie", type: "utilitaire" as const, voie: "Voie du mage", rang: 3, cout: { ressource: "mana", montant: 3 } },
@@ -245,21 +282,21 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(bloqueSort.raisons.some((r) => r.includes("Voie du mage rang 3"))).toBe(true);
     expect(peutDesapprendre(sortsMage, "Tour de magie", "sorts")).toEqual({ ok: true, raisons: [] });
     // Sort lié à un talent connu : retrait via le talent uniquement.
-    const aelion = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
-    const lie = peutDesapprendre(aelion, "Bénédiction", "sorts");
+    const isildeen = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
+    const lie = peutDesapprendre(isildeen, "Bénédiction", "sorts");
     expect(lie.ok).toBe(false);
     expect(lie.raisons.some((r) => r.includes("talent connu"))).toBe(true);
     // Talent parti : le sort se retire librement (R1, sans rang supérieur).
-    const orphelin = { ...aelion, capacites: (aelion.capacites ?? []).filter((t) => t !== "Bénédiction") };
+    const orphelin = { ...isildeen, capacites: (isildeen.capacites ?? []).filter((t) => t !== "Bénédiction") };
     expect(peutDesapprendre(orphelin, "Bénédiction", "sorts")).toEqual({ ok: true, raisons: [] });
   });
 
   it("estEffective : inactif sous le niveau requis (baisse de niveau)", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     // R1 : toujours effectif.
-    expect(estEffective(dorain, "Robustesse")).toEqual({ effectif: true });
+    expect(estEffective(thornak, "Robustesse")).toEqual({ effectif: true });
     // R3 appris au niv. 3 puis redescente au niv. 1 : inactif, raison affichable.
-    const haut = { ...dorain, niveau: 3, capacites: ["Robustesse", "Résilient", "Armure lourde"] };
+    const haut = { ...thornak, niveau: 3, capacites: ["Robustesse", "Résilient", "Armure lourde"] };
     expect(estEffective(haut, "Armure lourde")).toEqual({ effectif: true });
     const bas = { ...haut, niveau: 1 };
     expect(estEffective(bas, "Armure lourde")).toEqual({
@@ -267,11 +304,11 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
       raison: "niveau 3 requis (niveau 1)",
     });
     expect(estEffective(bas, "Robustesse")).toEqual({ effectif: true });
-    // Gratuité Mage : effective malgré le niveau.
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    expect(estEffective(mirabel, "Maîtrise de la magie")).toEqual({ effectif: true });
+    // Gratuité Mage : effective malgré le niveau (Voie du mage adoptée).
+    const mae = maeVoieMage();
+    expect(estEffective(mae, "Maîtrise de la magie")).toEqual({ effectif: true });
     // Inconnue : effective par défaut (déjà signalée ailleurs).
-    expect(estEffective(dorain, "Boule de feu")).toEqual({ effectif: true });
+    expect(estEffective(thornak, "Boule de feu")).toEqual({ effectif: true });
   });
 
   it("sortDuTalent + apprendreTalentComplet : un talent-sort devient lançable", () => {
@@ -284,9 +321,9 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     // Grimoire sans l'entrée : rien.
     expect(sortDuTalent("Un pied dans la tombe", [])).toBeUndefined();
     // Apprendre le talent crée aussi le sort (+ mana), full mana + full vie (niveau).
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const vierge: Character = { ...mirabel, pv: 2, capacites: ["Malédiction"], sorts: [], ressources: { ...mirabel.ressources, mana: { max: 4, actuel: 1 } } };
-    expect(mirabel.caracteristiques.VOL).toBe(4);
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const vierge: Character = { ...mae, pv: 2, capacites: ["Malédiction"], sorts: [], ressources: { ...mae.ressources, mana: { max: 4, actuel: 1 } } };
+    expect(mae.caracteristiques.VOL).toBe(4);
     const r = apprendreTalentComplet(vierge, "Un pied dans la tombe", SEED_SORTS);
     expect(r.capacites).toContain("Un pied dans la tombe");
     expect(r.sorts.map((s) => s.nom)).toContain("Un pied dans la tombe");
@@ -305,35 +342,35 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("desapprendreTalentComplet : le sort lié part avec le talent", () => {
-    const aelion = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
+    const isildeen = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
     // Cas signalé : Bénédiction apprise (talent + sort), on désapprend le talent.
-    expect(aelion.capacites).toContain("Bénédiction");
-    expect(aelion.sorts.map((s) => s.nom)).toContain("Bénédiction");
-    const r = desapprendreTalentComplet(aelion, "Bénédiction", SEED_SORTS);
+    expect(isildeen.capacites).toContain("Bénédiction");
+    expect(isildeen.sorts.map((s) => s.nom)).toContain("Bénédiction");
+    const r = desapprendreTalentComplet(isildeen, "Bénédiction", SEED_SORTS);
     expect(r.capacites).not.toContain("Bénédiction");
     expect(r.sorts.map((s) => s.nom)).not.toContain("Bénédiction");
     // L'autre sort survit ; le mana suit VOL + sorts (2+1 = 3, actuel plafonné).
     expect(r.sorts.map((s) => s.nom)).toContain("Récupération mineure");
     expect(r.ressources.mana).toEqual({ max: 3, actuel: 3 });
-    expect(aelion.sorts).toHaveLength(2); // non muté
+    expect(isildeen.sorts).toHaveLength(2); // non muté
     // Talent pur : aucun sort touché.
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    const r2 = desapprendreTalentComplet(dorain, "Protéger un allié", SEED_SORTS);
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const r2 = desapprendreTalentComplet(thornak, "Protéger un allié", SEED_SORTS);
     expect(r2.capacites).toEqual(["Robustesse"]);
     expect(r2.sorts).toHaveLength(0);
     // Armure d'os : la DEF retombe via la fonction (recalcul intégré).
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const avec = apprendreTalentComplet(mirabel, "Armure d'os", SEED_SORTS);
+    const nue = maeSansArmure();
+    const avec = apprendreTalentComplet(nue, "Armure d'os", SEED_SORTS);
     expect(avec.defense).toBe(14);
     expect(desapprendreTalentComplet(avec, "Armure d'os", SEED_SORTS).defense).toBe(11);
   });
 
   it("Armure d'os : +3 DEF permanent à l'apprentissage, retiré au désapprentissage", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    expect(deriverPersonnage(mirabel).defense).toBe(11); // 10 + AGI 1
-    const r = apprendreTalentComplet(mirabel, "Armure d'os", SEED_SORTS);
+    const mae = maeSansArmure();
+    expect(deriverPersonnage(mae).defense).toBe(11); // 10 + AGI 1
+    const r = apprendreTalentComplet(mae, "Armure d'os", SEED_SORTS);
     expect(r.capacites).toContain("Armure d'os");
-    expect(r.sorts).toHaveLength(mirabel.sorts.length); // talent pur, aucun sort
+    expect(r.sorts).toHaveLength(mae.sorts.length); // talent pur, aucun sort
     expect(deriverPersonnage(r).defense).toBe(14);
     expect(r.defense).toBe(14); // resynchronisé aussitôt (fiche + combat)
     // Désapprendre (retirer le talent + recalculer) retire le bonus.
@@ -343,20 +380,23 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("guerrier : Vivacité +3 INIT, Défense bouclier manié +1 (+2 rang 5), Robustesse +3 PV (DRS)", () => {
-    const dorain = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
-    // DRS Robustesse (R1) : PV max +rang+2 = +3 auto (16 = 10+CON 3+3), DEF 11.
-    expect(deriverPersonnage(dorain).defense).toBe(11);
-    expect(deriverPersonnage(dorain).pvMax).toBe(16);
-    expect(deriverPersonnage(dorain).initiative).toBe(11); // 10 + PER 1
-    let c = apprendreTalentComplet(dorain, "Vivacité", SEED_SORTS);
+    const thornak = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    // DRS Robustesse (R1) : PV max +rang+2 = +3 auto (16 = 10+CON 3+3) ;
+    // petit bouclier équipé sur la fiche (+1 DEF) : 10+AGI 1+1 = 12.
+    expect(deriverPersonnage(thornak).defense).toBe(11); // sans catalogue : équipement non compté
+    expect(deriverPersonnage(thornak, SEED_ITEMS).defense).toBe(12);
+    expect(deriverPersonnage(thornak).pvMax).toBe(16);
+    expect(deriverPersonnage(thornak).initiative).toBe(11); // 10 + PER 1
+    let c = apprendreTalentComplet(thornak, "Vivacité", SEED_SORTS);
     expect(deriverPersonnage(c).initiative).toBe(14);
     expect(c.initMod).toBe(4);
     c = apprendreTalentComplet(c, "Défense au bouclier", SEED_SORTS);
-    expect(c.defense).toBe(11); // talent seul, sans bouclier manié : aucun bonus
-    expect(bonusDefenseTalents(c, SEED_ITEMS, [])).toBe(0);
-    // Bouclier manié (petit bouclier +1) : +1 item et +1 talent = 13.
-    const bouclier = { itemId: "item-petit-bouclier", quantite: 1, equipe: true };
-    const arme = recalculerPersonnage({ ...c, inventaire: [...c.inventaire, bouclier] }, SEED_ITEMS);
+    // Sans bouclier manié (retiré de la fiche) : le talent seul ne donne rien.
+    const sansBouclier = { ...c, inventaire: (c.inventaire ?? []).filter((e) => e.itemId !== "item-petit-bouclier") };
+    expect(recalculerPersonnage(sansBouclier, SEED_ITEMS).defense).toBe(11);
+    expect(bonusDefenseTalents(sansBouclier, SEED_ITEMS, sansBouclier.inventaire)).toBe(0);
+    // Bouclier manié (petit bouclier de la fiche, +1) : +1 item et +1 talent = 13.
+    const arme = recalculerPersonnage(c, SEED_ITEMS);
     expect(bonusDefenseTalents(arme, SEED_ITEMS, arme.inventaire)).toBe(1);
     expect(arme.defense).toBe(13);
     // Rang 5 de la voie (Renvoi appris) : talent +2 (fiche 14).
@@ -364,7 +404,7 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     for (const t of ["Protéger un allié", "Parer un coup", "Absorber un sort", "Renvoi de sort"]) {
       r5 = apprendreTalentComplet(r5, t, SEED_SORTS);
     }
-    const arme5 = recalculerPersonnage({ ...r5, inventaire: [...r5.inventaire, bouclier] }, SEED_ITEMS);
+    const arme5 = recalculerPersonnage(r5, SEED_ITEMS);
     expect(bonusDefenseTalents(arme5, SEED_ITEMS, arme5.inventaire)).toBe(2);
     expect(arme5.defense).toBe(14);
     // Dur à cuire / Rempart : +1 chacun, cumulés au bouclier.
@@ -375,23 +415,23 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
   });
 
   it("rodeur : Éclaireur +1 DR au lieu du +1 PC, Archer +1 Init/rang, Parade/Tactiques DEF", () => {
-    const faelyn = SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!;
-    expect(deriverPersonnage(faelyn).chanceMax).toBe(3); // 3+CHA, sans Éclaireur
-    expect(deriverPersonnage(faelyn).drNombre).toBe(3); // 2+CON
-    const c = apprendreTalentComplet(faelyn, "Éclaireur", SEED_SORTS);
+    const nyssa = SEED_CHARACTERS.find((x) => x.id === "pj-rodeur-demi-elfe")!;
+    expect(deriverPersonnage(nyssa).chanceMax).toBe(3); // 3+CHA, sans Éclaireur
+    expect(deriverPersonnage(nyssa).drNombre).toBe(3); // 2+CON
+    const c = apprendreTalentComplet(nyssa, "Éclaireur", SEED_SORTS);
     expect(deriverPersonnage(c).chanceMax).toBe(2);
     expect(deriverPersonnage(c).drNombre).toBe(4);
     expect(c.ressources.chance.max).toBe(2);
     expect(c.desRecuperation?.max).toBe(4);
     // Archer émérite (R1) : +1 Init ; + Tir chirurgical + Dans le mille (R3) : +3.
-    const archer = recalculerPersonnage({ ...faelyn, capacites: ["Archer émérite", "Tir chirurgical", "Dans le mille"] });
+    const archer = recalculerPersonnage({ ...nyssa, capacites: ["Archer émérite", "Tir chirurgical", "Dans le mille"] });
     expect(deriverPersonnage(archer).initiative).toBe(15); // 10+PER(2) + rang 3
     // Parade croisée +1 (+2 avec Double peine), Tactiques +1 par rang 5.
-    const pareur = recalculerPersonnage({ ...faelyn, capacites: ["Parade croisée"] });
+    const pareur = recalculerPersonnage({ ...nyssa, capacites: ["Parade croisée"] });
     expect(pareur.defense).toBe(14); // 10+AGI(3) +1
-    const peine = recalculerPersonnage({ ...faelyn, capacites: ["Parade croisée", "Double peine"] });
+    const peine = recalculerPersonnage({ ...nyssa, capacites: ["Parade croisée", "Double peine"] });
     expect(peine.defense).toBe(15);
-    const meute = recalculerPersonnage({ ...faelyn, capacites: ["Tactiques de meute", "Flèche de mort"] });
+    const meute = recalculerPersonnage({ ...nyssa, capacites: ["Tactiques de meute", "Flèche de mort"] });
     expect(meute.defense).toBe(15); // +1 archer (Flèche R5) +1 compagnon (Tactiques, incluse)
   });
 });

@@ -10,7 +10,7 @@ import { localStorageAdapter } from "@/src/lib/store/repository";
 export function useLocalCollection<T extends { id: string }>(
   key: string,
   seed: T[],
-  opts: { persist?: boolean } = {}
+  opts: { persist?: boolean; migrer?: (items: T[]) => T[] } = {}
 ) {
   const persist = opts.persist ?? true;
   const [items, setItemsRaw] = useState<T[]>(seed);
@@ -31,8 +31,9 @@ export function useLocalCollection<T extends { id: string }>(
     const stored = localStorageAdapter.load<T[]>(key);
     // Stock existant : on ajoute les graines manquantes (nouveau contenu
     // livré par une mise à jour, ex : scénario ajouté après coup) sans
-    // toucher aux données de l’utilisateur.
-    if (stored) setItemsRaw(fusionnerSeedsManquants(stored, seed));
+    // toucher aux données de l’utilisateur, puis on applique la migration
+    // éventuelle (ex : renommage de fiches graines).
+    if (stored) setItemsRaw(preparerStock(stored, seed, opts.migrer));
     loadedRef.current = true;
     setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,7 +77,7 @@ export function useLocalCollection<T extends { id: string }>(
     if (!persist) return;
     const relire = () => {
       const stored = localStorageAdapter.load<T[]>(key);
-      if (stored) setItems(fusionnerSeedsManquants(stored, seed));
+      if (stored) setItems(preparerStock(stored, seed, opts.migrer));
     };
     const surStockage = (e: StorageEvent) => {
       if (e.key === key) relire();
@@ -92,6 +93,9 @@ export function useLocalCollection<T extends { id: string }>(
       document.removeEventListener("visibilitychange", surVisibilite);
       window.removeEventListener("focus", relire);
     };
+    // seed / migrer : constantes de module côté appelants (mêmes valeurs à
+    // chaque rendu) ; les relire ne doit pas réabonner les écouteurs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, persist, setItems]);
 
   return { items, setItems, loaded };
@@ -107,4 +111,18 @@ export function fusionnerSeedsManquants<T extends { id: string }>(stockes: T[], 
   const ids = new Set(stockes.map((x) => x.id));
   const manquants = graines.filter((g) => !ids.has(g.id));
   return manquants.length === 0 ? stockes : [...stockes, ...manquants];
+}
+
+/**
+ * Stock local -> état affiché : graines manquantes ajoutées, puis migration
+ * éventuelle de collection (ex. renommage des fiches graines, qui ne touche
+ * que les fiches encore au nom d'origine). Pure et testable.
+ */
+export function preparerStock<T extends { id: string }>(
+  stockes: T[],
+  graines: T[],
+  migrer?: (items: T[]) => T[]
+): T[] {
+  const fusion = fusionnerSeedsManquants(stockes, graines);
+  return migrer ? migrer(fusion) : fusion;
 }

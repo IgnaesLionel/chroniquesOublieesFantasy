@@ -26,6 +26,11 @@ export function getModifier(effets: ActiveEffect[], cle: string): number {
   return effets.reduce((sum, e) => sum + (e.modificateurs[cle] ?? 0), 0);
 }
 
+/** Effroi : cet effet interdit-il au porteur d'attaquer `cibleId` ? */
+export function attaqueInterdite(effets: ActiveEffect[], cibleId: string): boolean {
+  return effets.some((e) => e.interditCible === cibleId);
+}
+
 /** Libellé exact de ce que le moteur applique pour chaque clé (règles → Règles). */
 export function decrireModificateurs(mods: Record<string, number>): string[] {
   const lignes: string[] = [];

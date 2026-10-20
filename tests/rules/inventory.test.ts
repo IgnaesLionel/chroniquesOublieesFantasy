@@ -31,6 +31,15 @@ function gobelin(pv = 8): CombatParticipant {
   };
 }
 
+/**
+ * Thornak privé de son petit bouclier de graine : base « nue » des tests
+ * d'armure (la graine porte désormais le bouclier équipé, +1 DEF).
+ */
+function thornakSansBouclier(): Character {
+  const t = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+  return { ...t, inventaire: (t.inventaire ?? []).filter((e) => e.itemId !== "item-petit-bouclier") };
+}
+
 describe("inventaire, armes et sorts", () => {
   it("seeds personnages/objets valides avec inventaire COF", () => {
     for (const c of SEED_CHARACTERS) expect(() => characterSchema.parse(c)).not.toThrow();
@@ -85,15 +94,18 @@ describe("inventaire, armes et sorts", () => {
     expect(fixe?.degats).toBe("2d6");
   });
 
-  it("Mirabel (seed) arrive en combat avec ses sorts d'attaque", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const p = participantFromCharacter(mirabel, SEED_ITEMS);
+  it("Maë (seed) arrive en combat avec son sort d'attaque et son armure d'os", () => {
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const p = participantFromCharacter(mae, SEED_ITEMS);
     const ids = p.attaques.map((a) => a.id);
-    expect(ids).toContain("sort:mirabel-malediction");
-    expect(ids).toContain("sort:mirabel-saignements");
-    // Malédiction (sans DM) : jet d'attaque + effet, 0 DM.
-    expect(p.attaques.find((a) => a.id === "sort:mirabel-malediction")?.degats).toBe("1d1-1");
-    expect(p.attaques.find((a) => a.id === "sort:mirabel-saignements")?.bonus).toBe(5);
+    expect(ids).toContain("sort:mae-pied-tombe");
+    // Un pied dans la tombe : 1d4°+INT (INT 2) au niv. 1, attaque magique niv+VOL = 5.
+    const pied = p.attaques.find((a) => a.id === "sort:mae-pied-tombe");
+    expect(pied?.degats).toBe("1d4+2");
+    expect(pied?.bonus).toBe(5);
+    expect(pied?.effetTouche?.cle).toBe("ralenti");
+    // Armure d'os (talent passif) : DEF 10 + AGI 1 + 3 = 14.
+    expect(p.defense).toBe(14);
   });
 
   it("sort à carac : INT substituée dans les dégâts", () => {
@@ -120,16 +132,16 @@ describe("inventaire, armes et sorts", () => {
   });
 
   it("attaque magique capée au niveau 10", () => {
-    const mirabel = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const haut = { ...mirabel, niveau: 12 };
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const haut = { ...mae, niveau: 12 };
     const p = participantFromCharacter(haut, SEED_ITEMS);
     // 10 (cap) + VOL 4 = 14, pas 12 + 4 = 16.
-    expect(p.attaques.find((a) => a.id === "sort:mirabel-saignements")?.bonus).toBe(14);
+    expect(p.attaques.find((a) => a.id === "sort:mae-pied-tombe")?.bonus).toBe(14);
   });
 
   it("attaque de sort TOUCHÉE : dégâts appliqués, PV déduits", () => {
     const lanceur: CombatParticipant = {
-      ...guerrier(), nom: "Mirabel",
+      ...guerrier(), nom: "Maë",
       sorts: [{ id: "s", nom: "Saignements", type: "offensif", degats: "1d4", cout: { ressource: "mana", montant: 1 } }],
       attaques: [{ id: "sort:s", nom: "✦ Saignements", bonus: 5, degats: "1d4" }],
       ressources: { mana: { max: 6, actuel: 6 } },
@@ -247,7 +259,7 @@ describe("familles d'armes", () => {
   });
 
   it("armures equipees : bonus DEF (bouclier +2, mailles +4)", () => {
-    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const base = thornakSansBouclier();
     expect(deriverPersonnage(base, SEED_ITEMS).defense).toBe(11);
     const equipe = {
       ...base,
@@ -271,7 +283,7 @@ describe("familles d'armes", () => {
   });
 
   it("bouclier équipé sur la fiche -> participant avec bouclierBonus (Voie du bouclier)", () => {
-    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const base = thornakSansBouclier();
     // Petit bouclier du stock, équipé : bonus +1 détecté en combat.
     const equipe = recalculerPersonnage({
       ...base,
@@ -297,7 +309,7 @@ describe("familles d'armes", () => {
       bonusDefense: 2, mains: 0, emplacement: "torse", magique: true,
     };
     const catalogue = [...SEED_ITEMS, anneau, armureMagique];
-    const base = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
+    const base = thornakSansBouclier();
     const equipe = {
       ...base,
       inventaire: [
@@ -311,7 +323,7 @@ describe("familles d'armes", () => {
     expect(bonusDefenseMundane(equipe, catalogue)).toBe(6);
     expect(bonusDefenseMagique(equipe, catalogue)).toBe(3);
     expect(bonusDefenseInventaire(equipe, catalogue)).toBe(9);
-    // Dorain : 10 + AGI 1 + 9 = 20.
+    // Thornak : 10 + AGI 1 + 9 = 20.
     expect(deriverPersonnage(equipe, catalogue).defense).toBe(20);
     expect(recalculerPersonnage(equipe, catalogue).defense).toBe(20);
     // Non équipé : ignoré des deux côtés.

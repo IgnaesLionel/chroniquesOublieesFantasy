@@ -135,7 +135,7 @@ Utilisateurs : Éléphant, Grand Éléphant, Géant de feu, Troll, Géant des co
 
 ## Magie (Sorcier, Shaman, Momie Auguste)
 
-- Animer un cadavre : cadavre NC ≤ 2, -2 attaque/DEF/Init, non réanimable.
+- Animer un cadavre : cadavre de zombie, NC ≤ 2, -2 attaque/DEF/Init, non réanimable.
 - Injonction mortelle : 30 m, CON 15 ou 0 PV (mort si PNJ), succès → 2d6+5 (sorcier) / 2d8+10 (momie), 1x/combat/cible.
 - Vampirisation : test opposé 30 m, 2d8 DM + régénère autant ; mort à 20 m → +2×NC PV.
 - Guérison accélérée (hydres, Livre p288) : 5 PV/round sauf feu, action à cliquer.

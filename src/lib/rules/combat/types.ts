@@ -92,6 +92,12 @@ export interface CombatParticipant {
   /** Serviteur invoqué : qui l'a appelé + espèce (comptage, poussière des zombies). */
   invoque?: { par: string; espece: string };
   /**
+   * Cadavre relevé par le pouvoir « Animer un cadavre » (Sorcier, Shaman orc) :
+   * qui l'a animé. Présent = le cadavre a déjà servi : une fois vaincu à
+   * nouveau, il ne peut plus être réanimé (règle du pouvoir).
+   */
+  reanime?: { par: string };
+  /**
    * Compagnon animal : instanceId du maître (rôdeur) en combat.
    * Posé à la construction (staging ou appel) : sert à Tactiques de meute
    * (même cible même manche) et au Lien empathique. Repli historique :

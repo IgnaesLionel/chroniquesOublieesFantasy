@@ -1,12 +1,14 @@
 "use client";
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
-import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable, estAttaqueContact, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { canAct, getModifier, attaqueInterdite } from "@/src/lib/rules/effects/effects";
+import { etatLimite, sortUtilisable, estAttaqueContact, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, raisonSeuilPv, raisonExigeVivant, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { labelFamilleArme } from "@/src/lib/rules/world/types";
 import { PopupValidationMJ, type QuestionMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjFiltrerAValider } from "@/src/lib/ui/validations-mj";
+import { familleDuProfil, familleDuSort, classeFamille } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
@@ -36,6 +38,8 @@ interface Props {
 export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onDouble, onMultiArmes, onTactique, onLogMJ }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
+  /** Cible courante (badge de famille/camp à côté du libellé « Cible »). */
+  const cibleSel = participants.find((p) => p.instanceId === targetId) ?? null;
   const bloque = attacker !== null && !canAct(attacker.effets);
   const modAttaque = attacker ? getModifier(attacker.effets, "attaque") : 0;
   const [puissante, setPuissante] = useState(false);
@@ -253,8 +257,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   };
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3">
-      <h2 className="font-bold text-sm uppercase text-zinc-400">Attaque</h2>
+    <div className="rounded-lg border border-red-900 bg-zinc-900 p-4 space-y-3">
+      <h2 className="font-bold text-sm uppercase text-red-300">⚔️ Attaque</h2>
       {attacker && (() => {
         const mana = attacker.ressources["mana"];
         const selId = attackId ?? attacker.attaques[0]?.id;
@@ -295,6 +299,17 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             const lim = etatLimite(attacker, sort, targetId ?? undefined);
             if (!lim.ok && lim.raison) raisons.push(lim.raison);
           }
+          // Attaque réservée à une réserve de PV (ex. Baiser du vampire : moitié ou moins).
+          if (attaque) {
+            const r = raisonSeuilPv(attacker, attaque);
+            if (r) raisons.push(r);
+          }
+          // Attaque réservée aux créatures vivantes (ex. Vampirisation).
+          if (attaque?.exigeVivant) {
+            const cible = participants.find((p) => p.instanceId === targetId);
+            const r = raisonExigeVivant(attaque, cible);
+            if (r) raisons.push(r);
+          }
           return { cout, raisons, sort, attaque };
         };
         return (
@@ -310,8 +325,11 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
                   lettre,
                   a.degats === "1d1-1" ? "effet" : a.degats,
                   cout > 0 ? `${cout} PM` : "",
+                  sort ? (familleDuSort(sort) ?? "") : "",
                   sort?.coutPV ? `${sort.coutPV} PV` : "",
                   a.volDeVie ? "vol" : "",
+                  a.seuilPv != null ? `≤ ${Math.round(a.seuilPv * 100)} % PV` : "",
+                  a.exigeVivant ? "cible vivante" : "",
                   sort?.limiteCombat != null && !sort.limiteParCible ? `1×${sort.limiteCombat}/combat` : "",
                   sort?.limiteParCible ? "1/combat/cible" : "",
                   sort?.zone ? "zone" : "",
@@ -344,8 +362,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             );
           })()}
           {selSort && coutBase > 0 && (
-            <div className="rounded border border-zinc-800 p-2 mt-1.5 space-y-1.5 text-sm">
-              <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
+            <div className={`rounded border border-zinc-800 p-2 mt-1.5 space-y-1.5 text-sm fam-rail ${classeFamille(familleDuSort(selSort))}`}>
+              <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort <FamilleBadge famille={familleDuSort(selSort)} className="ml-1" /></div>
               <label className="flex items-center gap-2" title="Incantation classique : paie le coût en mana">
                 <input type="radio" checked={modeLancement === "mana"} onChange={() => setModeLancement("mana")} />
                 <span>Incantation ({coutEff} PM{concActive && coutEff !== coutBase ? `, concentré depuis ${coutBase}` : ""})</span>
@@ -370,7 +388,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       })()}
       {attacker && attacker.attaques.length === 0 && (
         <div className="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-2 py-1.5">
-          {attacker.nom} n'a aucune attaque : équipez une arme ci-dessous (Équipement du sac) ou sur sa fiche, puis ↻ sur sa ligne.
+          {attacker.nom} n&apos;a aucune attaque : équipez une arme ci-dessous (Équipement du sac) ou sur sa fiche, puis ↻ sur sa ligne.
         </div>
       )}
       {bloque && (
@@ -398,9 +416,10 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         </p>
       )}
       <label className="block text-sm">Cible{choixMultiples ? `s (${ciblesAffichees.length}${maxCibles != null ? `/${maxCibles}` : ""})` : ""}
+        {!choixMultiples && cibleSel && <FamilleBadge famille={cibleSel.camp === "pj" ? familleDuProfil(cibleSel.profil) : null} className="ml-2" />}
         {choixMultiples ? (
           <div className="mt-1 space-y-1 max-h-40 overflow-auto rounded border border-zinc-800 p-2">
-            {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0).map((p) => (
+            {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0 && !attaqueInterdite(attacker?.effets ?? [], p.instanceId)).map((p) => (
               <label key={p.instanceId} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
@@ -408,7 +427,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
                   disabled={!ciblesAffichees.includes(p.instanceId) && maxCibles != null && ciblesAffichees.length >= maxCibles}
                   onChange={() => basculerCible(p.instanceId)}
                 />
-                <span className="flex-1">{p.nom} — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</span>
+                <span className="flex-1">{p.nom} <FamilleBadge famille={p.camp === "pj" ? familleDuProfil(p.profil) : null} /> — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</span>
                 {attacker && p.camp !== attacker.camp && <span className="text-xs text-red-400">ennemi</span>}
               </label>
             ))}
@@ -416,7 +435,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           </div>
         ) : (
           <select value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-            {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0).map((p) => (
+            {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0 && !attaqueInterdite(attacker?.effets ?? [], p.instanceId)).map((p) => (
               <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</option>
             ))}
           </select>
@@ -424,6 +443,11 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       </label>
       {vivants.some((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") > 0) && (
         <p className="text-xs text-zinc-500">Enseveli : inciblable, masqué des cibles (MJ).</p>
+      )}
+      {attacker && vivants.some((p) => attaqueInterdite(attacker.effets, p.instanceId)) && (
+        <p className="text-xs text-amber-300/90" title="Effroi : test de SAG raté. Impossible d'attaquer la source de l'aura tant que l'effet dure.">
+          😱 Effroi : cible protégée retirée de la liste ({vivants.filter((p) => attaqueInterdite(attacker.effets, p.instanceId)).map((p) => p.nom).join(", ")}).
+        </p>
       )}
       {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair || proposeDouble || proposeCirculaire) && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">

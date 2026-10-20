@@ -18,6 +18,10 @@
 
 ## Capacités
 
+### Morsure des Ancêtres (A)
+
+Pouvoir magique : sur un test d'attaque magique réussi, la créature inflige 2d6 DM (portée 30 m, cible unique).
+
 ### Attaque en meute (Capacité)
 
 Voir transcription dans `nc-0-gobelin-de-base` : +2 en attaque si ≥2 gobelins sur la même cible.
@@ -30,3 +34,5 @@ Voir transcription dans `nc-0-gobelin-de-base` : +2 en attaque si ≥2 gobelins 
 ## Notes
 
 - Capacités communes : Soutenir, Attaque en meute.
+- App : le pouvoir « ATTAQUE MAGIQUE (A) » porte le nom **Morsure des Ancêtres** (attaque `notion-nc-1-shaman-gobelin-a1` : jet d'attaque +4, 2d6 DM, portée 30 m, cible unique). C'est un pouvoir de créature, pas un sort de personnage : aucune dépense de mana ni rang de voie — il se joue comme une attaque à distance depuis le panneau Attaque.
+- Les autres créatures gardent l'appellation générique « Attaque magique » (Shaman orc, Sorcier, Momie, Prêtre kobold « (élémentaire) »).

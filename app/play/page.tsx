@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useCharacters, useNpcs, useScenarios, useSessions } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 import { pvTexteColor } from "@/src/lib/ui/pv";
+import { classeFamille, familleDuProfil } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 import { usePlaySession } from "@/src/lib/store/usePlaySession";
 import type { PlayState } from "@/src/lib/rules/scenario/types";
 import { ensurePlayDefaults, gotoScene, startPlay } from "@/src/lib/rules/scenario/engine";
@@ -169,9 +171,9 @@ function PlayInner() {
             {session && <p className="text-xs text-zinc-500">PV partagés avec les fiches (V1).</p>}
             {membresManquants > 0 && <p className="text-xs text-amber-400">{membresManquants} personnage(s) introuvable(s) — voir Sessions.</p>}
             {groupe.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-2 text-sm py-1 border-b border-zinc-800/50">
+              <div key={c.id} className={`flex items-center justify-between gap-2 text-sm py-1 border-b border-zinc-800/50 fam-rail ${classeFamille(familleDuProfil(c.profil || c.classe))}`}>
                 <span className="flex-1">
-                  <b>{c.nom}</b> <span className={`font-mono font-bold ${pvTexteColor(c.pv, c.pvMax)}`}>{c.pv}/{c.pvMax}</span>
+                  <b>{c.nom}</b> <FamilleBadge famille={familleDuProfil(c.profil || c.classe)} className="mx-1" /> <span className={`font-mono font-bold ${pvTexteColor(c.pv, c.pvMax)}`}>{c.pv}/{c.pvMax}</span>
                   {c.pv === 0 && <span className="text-xs text-red-400 ml-1">KO</span>}
                 </span>
                 <span className="inline-flex gap-1">

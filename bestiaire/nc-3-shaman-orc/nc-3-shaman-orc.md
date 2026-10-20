@@ -23,6 +23,8 @@
 
 Transcriptions dans `nc-5-sorcier` (mêmes textes).
 
+Usage en jeu (app) : voir `nc-5-sorcier` — « Vampirisation (L) » est une attaque à vol de vie du panneau Attaque (`notion-nc-3-shaman-orc-a2` : +6, 2d8, limitée, 30 m, cible vivante) ; « Animer un cadavre » est lançable depuis le panneau Capacités et ne relève que des cadavres de **zombies** (cadavre du combat ou profil du bestiaire, NC ≤ 2, −2 attaque/DEF/Init, non réanimable). Le shaman n'a ni « Injonction mortelle » ni « Pas de l'ombre ».
+
 ## Images
 
 - `./images/img-1.webp` (profil)
@@ -32,3 +34,4 @@ Transcriptions dans `nc-5-sorcier` (mêmes textes).
 ## Notes
 
 - Capacités communes : Soutenir, Vampirisation, Animer un cadavre.
+- App : « Vampirisation (L) » `notion-nc-3-shaman-orc-a2` (+6, 2d8, action limitée, 30 m, vol de vie, cible vivante) — pouvoir de créature joué comme une attaque, aucune mana ni rang de voie ; « Animer un cadavre » lançable depuis le panneau Capacités (cadavre de zombie hors combat ou profil de zombie du bestiaire NC ≤ 2 ; relevé marqué « ☠ animé »).

@@ -174,11 +174,40 @@ json_atk("notion-nc-8-vampire", "Épée longue (2 attaques)", affiche="1d8+7")
 json_atk("notion-nc-13-vampire-ancien", "Griffes et morsures (2 attaques)", affiche="1d8+8 + 1d8 de froid + absorption d'énergie")
 json_atk("notion-nc-13-vampire-ancien", "Épée longue (2 attaques)", affiche="1d8+8 + 1d8 de froid")
 json_atk("notion-nc-1-zombie-humain", "Arme", affiche="1d6+3 (ou arme +3)")
-json_atk("notion-nc-1-shaman-gobelin", "Attaque magique", affiche="2d6 (30 m)")
+json_atk("notion-nc-1-shaman-gobelin", "Morsure des Ancêtres", affiche="2d6 (30 m)")
 json_atk("notion-nc-2-pretre-kobold", "Attaque magique (élémentaire)", affiche="3d6 (élémentaires)")
 for mid in ["notion-nc-3-shaman-orc", "notion-nc-5-sorcier", "notion-nc-10-dragon-des-forets"]:
     json_atk(mid, "Attaque magique", affiche="spécial (voir pouvoirs)")
 json_atk("notion-nc-5-sorcier", "Dague", affiche="1d4+2 +2d6 poison")
+
+# ==================================================== POUVOIRS L -> ATTAQUES (app)
+def json_add_atk(mid, atk):
+    """Ajoute une attaque à la fiche si elle n'y figure pas déjà (idempotent)."""
+    m = idx[mid]
+    if any(a["nom"] == atk["nom"] for a in m["attaques"]):
+        log.append(f"SKIP json atk +{atk['nom']} ({mid})")
+        return
+    m["attaques"].append(atk)
+    log.append(f"json atk +{atk['nom']} ({mid})")
+
+
+def vampirisation(mid, bonus):
+    """Vampirisation (L) : attaque magique à vol de vie, cible vivante (30 m)."""
+    return {"id": f"{mid}-a2", "nom": "Vampirisation (L)", "bonus": bonus,
+            "degats": "2d8", "degatsAffiche": "2d8 (30 m)",
+            "action": "limitee", "volDeVie": True, "exigeVivant": True}
+
+
+json_add_atk("notion-nc-5-sorcier", vampirisation("notion-nc-5-sorcier", 10))
+json_add_atk("notion-nc-3-shaman-orc", vampirisation("notion-nc-3-shaman-orc", 6))
+# Capacités listées sans le suffixe « (Capacité) » (transcriptions conservées
+# dans les capacités détaillées) : « Animer un cadavre » doit être reconnu par
+# le panneau Capacités (CAPACITES_USABLES, action « animer »).
+json_set("notion-nc-5-sorcier",
+         capacites=["Injonction mortelle", "Soutenir", "Vampirisation",
+                    "Animer un cadavre", "Pas de l'ombre"])
+json_set("notion-nc-3-shaman-orc",
+         capacites=["Soutenir", "Vampirisation", "Animer un cadavre"])
 # Sergent orc : nom DRS
 json_atk("notion-nc-3-sergent-orc", "Arme à deux mains", renommer="Épée à deux mains")
 md_sub("nc-3-sergent-orc", "Attaques : Arme à deux mains +7, DM 2d6+6",

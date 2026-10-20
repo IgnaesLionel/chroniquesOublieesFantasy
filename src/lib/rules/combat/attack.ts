@@ -1,5 +1,5 @@
 import { parseDiceExpression, rollDiceExpression, resoudreFormuleSort, substituerDesEvolutifs, substituerStats, dureeEffetSort, type Rng } from "@/src/lib/rules/dice/roller";
-import { canAct, createEffect, getModifier, marquerPose } from "@/src/lib/rules/effects/effects";
+import { canAct, createEffect, getModifier, marquerPose, attaqueInterdite } from "@/src/lib/rules/effects/effects";
 import { cibleEspeceAcceptee, estVivant } from "@/src/lib/rules/categories";
 import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { ARME_FAMILLES } from "@/src/lib/rules/world/types";
@@ -299,6 +299,38 @@ export function creerEffetTouche(
 }
 
 /**
+ * Attaque conditionnée par les PV du lanceur : utilisable seulement quand
+ * pv <= pvMax × seuilPv (ex. 0.5 = à la moitié des PV ou moins).
+ */
+export function seuilPvRespecte(
+  p: { pv: number; pvMax: number },
+  attaque: { seuilPv?: number }
+): boolean {
+  if (attaque.seuilPv == null) return true;
+  return p.pv <= p.pvMax * attaque.seuilPv;
+}
+
+/** Raison du blocage « seuil de PV » (null = usage autorisé). */
+export function raisonSeuilPv(
+  p: { pv: number; pvMax: number },
+  attaque: { nom: string; seuilPv?: number }
+): string | null {
+  if (seuilPvRespecte(p, attaque)) return null;
+  const pct = Math.round((attaque.seuilPv as number) * 100);
+  return `${attaque.nom} : seulement à ${pct} % des PV ou moins (${p.pv}/${p.pvMax} PV)`;
+}
+
+/** Raison du blocage « cible vivante » (null = usage autorisé). */
+export function raisonExigeVivant(
+  attaque: { nom: string; exigeVivant?: boolean },
+  cible: { nom?: string; camp?: string; categories?: string[] } | null | undefined
+): string | null {
+  if (!attaque.exigeVivant || !cible) return null;
+  if (estVivant(cible)) return null;
+  return `${attaque.nom} : cible non vivante (${cible.nom ?? "?"})`;
+}
+
+/**
  * Résout une attaque complète : limites -> coûts (mana + PV) ->
  * jet d'attaque (dé bonus/malus) -> dégâts -> PV -> effet -> vol de vie.
  * Toucher par défaut : 1d20 + bonus >= défense (les tests opposés COF sont
@@ -342,6 +374,21 @@ export function resolveAttack(
   // Enseveli : inciblable par les attaques extérieures.
   if (getModifier(cible.effets, "inciblable") > 0) {
     throw new Error(`${cible.nom} est enseveli : inciblable (MJ).`);
+  }
+  // Effroi : interdit d'attaquer la source de l'aura (test de SAG raté).
+  if (attaqueInterdite(attaquant.effets, targetId)) {
+    throw new Error(`${attaquant.nom} est sous Effroi : ne peut pas attaquer ${cible.nom} (MJ).`);
+  }
+  // Usage conditionné aux PV du lanceur (ex. Baiser du vampire : à moitié ou moins).
+  const raisonPv = raisonSeuilPv(attaquant, attaque);
+  if (raisonPv) {
+    throw new Error(`${raisonPv} (MJ).`);
+  }
+  // Cible vivante exigée (ex. Vampirisation) : refusée sur morts-vivants et
+  // construits (même règle que les sorts avec exigeVivant).
+  const raisonVivant = raisonExigeVivant(attaque, cible);
+  if (raisonVivant) {
+    throw new Error(`${raisonVivant} — capacité inapplicable (MJ).`);
   }
 
   // Coûts avant le jet (le sacrifice est perdu même en cas d'échec).
@@ -1957,6 +2004,200 @@ export function invoquer(
   return {
     state: checkEnd({ ...s, participants, log }),
     resolution: { lanceurNom: lanceur.nom, sortNom: sort.nom, invoqueNom: frais.nom, pv: frais.pv },
+  };
+}
+
+/** Malus du cadavre animé (Animer un cadavre) : -2 attaque / DEF / Initiative. */
+export const MALUS_ANIMATION = 2;
+/** NC maximal d'un cadavre animable (pouvoir « Animer un cadavre »). */
+export const NC_MAX_ANIMATION = 2;
+
+/**
+ * Un monstre est-il un zombie ? « Animer un cadavre » (Sorcier, Shaman orc) ne
+ * relève que des cadavres de zombies. Le bestiaire n'a pas de type « Zombie »
+ * dédié (type = Créature/Animal/Humanoïde ; sous-catégorie = Mort-vivant, qui
+ * couvre aussi squelettes, goules, vampires et ombres) : la famille zombie —
+ * « Zombie humain », « Zombies coriaces », « Zombie ourhible »… — se reconnaît
+ * au nom. Vaut pour un profil du bestiaire comme pour un participant.
+ */
+export function estZombie(m: { nom: string }): boolean {
+  return /zombie/i.test(m.nom);
+}
+
+/**
+ * Un profil du bestiaire est-il relevable (Animer un cadavre : zombie NC ≤ 2) ?
+ * Mêmes règles que `estCadavre`, pour le sélecteur du panneau Capacités.
+ */
+export function profilAnimable(m: { nom: string; niveau: number }): boolean {
+  return estZombie(m) && m.niveau <= NC_MAX_ANIMATION;
+}
+
+/**
+ * Cadavre animable (Animer un cadavre) : cadavre de zombie hors combat, jamais
+ * animé, de NC ≤ 2. Un PJ à 0 PV est inconscient (ko), pas un cadavre : seuls
+ * les monstres hors combat — ou un statut « mort » explicite (enseveli) —
+ * comptent. Utilisé par le moteur ET par le panneau Capacités (mêmes règles).
+ */
+export function estCadavre(
+  p: Pick<CombatParticipant, "statut" | "camp" | "niveau" | "nom"> & { reanime?: { par: string } }
+): boolean {
+  if (p.statut === "actif") return false;
+  if (p.statut !== "mort" && p.camp !== "monstre") return false;
+  if (p.reanime) return false;
+  return profilAnimable(p);
+}
+
+/** Résolution d'un « Animer un cadavre » (journal + tests). */
+export interface AnimationResolution {
+  lanceurNom: string;
+  cadavreNom: string;
+  cadavreId: string;
+  /** Malus appliqué (attaque, DEF, Init) : 2. */
+  malus: number;
+  /** PV rendus au cadavre (plafond pvMax). */
+  pv: number;
+  defense: number;
+  initiative: number | null;
+}
+
+/**
+ * Relève un combattant en cadavre animé : rejoint le camp du lanceur, PV pleins,
+ * profil conservé (attaques, caractéristiques, catégories) avec -2 en attaque,
+ * en DEF et en Initiative. Les états non permanents du vivant (poison,
+ * saignement...) ne suivent pas le cadavre (même purge que « nettoie »).
+ * `reanime` marque le cadavre : vaincu à nouveau, il ne sera pas réanimable.
+ */
+function releverCadavre(
+  base: CombatParticipant,
+  lanceur: CombatParticipant,
+  initiative: number | null
+): CombatParticipant {
+  return {
+    ...base,
+    camp: lanceur.camp,
+    pv: base.pvMax,
+    defense: base.defense - MALUS_ANIMATION,
+    initMod: base.initMod - MALUS_ANIMATION,
+    initiative,
+    attaques: base.attaques.map((a) => ({ ...a, bonus: a.bonus - MALUS_ANIMATION })),
+    effets: base.effets.filter((e) => e.toursRestants === null),
+    statut: "actif" as const,
+    reanime: { par: lanceur.instanceId },
+  };
+}
+
+/**
+ * Anime le cadavre d'un zombie hors combat (pouvoir de créature : Sorcier,
+ * Shaman orc — « Animer un cadavre » ne relève que des zombies, NC ≤ 2) : le
+ * cadavre rejoint le camp du lanceur et conserve son profil mais subit -2 en
+ * attaque, en DEF et en Initiative (il reprend le combat à son initiative
+ * courante, -2). Une fois vaincu à nouveau, il ne peut plus être réanimé
+ * (`reanime`). Aucun jet, aucune position suivie : la portée de 10 m est
+ * constatée par le MJ.
+ */
+export function animerCadavre(
+  state: CombatState,
+  lanceurId: string,
+  cadavreId: string
+): { state: CombatState; resolution: AnimationResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  const cadavre = state.participants.find((p) => p.instanceId === cadavreId);
+  if (!cadavre) throw new Error("Cadavre introuvable.");
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+  if (cadavreId === lanceurId) throw new Error(`${lanceur.nom} ne peut pas s'animer lui-même.`);
+  if (cadavre.statut === "actif") throw new Error(`${cadavre.nom} est encore en combat : il faut un cadavre (MJ).`);
+  if (cadavre.reanime) throw new Error(`Le cadavre de ${cadavre.nom} a déjà été animé : non réanimable.`);
+  if (cadavre.statut !== "mort" && cadavre.camp !== "monstre") {
+    throw new Error(`${cadavre.nom} est inconscient (PJ), pas un cadavre — MJ.`);
+  }
+  if (!estZombie(cadavre)) {
+    throw new Error(`${cadavre.nom} n'est pas un zombie : Animer un cadavre ne relève que des cadavres de zombies.`);
+  }
+  if (cadavre.niveau > NC_MAX_ANIMATION) {
+    throw new Error(`${cadavre.nom} : NC ${cadavre.niveau} > ${NC_MAX_ANIMATION} — cadavre non animable.`);
+  }
+  const initiative = cadavre.initiative != null ? cadavre.initiative - MALUS_ANIMATION : null;
+  const participants = state.participants.map((p) =>
+    p.instanceId === cadavreId ? releverCadavre(p, lanceur, initiative) : p
+  );
+  const log = [
+    ...state.log,
+    {
+      id: `anim-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+      at: stamp(),
+      manche: state.manche,
+      message: `${lanceur.nom} anime le cadavre de ${cadavre.nom} (NC ${cadavre.niveau}, -${MALUS_ANIMATION} attaque/DEF/Init, ${cadavre.pvMax} PV, Init ${initiative ?? "—"}) : il reprend le combat dans votre camp — s'il tombe à nouveau, il ne pourra plus être réanimé.`,
+    },
+  ];
+  return {
+    state: checkEnd({ ...state, participants, log }),
+    resolution: {
+      lanceurNom: lanceur.nom,
+      cadavreNom: cadavre.nom,
+      cadavreId,
+      malus: MALUS_ANIMATION,
+      pv: cadavre.pvMax,
+      defense: cadavre.defense - MALUS_ANIMATION,
+      initiative,
+    },
+  };
+}
+
+/**
+ * Variante « profil du bestiaire » du même pouvoir : le MJ relève le cadavre
+ * d'un zombie absent du combat (profil choisi, NC ≤ 2 — un corps trouvé sur
+ * place). Le serviteur entre en jeu à la fin de l'ordre (comme une invocation)
+ * et subit les mêmes -2 attaque/DEF/Init. Chaque relevé crée une nouvelle
+ * instance : la règle « non réanimable » porte sur un cadavre donné, pas sur
+ * l'espèce (le MJ décide s'il reste des corps de ce type).
+ */
+export function animerCadavreProfil(
+  state: CombatState,
+  lanceurId: string,
+  modele: MonsterTemplate
+): { state: CombatState; resolution: AnimationResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+  if (!estZombie(modele)) {
+    throw new Error(`${modele.nom} n'est pas un zombie : Animer un cadavre ne relève que des cadavres de zombies.`);
+  }
+  if (modele.niveau > NC_MAX_ANIMATION) {
+    throw new Error(`${modele.nom} : NC ${modele.niveau} > ${NC_MAX_ANIMATION} — cadavre non animable.`);
+  }
+  const [base] = monsterInstances(modele, 1);
+  const initiative = lanceur.initiative != null ? lanceur.initiative - MALUS_ANIMATION : null;
+  const frais = releverCadavre(
+    {
+      ...base,
+      instanceId: `anime-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`,
+      templateId: `anime:${modele.id}`,
+    },
+    lanceur,
+    initiative
+  );
+  const participants = [...state.participants, frais];
+  const log = [
+    ...state.log,
+    {
+      id: `anim-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+      at: stamp(),
+      manche: state.manche,
+      message: `${lanceur.nom} anime le cadavre d'un ${modele.nom} (NC ${modele.niveau}, -${MALUS_ANIMATION} attaque/DEF/Init, ${frais.pv} PV) : il entre dans votre camp à la fin de l'ordre — s'il tombe à nouveau, il ne pourra plus être réanimé.`,
+    },
+  ];
+  return {
+    state: checkEnd({ ...state, participants, log }),
+    resolution: {
+      lanceurNom: lanceur.nom,
+      cadavreNom: modele.nom,
+      cadavreId: frais.instanceId,
+      malus: MALUS_ANIMATION,
+      pv: frais.pv,
+      defense: frais.defense,
+      initiative,
+    },
   };
 }
 

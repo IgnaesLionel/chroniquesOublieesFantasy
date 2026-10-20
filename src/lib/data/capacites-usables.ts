@@ -26,8 +26,11 @@ export interface CapaciteUsable {
   montantMJ?: "soin" | "lien";
   /** Purge les états non permanents de la cible (ex: Increvable). */
   nettoie?: boolean;
-  /** Action moteur spéciale (ex: "renvoi" du Renvoi de sort, "proteger" de Protéger un allié). */
-  actionSpeciale?: "renvoi" | "proteger" | "vigueur" | "lien-empathique";
+  /**
+   * Action moteur spéciale (ex: "renvoi" du Renvoi de sort, "proteger" de Protéger un allié,
+   * "animer" du pouvoir de créature Animer un cadavre).
+   */
+  actionSpeciale?: "renvoi" | "proteger" | "vigueur" | "lien-empathique" | "animer";
   /**
    * Question posée au MJ en pop-up avant d'utiliser le talent (positions,
    * contact, jugement au cas par cas) : le moteur ne suit pas les positions.
@@ -416,6 +419,15 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     montantMJ: "lien",
     actionSpeciale: "lien-empathique",
     note: "Rôdeur (L) : télépathie + 1 PV rôdeur = 1 PV loup (2 PV avec Tactiques), sans limite. Saisir les PV dépensés.",
+  },
+  {
+    talent: "Animer un cadavre",
+    effetCle: null,
+    dureeTours: null,
+    cibles: "tous",
+    actionSpeciale: "animer",
+    questionMJ: "Le cadavre de zombie visé (cadavre du combat ou profil du bestiaire, NC ≤ 2) est-il à 10 m ou moins ?",
+    note: "Pouvoir de créature (Sorcier, Shaman orc) : ne relève que des cadavres de zombies (NC ≤ 2) — zombie hors combat déjà présent, ou profil de zombie du bestiaire déclaré mort sur place (il entre alors en jeu à la fin de l'ordre). Le cadavre conserve son profil mais subit -2 en attaque, en DEF et en Initiative ; une fois vaincu à nouveau, il ne peut plus être réanimé. Les PJ à 0 PV (inconscients) ne sont pas des cadavres.",
   },
 ];
 

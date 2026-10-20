@@ -16,6 +16,8 @@ import {
   creerPersonnage,
   talentsRang2Gratuits,
 } from "@/src/lib/rules/creation";
+import { classeFamille } from "@/src/lib/ui/famille";
+import { FamilleBadge } from "@/src/components/ui/Famille";
 
 const CARACS = ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"] as const;
 type Carac = (typeof CARACS)[number];
@@ -161,10 +163,10 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className={`bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto fam-rail ${classeFamille(famille)}`}>
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="font-bold text-lg">Nouveau personnage</h2>
+            <h2 className="font-bold text-lg">Nouveau personnage <FamilleBadge famille={famille} /></h2>
             <div className="text-xs text-zinc-400">
               Étape {etape}/5 : {["Identité", "Caractéristiques", "Peuple", "Talents", "Récapitulatif"][etape - 1]}
             </div>
@@ -196,7 +198,7 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
               </select>
             </label>
             <label className="block text-sm">
-              Famille
+              Famille <FamilleBadge famille={famille} />
               <select value={famille} onChange={(e) => changerFamille(e.target.value as FamilleCOF)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5">
                 {FAMILLES.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
@@ -299,8 +301,8 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
               {rangs1.length === 0 && <p className="text-xs text-zinc-500">Aucune capacité rang 1 pour ce profil.</p>}
             </div>
             {rangs2.length > 0 && (
-              <div className="rounded border border-violet-900 p-2.5 space-y-1">
-                <div className="text-sm font-semibold text-violet-200">Rang 2 gratuit (Voie du mage adoptée — 1 seul)</div>
+              <div className={`rounded border border-zinc-800 p-2.5 space-y-1 fam-rail ${classeFamille("Mage")}`}>
+                <div className="text-sm font-semibold fam-texte">Rang 2 gratuit (Voie du mage adoptée — 1 seul)</div>
                 {rangs2.map((c) => (
                   <label key={c.nom} className="flex items-start gap-2 text-sm">
                     <input type="checkbox" className="mt-1" checked={talents.includes(c.nom)} onChange={() => toggleTalent(c.nom)} />
@@ -321,7 +323,7 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
         {etape === 5 && (
           <div className="space-y-2 text-sm">
             <div className="rounded border border-zinc-800 p-3">
-              <div className="font-bold text-base">{nom.trim() || "Sans nom"} <span className="font-normal text-zinc-400 text-xs">{peuple} · {famille} · {profil} · Niv. 1{voieMage ? " · Voie du mage" : ""}</span></div>
+              <div className="font-bold text-base">{nom.trim() || "Sans nom"} <FamilleBadge famille={famille} /> <span className="font-normal text-zinc-400 text-xs">{peuple} · {profil} · Niv. 1{voieMage ? " · Voie du mage" : ""}</span></div>
               <div className="font-mono text-xs mt-1 flex flex-wrap gap-1.5">
                 {CARACS.map((k) => <span key={k} className="px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800">{k} <b>{caracs[k] >= 0 ? `+${caracs[k]}` : caracs[k]}</b></span>)}
               </div>
