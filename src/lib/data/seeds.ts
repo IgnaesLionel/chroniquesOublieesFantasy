@@ -27,34 +27,42 @@ export const SEED_CHARACTERS: Character[] = [
     peuple: "Humain", famille: "Mage", profil: "Sorcier",
     caracteristiques: { AGI: 1, CON: 1, FOR: -1, PER: 0, CHA: -1, INT: 2, VOL: 4 },
     idealHeroique: "Sens du sacrifice", travers: "Hautain",
-    // Voie du mage non adoptée : voie du peuple conservée (rang 1 seul).
-    traitsPeuple: ["Diversité"],
+    // Voie du mage adoptée : « Diversité » (rang 1 Humain) conservée + rang 1
+    // mage « Capacité de peuple + occultisme » — contrepartie du rang 2 gratuit.
+    traitsPeuple: ["Diversité", "Capacité de peuple + occultisme"],
+    voieMage: true,
     pvMax: 7, pv: 7, defense: 14, initMod: 0,
     defenseEquipement: 0, defenseMod: 0,
     attaques: [],
     // Création : 2 pts -> Un pied dans la tombe (Voie de l'outre-tombe R1)
-    // + Armure d'os (Voie de l'outre-tombe R2, +3 DEF passif).
-    // Voie du mage abandonnée : pas de rang 2 gratuit (donc pas de Maîtrise de
-    // la magie) — écart assumé : Armure d'os (rang 2) au niveau 1, la table
-    // DRS n'ouvrant le rang 2 qu'au niveau 2 hors gratuité Mage.
-    capacites: ["Un pied dans la tombe", "Armure d'os"],
+    // + Saignements (Voie du sang R1) ; Armure d'os (Voie de l'outre-tombe R2,
+    // +3 DEF passif) est le rang 2 gratuit de la Voie du mage, seul cas d'un
+    // rang 2 au niveau 1 (déblocage sans coût : 1 + 1 + 0 = 2 pts).
+    capacites: ["Un pied dans la tombe", "Saignements", "Armure d'os"],
     ressources: {
-      mana: { max: 5, actuel: 5 },
+      mana: { max: 6, actuel: 6 },
       chance: { max: 1, actuel: 1 },
     },
     desRecuperation: { type: "d6", max: 3, actuel: 2 },
-    effets: [], notes: "Armure d'os : +3 DEF passif (11 -> 14). Voie du mage non adoptée (Diversité seule) : écart assumé « Armure d'os : niveau 2 requis ».", exemple: false,
+    effets: [], notes: "Armure d'os : +3 DEF passif (11 -> 14). Voie du mage adoptée : Armure d'os (rang 2) débloquée au niveau 1, sans coût.", exemple: false,
     inventaire: [
       { itemId: "item-dague", quantite: 1, equipe: true },
       { itemId: "item-grimoire", quantite: 1, equipe: true },
     ],
     // Sorts lançables en combat (attaque magique = niv+VOL = 5) et en soutien.
-    // Mana = VOL (4) + sorts connus (1).
+    // Mana = VOL (4) + sorts connus (2).
     sorts: [
       {
         id: "mae-pied-tombe", nom: "Un pied dans la tombe", type: "offensif",
         voie: "Voie de l'outre-tombe", rang: 1,
         description: "Test opposé d'attaque magique (10 m, vivant) : 1d4°+INT DM, et ralenti 1 round (test CON 10).",
+        familles: ["Sorcier"],
+        cout: { ressource: "mana", montant: 1 },
+      },
+      {
+        id: "mae-saignements", nom: "Saignements", type: "offensif",
+        voie: "Voie du sang", rang: 1,
+        description: "Test d'attaque magique (10 m) diff 10+CON de la cible : 1d4° DM par round pendant INT rounds.",
         familles: ["Sorcier"],
         cout: { ressource: "mana", montant: 1 },
       },
@@ -181,28 +189,40 @@ export function avecNomsGrainesPersonnages(personnages: Character[]): Character[
 /**
  * Révisions de création des fiches graines : talents abandonnés au profit des
  * nouveaux, à la même place (ex. Nyssa : Survie -> Le loup, Voie du compagnon
- * animal), et corrections plus larges d'une création entière (ex. Maë : Voie du
- * mage abandonnée -> Malédiction/Saignements/Maîtrise de la magie sortent, Un
- * pied dans la tombe + Armure d'os entrent).
+ * animal), et corrections plus larges d'une création entière (ex. Maë :
+ * Malédiction / Saignements / Maîtrise de la magie ramenés à Un pied dans la
+ * tombe + Saignements + Armure d'os, Voie du mage et son rang 2 gratuit
+ * restaurés).
  * Même règle que les renommages : la fiche est reconnue par son id et n'est
- * corrigée que si elle possède ENCORE le talent-marqueur de l'ancienne création
- * sans avoir déjà tous les nouveaux (un travail déjà fait à la main, ou un
- * talent retiré par le MJ, n'est jamais réécrit). Les sorts des talents retirés
- * partent avec eux, les nouveaux amènent leur sort du grimoire s'il existe, et
- * les dérivés suivent (DEF, mana) sans jamais rabaisser la DEF du MJ. PV,
- * niveau, équipement et sorts gagnés en jeu sont conservés.
+ * corrigée que si elle possède ENCORE l'un des talents-marqueurs (liste : une
+ * graine a pu migrer par étapes) sans avoir déjà tous les nouveaux (un travail
+ * déjà fait à la main, ou un talent retiré par le MJ, n'est jamais réécrit).
+ * Les sorts des talents retirés partent avec eux, les nouveaux amènent leur sort
+ * du grimoire s'il existe, et les dérivés suivent (DEF, mana) sans jamais
+ * rabaisser la DEF du MJ. PV, niveau, équipement et sorts gagnés en jeu sont
+ * conservés.
  */
 const REVISIONS_GRAINES: Record<
   string,
-  { marqueur: string; retirer: string[]; ajouter: string[]; traitsPeuple?: string[]; retirerVoieMage?: boolean }
+  {
+    /** Talent de l'ancienne création encore présent (un des…) : déclencheur. */
+    marqueur: string | string[];
+    retirer: string[];
+    ajouter: string[];
+    traitsPeuple?: string[];
+    /** Adoption (true) ou abandon (false) explicite de la Voie du mage. */
+    voieMage?: boolean;
+  }
 > = {
   "pj-rodeur-demi-elfe": { marqueur: "Survie", retirer: ["Survie"], ajouter: ["Le loup"] },
   "pj-sorcier-humain": {
-    marqueur: "Saignements",
-    retirer: ["Malédiction", "Saignements", "Maîtrise de la magie"],
-    ajouter: ["Un pied dans la tombe", "Armure d'os"],
-    traitsPeuple: ["Diversité"],
-    retirerVoieMage: true,
+    // Deux états d'origine : l'ancienne création (marquée Saignements) et celle
+    // migrée sans voie du mage (marquée Armure d'os, d'où l'alerte de niveau).
+    marqueur: ["Saignements", "Armure d'os"],
+    retirer: ["Malédiction", "Maîtrise de la magie"],
+    ajouter: ["Un pied dans la tombe", "Saignements", "Armure d'os"],
+    traitsPeuple: ["Diversité", "Capacité de peuple + occultisme"],
+    voieMage: true,
   },
 };
 
@@ -214,7 +234,8 @@ export function avecRevisionsGrainesPersonnages(personnages: Character[]): Chara
     const rev = REVISIONS_GRAINES[p.id];
     if (!rev) return p;
     const capacites = p.capacites ?? [];
-    if (!capacites.some((t) => cle(t) === cle(rev.marqueur))) return p;
+    const marqueurs = Array.isArray(rev.marqueur) ? rev.marqueur : [rev.marqueur];
+    if (!capacites.some((t) => marqueurs.some((m) => cle(t) === cle(m)))) return p;
     const ajouts = rev.ajouter.filter((t) => !capacites.some((x) => cle(x) === cle(t)));
     if (ajouts.length === 0) return p;
     touche = true;
@@ -246,7 +267,7 @@ export function avecRevisionsGrainesPersonnages(personnages: Character[]): Chara
       capacites: suivantes,
       sorts,
       ...(rev.traitsPeuple ? { traitsPeuple: [...rev.traitsPeuple] } : {}),
-      ...(rev.retirerVoieMage ? { voieMage: undefined } : {}),
+      ...(rev.voieMage !== undefined ? { voieMage: rev.voieMage } : {}),
     };
     const resynchronise = recalculerPersonnage(corrige, SEED_ITEMS);
     return {

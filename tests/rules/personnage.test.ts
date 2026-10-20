@@ -81,10 +81,10 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(d.chanceMax).toBe(1);
     expect(d.drType).toBe("d6");
     expect(d.drNombre).toBe(3);
-    expect(d.manaMax).toBe(5); // VOL 4 + 1 sort connu
+    expect(d.manaMax).toBe(6); // VOL 4 + 2 sorts connus
     expect(d.attaques).toEqual({ contact: 0, distance: 2, magique: 5 });
-    expect(c.ressources.mana.max).toBe(5);
-    expect(c.capacites).toEqual(["Un pied dans la tombe", "Armure d'os"]);
+    expect(c.ressources.mana.max).toBe(6);
+    expect(c.capacites).toEqual(["Un pied dans la tombe", "Saignements", "Armure d'os"]);
     expect(verifierPersonnage(c)).toEqual([]);
   });
 
@@ -251,24 +251,20 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const custom = { ...modifie, id: "pj-custom", inventaire: [{ itemId: "item-potion", quantite: 2, equipe: false }] };
     expect(remettreAZeroPersonnage(custom).inventaire).toEqual([]);
 
-    // Voie du mage conservée si adoptée, traits restaurés avec le rang 1 mage.
+    // Voie du mage conservée si adoptée (graine Maë : voie adoptée), traits
+    // restaurés avec le rang 1 mage.
     const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    const mage = {
-      ...mae,
-      voieMage: true,
-      traitsPeuple: [...(mae.traitsPeuple ?? []), "Capacité de peuple + occultisme"],
-    };
     const m = remettreAZeroPersonnage(
-      { ...mage, niveau: 3, capacites: ["X"], sorts: [...mae.sorts], traitsPeuple: [], inventaire: [] },
+      { ...mae, niveau: 3, capacites: ["X"], sorts: [...mae.sorts], traitsPeuple: [], inventaire: [] },
       mae.inventaire
     );
     expect(m.voieMage).toBe(true);
     expect(m.traitsPeuple).toEqual(["Diversité", "Capacité de peuple + occultisme"]);
     expect(m.inventaire).toEqual(mae.inventaire);
     expect(m.ressources.mana).toEqual({ max: 4, actuel: 4 }); // VOL 4 + 0 sort
-    // Sans Voie du mage (graine Maë) : la seule voie du peuple est restaurée.
+    // Sans Voie du mage : la seule voie du peuple est restaurée.
     const sansMage = remettreAZeroPersonnage(
-      { ...mae, niveau: 3, capacites: ["X"], sorts: [], traitsPeuple: [], inventaire: [] },
+      { ...mae, voieMage: undefined, niveau: 3, capacites: ["X"], sorts: [], traitsPeuple: [], inventaire: [] },
       mae.inventaire
     );
     expect(sansMage.voieMage).toBeUndefined();

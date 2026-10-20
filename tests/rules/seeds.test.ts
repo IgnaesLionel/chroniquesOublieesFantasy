@@ -80,9 +80,9 @@ describe("Phase 1 : données personajes/monstres", () => {
     expect(migre).toMatchObject({ nom: "Nyssa", capacites: ["Le loup"] });
   });
 
-  it("révision de graine (Maë) : Voie du mage abandonnée -> Un pied dans la tombe + Armure d'os", () => {
+  it("révision de graine (Maë) : création d'origine -> Un pied + Saignements + Armure d'os, voie du mage", () => {
     const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
-    // Ancienne fiche enregistrée : Voie du mage adoptée, Malédiction + Saignements.
+    // Ancienne fiche enregistrée : Voie du mage adoptée, Malédiction + Saignements + Maîtrise.
     const ancienne: Character = {
       ...mae,
       voieMage: true,
@@ -96,16 +96,16 @@ describe("Phase 1 : données personajes/monstres", () => {
       ],
     };
     const [migre] = avecRevisionsGrainesPersonnages([ancienne]);
-    expect(migre.capacites).toEqual(["Un pied dans la tombe", "Armure d'os"]);
-    expect(migre.traitsPeuple).toEqual(["Diversité"]);
-    expect(migre.voieMage).toBeUndefined();
-    // Les sorts des talents retirés partent, celui du nouveau arrive.
-    expect(migre.sorts.map((s) => s.nom)).toEqual(["Un pied dans la tombe"]);
-    expect(migre.sorts[0].id).toBe("pj-sorcier-humain-sort-pied-tombe");
-    // Dérivés resynchronisés : Armure d'os +3 (11 -> 14), mana = VOL + 1 sort.
+    expect(migre.capacites).toEqual(["Un pied dans la tombe", "Saignements", "Armure d'os"]);
+    expect(migre.traitsPeuple).toEqual(["Diversité", "Capacité de peuple + occultisme"]);
+    expect(migre.voieMage).toBe(true);
+    // Les sorts des talents retirés partent, celui du nouveau arrive ; Saignements survit.
+    expect(migre.sorts.map((s) => s.nom)).toEqual(["Saignements", "Un pied dans la tombe"]);
+    expect(migre.sorts[1].id).toBe("pj-sorcier-humain-sort-pied-tombe");
+    // Dérivés resynchronisés : Armure d'os +3 (11 -> 14), mana = VOL + 2 sorts.
     // La réserve entamée (4) n'est pas rechargée, l'équipement reste celui du MJ.
     expect(migre.defense).toBe(14);
-    expect(migre.ressources.mana).toEqual({ max: 5, actuel: 4 });
+    expect(migre.ressources.mana).toEqual({ max: 6, actuel: 4 });
     expect(migre.inventaire).toEqual(mae.inventaire);
     // Idempotente, et graine déjà corrigée : jamais réécrite.
     expect(avecRevisionsGrainesPersonnages([migre])[0]).toBe(migre);
@@ -114,9 +114,34 @@ describe("Phase 1 : données personajes/monstres", () => {
     const [chaine] = migrerGrainesPersonnages([{ ...ancienne, nom: "Mirabel" }]);
     expect(chaine).toMatchObject({
       nom: "Maë",
-      capacites: ["Un pied dans la tombe", "Armure d'os"],
+      capacites: ["Un pied dans la tombe", "Saignements", "Armure d'os"],
       defense: 14,
     });
+  });
+
+  it("révision de graine (Maë) : étape intermédiaire sans voie du mage rattrapée", () => {
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    // Fiche déjà migrée par la révision précédente : Armure d'os SANS voie du
+    // mage (alerte « Armure d'os : niveau 2 requis ») et sans Saignements.
+    const intermediaire: Character = {
+      ...mae,
+      voieMage: undefined,
+      traitsPeuple: ["Diversité"],
+      capacites: ["Un pied dans la tombe", "Armure d'os"],
+      sorts: [mae.sorts[0]],
+      ressources: { mana: { max: 5, actuel: 5 }, chance: mae.ressources.chance },
+    };
+    const [migre] = avecRevisionsGrainesPersonnages([intermediaire]);
+    // L'ordre des talents suit l'état d'origine (cosmétique) ; le contenu est
+    // celui de la graine.
+    expect([...migre.capacites].sort()).toEqual(["Un pied dans la tombe", "Saignements", "Armure d'os"].sort());
+    expect(migre.voieMage).toBe(true);
+    expect(migre.traitsPeuple).toEqual(["Diversité", "Capacité de peuple + occultisme"]);
+    expect([...migre.sorts.map((s) => s.nom)].sort()).toEqual(["Un pied dans la tombe", "Saignements"].sort());
+    expect(migre.defense).toBe(14);
+    expect(migre.ressources.mana).toEqual({ max: 6, actuel: 5 });
+    // Idempotente.
+    expect(avecRevisionsGrainesPersonnages([migre])[0]).toBe(migre);
   });
 
   it("équipement de départ des graines : le petit bouclier manquant est posé équipé", () => {

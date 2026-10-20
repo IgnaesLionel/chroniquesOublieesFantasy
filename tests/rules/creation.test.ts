@@ -29,8 +29,9 @@ const graineMae = () => SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain"
 /**
  * Maë telle qu'avant la révision de sa graine : Voie du mage adoptée (rang 1
  * « Capacité de peuple + occultisme ») et rang 2 gratuit consommé par Maîtrise
- * de la magie. La graine a depuis abandonné la voie du mage (2 pts en Voie de
- * l'outre-tombe) : cette référence sert aux règles de création Mage.
+ * de la magie. La graine actuelle consomme plutôt le rang 2 gratuit sur Armure
+ * d'os (les 2 pts passant en Un pied dans la tombe + Saignements) ; cette
+ * référence sert aux règles de création Mage.
  */
 function maeVoieMage(): Character {
   return {
@@ -47,9 +48,9 @@ function maeVoieMage(): Character {
   };
 }
 
-/** Maë sans Armure d'os (état d'avant l'apprentissage du talent). */
+/** Maë sans Armure d'os (état d'avant la consommation du rang 2 gratuit). */
 function maeSansArmure(): Character {
-  return { ...graineMae(), capacites: ["Un pied dans la tombe"], defense: 11 };
+  return { ...graineMae(), capacites: ["Un pied dans la tombe", "Saignements"], defense: 11 };
 }
 
 describe("création niv. 1 : points de capacité (COF V2)", () => {
@@ -90,15 +91,12 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(e1.rang2Nom).toBe("Maîtrise de la magie");
     expect(e1.alertes).toEqual([]);
 
-    // Graine Maë : Voie du mage non adoptée -> plus de rang 2 gratuit. Les 2 pts
-    // passent en Voie de l'outre-tombe (Un pied dans la tombe R1 + Armure d'os R2) ;
-    // seul écart : le niveau, la table DRS n'ouvrant le rang 2 qu'au niveau 2 hors
-    // gratuité Mage (écart assumé, documenté dans la fiche).
+    // Graine Maë : Voie du mage adoptée -> rang 2 gratuit consommé par Armure
+    // d'os (seul rang 2 légal au niveau 1) ; les 2 pts passent en rang 1
+    // (Un pied dans la tombe + Saignements) : création sans aucune alerte.
     const graine = etatCreation(graineMae())!;
-    expect(graine).toMatchObject({ depense: 2, restants: 0, peupleOk: true, rang2Nom: null });
-    expect(graine.alertes).toHaveLength(1);
-    expect(graine.alertes[0]).toContain("Armure d'os");
-    expect(graine.alertes[0]).toContain("niveau 2 requis");
+    expect(graine).toMatchObject({ depense: 2, restants: 0, peupleOk: true, rang2Nom: "Armure d'os" });
+    expect(graine.alertes).toEqual([]);
 
     for (const id of ["pj-rodeur-demi-elfe", "pj-pretre-elfe-haut", "pj-guerrier-nain"]) {
       const e = etatCreation(SEED_CHARACTERS.find((x) => x.id === id)!)!;
