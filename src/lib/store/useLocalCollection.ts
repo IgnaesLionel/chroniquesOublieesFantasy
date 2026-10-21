@@ -37,7 +37,7 @@ let compteurInstances = 0;
 export function useLocalCollection<T extends { id: string }>(
   key: string,
   seed: T[],
-  opts: { persist?: boolean; migrer?: (items: T[]) => T[]; libelle?: string } = {}
+  opts: { persist?: boolean; migrer?: (items: T[]) => T[]; libelle?: string; protegerPv?: boolean } = {}
 ) {
   const persist = opts.persist ?? true;
   const [items, setItemsRaw] = useState<T[]>(seed);
@@ -107,8 +107,11 @@ export function useLocalCollection<T extends { id: string }>(
     if (persist && loaded) {
       // items === seed : l'état n'a jamais reçu de stock — cette écriture est
       // une CHUTE SUR LES GRAINES, à signaler sans ambiguïté dans la chrono.
+      // protegerPv : l'écriture automatique ne doit jamais changer les PV par
+      // rapport au stockage (seules les actions utilisateur le peuvent) — une
+      // divergence est un tampon stale, bloquée et épinglée par le dépôt.
       avecInstance(libelle, () =>
-        localStorageAdapter.save(key, items, { retourAuxGraines: items === seed })
+        localStorageAdapter.save(key, items, { retourAuxGraines: items === seed, protegerPv: opts.protegerPv })
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

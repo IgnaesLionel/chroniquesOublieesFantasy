@@ -24,6 +24,9 @@ export function useCharacters(qui?: string) {
   return useLocalCollection<Character>(STORAGE_KEYS.characters, SEED_CHARACTERS, {
     migrer: migrerGrainesPersonnages,
     libelle: qui,
+    // Garde PV : une écriture automatique (effet) ne remonte jamais les PV
+    // par-dessus le stockage — seul un soin/repaire utilisateur le peut.
+    protegerPv: true,
   });
 }
 

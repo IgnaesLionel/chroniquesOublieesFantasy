@@ -6,7 +6,7 @@ import { codeInterne, installerSurveillanceStockage, type MutationStockage } fro
 
 export interface StorageAdapter {
   load<T>(key: string): T | null;
-  save<T>(key: string, value: T, opts?: { retourAuxGraines?: boolean }): void;
+  save<T>(key: string, value: T, opts?: { retourAuxGraines?: boolean; protegerPv?: boolean }): void;
 }
 
 // Chronologie des accès au stockage (diagnostic) : lectures ET écritures
@@ -31,7 +31,7 @@ const TRACES_MAX = 150;
 
 /** Une trace qui raconte un accident : on ne la laisse jamais chuter du haut. */
 function estAnomalie(detail: string): boolean {
-  return /VIDE|JSON INVALIDE|ERREUR|illisible|EXTERNE|RETOUR AUX GRAINES|SUPPRIMÉE/.test(detail);
+  return /VIDE|JSON INVALIDE|ERREUR|illisible|EXTERNE|RETOUR AUX GRAINES|SUPPRIMÉE|BLOQUÉE/.test(detail);
 }
 
 /** Clé sessionStorage (par onglet) où la chrono est miroirée pour survivre au F5. */
@@ -259,6 +259,35 @@ function noterMutationExt(m: MutationStockage): void {
   });
 }
 
+type FichePv = { id: string; nom?: string; pv?: unknown; pvMax?: unknown };
+
+/**
+ * Écarts PV entre le stockage et un tampon (même id, même pvMax) — ex. « Maë 3→7 ».
+ * L'effet de sauvegarde AUTOMATIQUE du hook ne doit JAMAIS changer les PV par
+ * rapport au stockage : seules les actions utilisateur (mutateur, écriture
+ * synchrone dans le gestionnaire) les font varier. Un tampon mémoire périmé
+ * qui réécrirait « plein vie » par-dessus des dégâts venait d'un état stale —
+ * c'est exactement la signature du bug « PV revenus après Terminer », que la
+ * garde bloque ici en le nommant.
+ */
+export function ecartsPv(stocks: unknown, tampon: unknown): string[] {
+  if (!Array.isArray(stocks) || !Array.isArray(tampon)) return [];
+  const parId = new Map<string, FichePv>();
+  for (const f of stocks) {
+    if (f && typeof (f as FichePv).id === "string") parId.set((f as FichePv).id, f as FichePv);
+  }
+  const ecarts: string[] = [];
+  for (const fiche of tampon as FichePv[]) {
+    if (!fiche || typeof fiche.id !== "string") continue;
+    const s = parId.get(fiche.id);
+    if (!s) continue;
+    if (typeof fiche.pv !== "number" || typeof s.pv !== "number") continue;
+    if (fiche.pvMax !== s.pvMax) continue; // changement de max : recalcul légitime
+    if (fiche.pv !== s.pv) ecarts.push(`${fiche.nom ?? fiche.id} ${s.pv}→${fiche.pv}`);
+  }
+  return ecarts;
+}
+
 export const localStorageAdapter: StorageAdapter = {
   load<T>(key: string): T | null {
     if (typeof window === "undefined") return null;
@@ -304,6 +333,43 @@ export const localStorageAdapter: StorageAdapter = {
   save(key, value, opts) {
     if (typeof window === "undefined") return;
     const json = JSON.stringify(value);
+    // Garde PV (opt-in personnages) : l'écriture AUTOMATIQUE de l'effet de
+    // sauvegarde ne doit jamais changer les PV par rapport au stockage. Une
+    // divergence est un tampon mémoire périmé (« plein vie » réécrit par-dessus
+    // des dégâts) : on bloque l'écriture, on épingle la preuve avec la pile
+    // appelante, puis l'écran est resynchronisé depuis le stockage intact via
+    // un événement storage synthétique (même mécanisme tracé que la
+    // réconciliation IndexedDB).
+    if (opts?.protegerPv) {
+      let stocke: unknown = null;
+      try {
+        const brut = window.localStorage.getItem(key);
+        stocke = brut ? JSON.parse(brut) : null;
+      } catch {
+        stocke = null; // Stockage illisible : l'écriture joue son rôle de récupération.
+      }
+      const ecarts = ecartsPv(stocke, value);
+      if (ecarts.length > 0) {
+        const appel = examinerAppel();
+        noterTrace({
+          h: new Date().toTimeString().slice(0, 8),
+          type: "evenement",
+          cle: key,
+          origine: nommer(appel.origine),
+          detail: `📌 ÉCRITURE AUTOMATIQUE BLOQUÉE — PV divergents : ${ecarts.join(" · ")}`,
+          raw: appel.raw.slice(0, 900),
+        });
+        try {
+          const intact = window.localStorage.getItem(key);
+          window.dispatchEvent(
+            new StorageEvent("storage", { key, newValue: intact })
+          );
+        } catch {
+          // Sans événement, l'écran convergera au prochain focus/visibilité.
+        }
+        return;
+      }
+    }
     // Ce qui était EN STOCKAGE avant cette écriture : la question décisive du
     // bug « plein vie après Terminer » est de savoir si la clé était vide au
     // moment de l'écriture (chute sur les graines) ou contenait déjà les PV

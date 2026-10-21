@@ -82,12 +82,29 @@ export default function CharactersPage() {
       chronoBrute.length === 0
         ? "aucune"
         : chronoBrute
-            .map(
-              (t) =>
-                `${t.h} ${
-                  t.type === "ecriture" ? "✍" : t.type === "lecture" ? "📥" : "🔔"
-                }${t.epingle ? "📌" : ""} ${t.origine} → ${t.detail.slice(0, 200)}`
-            )
+            .map((t) => {
+              // Queue de la pile d'appel des ÉCRITURES : si un tampon périmé est
+              // réécrit un jour, l'encart nomme le fichier/ligne coupable sans
+              // ouvrir la console (la preuve doit survivre au réflexe « F5 et
+              // je recopie l'encart »).
+              const pile =
+                t.type === "ecriture" && t.raw
+                  ? ` ⌖ ${t.raw
+                      .split("|")
+                      .map((l) => l.trim())
+                      .filter(
+                        (l) =>
+                          l.startsWith("at ") &&
+                          !/examinerAppel|avecInstance|Object\.(save|load)/.test(l)
+                      )
+                      .slice(0, 2)
+                      .join(" ← ")
+                      .slice(0, 150)}`
+                  : "";
+              return `${t.h} ${
+                t.type === "ecriture" ? "✍" : t.type === "lecture" ? "📥" : "🔔"
+              }${t.epingle ? "📌" : ""} ${t.origine} → ${t.detail.slice(0, 200)}${pile}`;
+            })
             .join("\n");
     const hote = window.location.host;
     const actifs = instancesDe(STORAGE_KEYS.characters);
