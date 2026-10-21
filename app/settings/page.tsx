@@ -11,6 +11,7 @@ import {
   type CollectionName,
   type ImportReport,
 } from "@/src/lib/store/backup";
+import { effacerMiroirs } from "@/src/lib/store/miroir";
 import { useCharacters, useMonsters, useNpcs, useScenarios, useSessions, useSorts } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 
@@ -149,6 +150,9 @@ export default function SettingsPage() {
           onClick={() => {
             if (!confirm("Tout effacer ? Les personnages et sessions reviendront aux graines au prochain refresh.")) return;
             (Object.values(STORAGE_KEYS) as string[]).forEach((k) => window.localStorage.removeItem(k));
+            // Les miroirs (sessionStorage + IndexedDB) partent aussi : un reset
+            // délibéré ne doit jamais être « ressuscité » par la réconciliation.
+            effacerMiroirs();
             window.location.reload();
           }}
           className="px-4 py-2 rounded bg-zinc-800 text-sm hover:bg-red-900"

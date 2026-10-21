@@ -1,6 +1,15 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { noterEvenementStockage, noterResync, localStorageAdapter } from "@/src/lib/store/repository";
+import { demarrerReconciliation } from "@/src/lib/store/miroir";
+import { STORAGE_KEYS } from "@/src/lib/store/backup";
+import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
+
+// Réconciliation IndexedDB : démarrée une fois par document (si localStorage a
+// été vidé par une autre application de l'origine, la sauvegarde miroir le
+// ramène ; les écrans montés sont resynchronisés par l'événement storage
+// synthétique de la réconciliation).
+let reconciliationDemarree = false;
 
 // Collection avec seed initial.
 // persist (défaut true) : lue/écrite en localStorage.
@@ -27,6 +36,10 @@ export function useLocalCollection<T extends { id: string }>(
       loadedRef.current = true;
       setLoaded(true);
       return;
+    }
+    if (!reconciliationDemarree) {
+      reconciliationDemarree = true;
+      demarrerReconciliation({ [STORAGE_KEYS.characters]: SEED_CHARACTERS });
     }
     const stored = localStorageAdapter.load<T[]>(key);
     // Stock existant : on ajoute les graines manquantes (nouveau contenu

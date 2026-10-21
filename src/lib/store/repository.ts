@@ -1,3 +1,5 @@
+import { miroirSauver, miroirSessionLire } from "@/src/lib/store/miroir";
+
 // Pattern Repository : l'UI ne parle qu'à StorageAdapter.
 // Aujourd'hui localStorage, demain SQLite/Postgres sans changer l'UI.
 
@@ -159,13 +161,26 @@ export const localStorageAdapter: StorageAdapter = {
     let detail = "";
     let valeur: T | null = null;
     try {
-      const raw = window.localStorage.getItem(key);
+      let raw = window.localStorage.getItem(key);
+      let restaure = false;
+      if (!raw) {
+        // Effacement externe possible (une AUTRE application partageant
+        // l'origine a vidé localStorage) : le miroir d'onglet (sessionStorage)
+        // survit à un localStorage.clear() → restauration immédiate, tracée,
+        // avant que les graines ne prennent le relais.
+        const miroir = miroirSessionLire(key);
+        if (miroir) {
+          window.localStorage.setItem(key, miroir);
+          raw = miroir;
+          restaure = true;
+        }
+      }
       if (!raw) {
         detail = "VIDE — clé absente";
       } else {
         try {
           valeur = JSON.parse(raw) as T;
-          detail = `${resumeValeur(valeur)} (${raw.length} car.)`;
+          detail = `${restaure ? "RESTAURÉ (miroir onglet) — " : ""}${resumeValeur(valeur)} (${raw.length} car.)`;
         } catch {
           detail = `JSON INVALIDE (${raw.length} car.) début : ${raw.slice(0, 60)}`;
         }
@@ -186,6 +201,9 @@ export const localStorageAdapter: StorageAdapter = {
     if (typeof window === "undefined") return;
     const json = JSON.stringify(value);
     window.localStorage.setItem(key, json);
+    // Miroirs (onglet + IndexedDB) : imperméables à un localStorage.clear()
+    // venant d'une autre application de la même origine.
+    miroirSauver(key, json);
     const appel = examinerAppel();
     noterTrace({
       h: new Date().toTimeString().slice(0, 8),
