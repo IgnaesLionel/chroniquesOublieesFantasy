@@ -156,12 +156,40 @@ export default function CombatPage() {
     } catch {
       ecritureOk = false;
     }
+    // Vérification par relecture aussitôt l'écriture faite : si le stockage
+    // ne contient pas exactement ce qui vient d'être écrit, c'est qu'une autre
+    // écriture l'a écrasé dans la foulée (ou que le stockage est illisible) —
+    // l'écart est alors affiché au lieu d'être subi en silence plus loin.
+    let verification = "";
+    try {
+      const relu = localStorageAdapter.load<Character[]>(STORAGE_KEYS.characters);
+      if (!relu) {
+        verification = " — ⚠ RELECTURE : stockage vide ou illisible juste après l'écriture";
+      } else {
+        const pjs = next.filter((c) =>
+          combat.participants.some((x) => x.camp === "pj" && x.templateId === c.id)
+        );
+        const ecarts = pjs
+          .map((c) => {
+            const r = relu.find((x) => x.id === c.id);
+            if (r && r.pv !== c.pv) return `${c.nom} : écrit ${c.pv}, relu ${r.pv}`;
+            return null;
+          })
+          .filter((x): x is string => x != null);
+        verification =
+          ecarts.length > 0
+            ? ` — ⚠ RELECTURE CONTRADICTOIRE (${ecarts.join(" ; ")}) — signalez ceci au dev`
+            : ` — ✅ relecture OK (${location.host})`;
+      }
+    } catch {
+      verification = " — ⚠ RELECTURE impossible (exception)";
+    }
     setCombat(null);
     setLast(null);
     setLastAttaque(null);
     setTermineMessage(
       lignes.length > 0
-        ? `Résultats appliqués aux fiches — ${lignes.join(" · ")}${ecritureOk ? "" : " — ⚠ écriture locale IMPOSSIBLE (stockage navigateur indisponible ou plein) : les fiches n'ont pas été persistées."}`
+        ? `Résultats appliqués aux fiches — ${lignes.join(" · ")}${ecritureOk ? verification : " — ⚠ écriture locale IMPOSSIBLE (stockage navigateur indisponible ou plein) : les fiches n'ont pas été persistées."}`
         : "Aucun PJ lié à une fiche — rien écrit."
     );
   };
