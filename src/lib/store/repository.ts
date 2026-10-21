@@ -19,9 +19,25 @@ export function lireTracesEcritures(cle?: string): TraceEcriture[] {
   return cle ? tracesEcritures.filter((t) => t.cle === cle) : [...tracesEcritures];
 }
 
+// Trace de LECTURE : chaque load note le résultat (vide / JSON invalide avec
+// son début / ok avec le nombre d'éléments). Si un chargement renvoie « vide »
+// alors que l'écriture précédente était bonne, c'est la preuve que la clé a
+// été supprimée ou corrompue entre les deux — les graines full vie prennent
+// alors le relais au ré-écriture suivante.
+export type TraceLecture = { h: string; cle: string; resultat: string; origine: string };
+
+const LECTURES_MAX = 12;
+const tracesLectures: TraceLecture[] = [];
+
+/** Dernières lectures tracées (la plus récente en fin), filtrées par clé. */
+export function lireTracesLectures(cle?: string): TraceLecture[] {
+  return cle ? tracesLectures.filter((t) => t.cle === cle) : [...tracesLectures];
+}
+
 // Diagnostic console : __cofTraces() liste les écritures (avec stack brut).
 if (typeof window !== "undefined") {
   (window as unknown as Record<string, unknown>).__cofTraces = lireTracesEcritures;
+  (window as unknown as Record<string, unknown>).__cofLectures = lireTracesLectures;
 }
 
 /** Fichier appelant (hors couche stockage), ex : « combat/terminer ».
@@ -38,7 +54,7 @@ function examinerAppel(): { origine: string; raw: string } {
     for (const ligne of lignes.slice(1)) {
       const m = ligne.match(/^\s*at\s+([^(]+?)\s*\(/);
       const fn = (m ? m[1] : ligne.replace(/^\s*at\s+/, "").split(" ")[0]).trim();
-      if (fn === "examinerAppel" || fn === "Object.save") continue;
+      if (fn === "examinerAppel" || fn === "Object.save" || fn === "Object.load") continue;
       if (fn.includes("useLocalCollection")) {
         hookVu = fn.includes("useEffect")
           ? "useLocalCollection (effet)"
@@ -71,12 +87,29 @@ function resumeValeur(value: unknown): string {
 export const localStorageAdapter: StorageAdapter = {
   load<T>(key: string): T | null {
     if (typeof window === "undefined") return null;
+    const h = new Date().toTimeString().slice(0, 8);
+    let resultat = "";
+    let valeur: T | null = null;
     try {
       const raw = window.localStorage.getItem(key);
-      return raw ? (JSON.parse(raw) as T) : null;
-    } catch {
-      return null;
+      if (!raw) {
+        resultat = "VIDE — clé absente";
+      } else {
+        try {
+          valeur = JSON.parse(raw) as T;
+          resultat = Array.isArray(valeur)
+            ? `${valeur.length} él. (${raw.length} car.)`
+            : `ok (${raw.length} car.)`;
+        } catch {
+          resultat = `JSON INVALIDE (${raw.length} car.) début : ${raw.slice(0, 60)}`;
+        }
+      }
+    } catch (e) {
+      resultat = `ERREUR getItem : ${e instanceof Error ? e.message : "?"}`;
     }
+    tracesLectures.push({ h, cle: key, resultat, origine: examinerAppel().origine });
+    if (tracesLectures.length > LECTURES_MAX) tracesLectures.splice(0, tracesLectures.length - LECTURES_MAX);
+    return valeur;
   },
   save(key, value) {
     if (typeof window === "undefined") return;
