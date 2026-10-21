@@ -23,6 +23,8 @@ export type Trace = {
 };
 
 const TRACES_MAX = 60;
+/** Clé sessionStorage (par onglet) où la chrono est miroirée pour survivre au F5. */
+const SESSION_TRACES = "cof.traces.chrono";
 const traces: Trace[] = [];
 let seqTrace = 0;
 
@@ -31,6 +33,33 @@ const heure = () => new Date().toTimeString().slice(0, 8);
 function noterTrace(t: Omit<Trace, "seq">): void {
   traces.push({ seq: seqTrace++, ...t });
   if (traces.length > TRACES_MAX) traces.splice(0, traces.length - TRACES_MAX);
+  // Miroir sessionStorage : les tampons en mémoire meurent au F5, or le
+  // réflexe « F5 pour vérifier » est exactement ce qui effacerait la preuve
+  // au moment où elle apparaît. sessionStorage est par onglet : chaque
+  // onglet garde sa propre chronologie, sans croiser les onglets.
+  try {
+    sessionStorage.setItem(SESSION_TRACES, JSON.stringify(traces));
+  } catch {
+    // Stockage de session indisponible : la chrono vit au moins le document.
+  }
+}
+
+// Hydration après rechargement (F5) : on reprend la chronologie de ce même
+// onglet, pour ne rien perdre entre l'apparition du bug et la copie de
+// l'encart — y compris les opérations d'avant le rechargement.
+if (typeof window !== "undefined") {
+  try {
+    const brut = sessionStorage.getItem(SESSION_TRACES);
+    if (brut) {
+      const anciennes = JSON.parse(brut) as Trace[];
+      if (Array.isArray(anciennes) && anciennes.length > 0) {
+        traces.push(...anciennes.slice(-TRACES_MAX));
+        seqTrace = Math.max(...anciennes.map((t) => t.seq), seqTrace) + 1;
+      }
+    }
+  } catch {
+    // Absente ou illisible : on repart d'une chrono vide.
+  }
 }
 
 /** Chronologie complète des traces (la plus récente en fin), filtres optionnels. */
