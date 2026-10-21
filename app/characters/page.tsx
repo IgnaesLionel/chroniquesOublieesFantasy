@@ -1,9 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { useCharacters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
-import { exportJson, localStorageAdapter } from "@/src/lib/store/repository";
+import { exportJson, localStorageAdapter, lireTracesEcritures } from "@/src/lib/store/repository";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
 import { classeFamille } from "@/src/lib/ui/famille";
@@ -56,6 +56,38 @@ export default function CharactersPage() {
 
   // Normalise les vieilles sauvegardes v2 (stats -> caracteristiques) pour l'affichage.
   const items = useMemo(() => raw.map((c) => normaliserPersonnage(c as unknown as Record<string, unknown>)), [raw]);
+
+  // Témoin de diagnostic « combat terminé puis vieux PV » : affiche côte à
+  // côte ce que dit le stockage, ce que la page affiche, et la dernière
+  // écriture tracée (heure + fichier appelant). S'exécute après chaque rendu
+  // (sans dépendances) mais ne provoque pas de boucle : l'état n'est mis à
+  // jour que s'il differe vraiment.
+  const [diag, setDiag] = useState<{ stockage: string; memoire: string; ecriture: string; hote: string } | null>(null);
+  useEffect(() => {
+    const resume = (liste: Character[]) => liste.map((c) => `${c.nom} ${c.pv}/${c.pvMax}`).join(" · ") || "vide";
+    let stockage = "clé absente / illisible";
+    try {
+      const brut = localStorageAdapter.load<Character[]>(STORAGE_KEYS.characters);
+      if (brut) stockage = resume(brut);
+    } catch {
+      stockage = "erreur de lecture";
+    }
+    const memoire = resume(items);
+    const traces = lireTracesEcritures(STORAGE_KEYS.characters);
+    const ecriture =
+      traces.length === 0
+        ? "aucune depuis le chargement de la page"
+        : traces
+            .slice(-5)
+            .map((t) => `${t.h} ${t.origine} → ${t.resume.slice(0, 110)}`)
+            .join("\n");
+    const hote = window.location.host;
+    setDiag((p) =>
+      p && p.stockage === stockage && p.memoire === memoire && p.ecriture === ecriture && p.hote === hote
+        ? p
+        : { stockage, memoire, ecriture, hote }
+    );
+  });
 
   const patch = (id: string, fn: (c: Character) => Character) =>
     setItems((prev) => prev.map((c) => (c.id === id ? fn(normaliserPersonnage(c as unknown as Record<string, unknown>)) : c)));
@@ -333,6 +365,12 @@ export default function CharactersPage() {
           <button onClick={reset} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Réinitialiser</button>
         </div>
       </div>
+      {/* Témoin diagnostic (voir plus haut) : lignes à recopier au dev. */}
+      <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
+        🔎 Stockage : {diag?.stockage ?? "…"}<br />
+        🖥 Affiché : {diag?.memoire ?? "…"}<br />
+        ✍ Écritures : <span className="whitespace-pre-line">{diag?.ecriture ?? "…"}</span> — {diag?.hote ?? ""}
+      </p>
       <p className="text-xs text-zinc-500">
         COF Fantasy : INIT 10+PER · DEF 10+AGI+Équip+Mod · Vigueur Combattant 10+CON / Aventurier 8+CON / Mystique 8+CON / Mage 6+CON ·
         Chance 2+CHA (3+CHA Aventurier) · DR d10 Combattant / d8 Aventurier / d8+1 Mystique / d6 Mage, nombre 2+CON (+1 Mystique) ·
