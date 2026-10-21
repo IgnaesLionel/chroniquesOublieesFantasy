@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { useCharacters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
-import { exportJson, localStorageAdapter, lireTracesEcritures, lireTracesLectures } from "@/src/lib/store/repository";
+import { exportJson, localStorageAdapter, lireTraces } from "@/src/lib/store/repository";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
 import { classeFamille } from "@/src/lib/ui/famille";
@@ -62,7 +62,7 @@ export default function CharactersPage() {
   // écriture tracée (heure + fichier appelant). S'exécute après chaque rendu
   // (sans dépendances) mais ne provoque pas de boucle : l'état n'est mis à
   // jour que s'il differe vraiment.
-  const [diag, setDiag] = useState<{ stockage: string; memoire: string; ecriture: string; lectures: string; hote: string } | null>(null);
+  const [diag, setDiag] = useState<{ stockage: string; memoire: string; chrono: string; hote: string } | null>(null);
   useEffect(() => {
     const resume = (liste: Character[]) => liste.map((c) => `${c.nom} ${c.pv}/${c.pvMax}`).join(" · ") || "vide";
     let stockage = "clé absente / illisible";
@@ -75,29 +75,23 @@ export default function CharactersPage() {
       stockage = "erreur de lecture";
     }
     const memoire = resume(items);
-    const traces = lireTracesEcritures(STORAGE_KEYS.characters);
-    const ecriture =
-      traces.length === 0
-        ? "aucune depuis le chargement de la page"
-        : traces
-            .slice(-5)
-            .map((t) => `${t.h} ${t.origine} → ${t.resume.slice(0, 110)}`)
+    const chronoBrute = lireTraces(STORAGE_KEYS.characters).slice(-10);
+    const chrono =
+      chronoBrute.length === 0
+        ? "aucune"
+        : chronoBrute
+            .map(
+              (t) =>
+                `${t.h} ${
+                  t.type === "ecriture" ? "✍" : t.type === "lecture" ? "📥" : "🔔"
+                } ${t.origine} → ${t.detail.slice(0, 130)}`
+            )
             .join("\n");
     const hote = window.location.host;
-    const lecturesBrutes = lireTracesLectures(STORAGE_KEYS.characters).slice(-4);
-    const lectures =
-      lecturesBrutes.length === 0
-        ? "aucune"
-        : lecturesBrutes.map((l) => `${l.h} ${l.origine} → ${l.resultat}`).join("\n");
     setDiag((p) =>
-      p &&
-      p.stockage === stockage &&
-      p.memoire === memoire &&
-      p.ecriture === ecriture &&
-      p.lectures === lectures &&
-      p.hote === hote
+      p && p.stockage === stockage && p.memoire === memoire && p.chrono === chrono && p.hote === hote
         ? p
-        : { stockage, memoire, ecriture, lectures, hote }
+        : { stockage, memoire, chrono, hote }
     );
   });
 
@@ -381,8 +375,7 @@ export default function CharactersPage() {
       <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
         🔎 Stockage : {diag?.stockage ?? "…"}<br />
         🖥 Affiché : {diag?.memoire ?? "…"}<br />
-        ✍ Écritures : <span className="whitespace-pre-line">{diag?.ecriture ?? "…"}</span><br />
-        📬 Chargements : <span className="whitespace-pre-line">{diag?.lectures ?? "…"}</span> — {diag?.hote ?? ""}
+        ✍ écriture · 📥 lecture · 🔔 autre onglet — Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
       </p>
       <p className="text-xs text-zinc-500">
         COF Fantasy : INIT 10+PER · DEF 10+AGI+Équip+Mod · Vigueur Combattant 10+CON / Aventurier 8+CON / Mystique 8+CON / Mage 6+CON ·

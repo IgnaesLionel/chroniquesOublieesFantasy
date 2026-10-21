@@ -6,37 +6,77 @@ export interface StorageAdapter {
   save<T>(key: string, value: T): void;
 }
 
-// Trace d'écriture (diagnostic) : chaque save note heure, clé, origine
-// appelante et un résumé du contenu. Sert à repérer QUI réécrit une valeur
-// déjà vérifiée (bug « combat terminé puis fiches à l'ancien état »).
-export type TraceEcriture = { h: string; cle: string; origine: string; resume: string; raw?: string };
+// Chronologie des accès au stockage (diagnostic) : lectures ET écritures
+// mélangées dans l'ordre réel (seq incrémenté), avec heure, origine appelante
+// et détail complet (PV des fiches + taille en caractères). Permet de
+// reconstituer exactement ce que chaque accès a lu, dans quel ordre, et lequel
+// a écrit par-dessus — sans quoi les deux tampons séparés laissent l'ordre
+// lecture/écriture introuvable.
+export type Trace = {
+  seq: number;
+  h: string;
+  type: "lecture" | "ecriture" | "evenement";
+  cle: string;
+  origine: string;
+  detail: string;
+  raw?: string;
+};
 
-const TRACES_MAX = 30;
-const tracesEcritures: TraceEcriture[] = [];
+const TRACES_MAX = 60;
+const traces: Trace[] = [];
+let seqTrace = 0;
 
-/** Dernières écritures tracées (la plus récente en fin), filtrées par clé. */
-export function lireTracesEcritures(cle?: string): TraceEcriture[] {
-  return cle ? tracesEcritures.filter((t) => t.cle === cle) : [...tracesEcritures];
+const heure = () => new Date().toTimeString().slice(0, 8);
+
+function noterTrace(t: Omit<Trace, "seq">): void {
+  traces.push({ seq: seqTrace++, ...t });
+  if (traces.length > TRACES_MAX) traces.splice(0, traces.length - TRACES_MAX);
 }
 
-// Trace de LECTURE : chaque load note le résultat (vide / JSON invalide avec
-// son début / ok avec le nombre d'éléments). Si un chargement renvoie « vide »
-// alors que l'écriture précédente était bonne, c'est la preuve que la clé a
-// été supprimée ou corrompue entre les deux — les graines full vie prennent
-// alors le relais au ré-écriture suivante.
-export type TraceLecture = { h: string; cle: string; resultat: string; origine: string };
-
-const LECTURES_MAX = 12;
-const tracesLectures: TraceLecture[] = [];
-
-/** Dernières lectures tracées (la plus récente en fin), filtrées par clé. */
-export function lireTracesLectures(cle?: string): TraceLecture[] {
-  return cle ? tracesLectures.filter((t) => t.cle === cle) : [...tracesLectures];
+/** Chronologie complète des traces (la plus récente en fin), filtres optionnels. */
+export function lireTraces(cle?: string, type?: Trace["type"]): Trace[] {
+  return traces.filter((t) => (!cle || t.cle === cle) && (!type || t.type === type));
 }
 
-// Diagnostic console : __cofTraces() liste les écritures (avec stack brut).
+/** Écritures tracées (lecture simple pour l'encart). */
+export function lireTracesEcritures(cle?: string): Trace[] {
+  return lireTraces(cle, "ecriture");
+}
+
+/** Lectures tracées (lecture simple pour l'encart). */
+export function lireTracesLectures(cle?: string): Trace[] {
+  return lireTraces(cle, "lecture");
+}
+
+/**
+ * Marque la réception d'un événement `storage` (une AUTRE écriture, faite par
+ * un autre onglet/fenêtre, vient d'être détectée ici) avec le contenu reçu.
+ * C'est le seul accès qui n'apparaît jamais dans la chrono des lectures et
+ * écritures locales — or c'est exactement celui qui peut tout expliquer.
+ */
+export function noterEvenementStockage(cle: string, newValue: string | null): void {
+  let detail: string;
+  if (newValue === null) {
+    detail = "clé SUPPRIMÉE par un autre onglet";
+  } else {
+    try {
+      detail = `autre onglet a écrit : ${resumeValeur(JSON.parse(newValue))} (${newValue.length} car.)`;
+    } catch {
+      detail = `autre onglet a écrit une valeur illisible (${newValue.length} car.)`;
+    }
+  }
+  noterTrace({ h: heure(), type: "evenement", cle, origine: "événement storage", detail });
+}
+
+/** Marque une resynchronisation explicite (relire suite à cause X). */
+export function noterResync(cle: string, cause: string): void {
+  noterTrace({ h: heure(), type: "evenement", cle, origine: `resync (${cause})`, detail: "relire du stockage" });
+}
+
+// Diagnostic console : __cofTraces() renvoie la chronologie complète
+// (chaque entrée porte son détail et son stack brut).
 if (typeof window !== "undefined") {
-  (window as unknown as Record<string, unknown>).__cofTraces = lireTracesEcritures;
+  (window as unknown as Record<string, unknown>).__cofTraces = lireTraces;
   (window as unknown as Record<string, unknown>).__cofLectures = lireTracesLectures;
 }
 
@@ -87,42 +127,45 @@ function resumeValeur(value: unknown): string {
 export const localStorageAdapter: StorageAdapter = {
   load<T>(key: string): T | null {
     if (typeof window === "undefined") return null;
-    const h = new Date().toTimeString().slice(0, 8);
-    let resultat = "";
+    let detail = "";
     let valeur: T | null = null;
     try {
       const raw = window.localStorage.getItem(key);
       if (!raw) {
-        resultat = "VIDE — clé absente";
+        detail = "VIDE — clé absente";
       } else {
         try {
           valeur = JSON.parse(raw) as T;
-          resultat = Array.isArray(valeur)
-            ? `${valeur.length} él. (${raw.length} car.)`
-            : `ok (${raw.length} car.)`;
+          detail = `${resumeValeur(valeur)} (${raw.length} car.)`;
         } catch {
-          resultat = `JSON INVALIDE (${raw.length} car.) début : ${raw.slice(0, 60)}`;
+          detail = `JSON INVALIDE (${raw.length} car.) début : ${raw.slice(0, 60)}`;
         }
       }
     } catch (e) {
-      resultat = `ERREUR getItem : ${e instanceof Error ? e.message : "?"}`;
+      detail = `ERREUR getItem : ${e instanceof Error ? e.message : "?"}`;
     }
-    tracesLectures.push({ h, cle: key, resultat, origine: examinerAppel().origine });
-    if (tracesLectures.length > LECTURES_MAX) tracesLectures.splice(0, tracesLectures.length - LECTURES_MAX);
+    noterTrace({
+      h: new Date().toTimeString().slice(0, 8),
+      type: "lecture",
+      cle: key,
+      origine: examinerAppel().origine,
+      detail,
+    });
     return valeur;
   },
   save(key, value) {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(key, JSON.stringify(value));
+    const json = JSON.stringify(value);
+    window.localStorage.setItem(key, json);
     const appel = examinerAppel();
-    tracesEcritures.push({
+    noterTrace({
       h: new Date().toTimeString().slice(0, 8),
+      type: "ecriture",
       cle: key,
       origine: appel.origine,
-      resume: resumeValeur(value),
+      detail: `${resumeValeur(value)} (${json.length} car.)`,
       raw: appel.raw.slice(0, 500),
     });
-    if (tracesEcritures.length > TRACES_MAX) tracesEcritures.splice(0, tracesEcritures.length - TRACES_MAX);
   },
 };
 

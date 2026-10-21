@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { localStorageAdapter } from "@/src/lib/store/repository";
+import { noterEvenementStockage, noterResync, localStorageAdapter } from "@/src/lib/store/repository";
 
 // Collection avec seed initial.
 // persist (défaut true) : lue/écrite en localStorage.
@@ -75,12 +75,21 @@ export function useLocalCollection<T extends { id: string }>(
   // d'utile (les brouillons d'édition vivent dans des états séparés).
   useEffect(() => {
     if (!persist) return;
-    const relire = () => {
+    const relire = (cause?: string) => {
+      // Repère dans la chronologie : cette lecture vient d'une resynchronisation
+      // (et non du montage) ; `cause` notée seulement pour les cas rares et
+      // porteurs d'information (bfcache/historique), pour ne pas noyer la chrono.
+      if (cause) noterResync(key, cause);
       const stored = localStorageAdapter.load<T[]>(key);
       if (stored) setItems(preparerStock(stored, seed, opts.migrer));
     };
     const surStockage = (e: StorageEvent) => {
-      if (e.key === key) relire();
+      if (e.key === key) {
+        // Un autre onglet vient d'écrire (ou de supprimer) : trace du contenu
+        // reçu — c'est la seule écriture qu'ici on ne verrait jamais autrement.
+        noterEvenementStockage(key, e.newValue);
+        relire();
+      }
     };
     const surVisibilite = () => {
       if (document.visibilityState === "visible") relire();
@@ -91,18 +100,20 @@ export function useLocalCollection<T extends { id: string }>(
     // sortie de bfcache, et popstate couvre les traversées d'historique dans le
     // même document (App Router). Sans eux, un écran restauré affiche d'anciens
     // PV jusqu'au prochain rechargement complet.
-    const surRestauration = () => relire();
+    const surPageshow = () => relire("pageshow");
+    const surPopstate = () => relire("popstate");
+    const surFocus = () => relire();
     window.addEventListener("storage", surStockage);
     document.addEventListener("visibilitychange", surVisibilite);
-    window.addEventListener("focus", relire);
-    window.addEventListener("pageshow", surRestauration);
-    window.addEventListener("popstate", surRestauration);
+    window.addEventListener("focus", surFocus);
+    window.addEventListener("pageshow", surPageshow);
+    window.addEventListener("popstate", surPopstate);
     return () => {
       window.removeEventListener("storage", surStockage);
       document.removeEventListener("visibilitychange", surVisibilite);
-      window.removeEventListener("focus", relire);
-      window.removeEventListener("pageshow", surRestauration);
-      window.removeEventListener("popstate", surRestauration);
+      window.removeEventListener("focus", surFocus);
+      window.removeEventListener("pageshow", surPageshow);
+      window.removeEventListener("popstate", surPopstate);
     };
     // seed / migrer : constantes de module côté appelants (mêmes valeurs à
     // chaque rendu) ; les relire ne doit pas réabonner les écouteurs.
