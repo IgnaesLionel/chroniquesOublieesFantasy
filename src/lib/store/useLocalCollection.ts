@@ -85,13 +85,24 @@ export function useLocalCollection<T extends { id: string }>(
     const surVisibilite = () => {
       if (document.visibilityState === "visible") relire();
     };
+    // Restoration bfcache (←/→ ou retour après une navigation « document ») :
+    // le gel du document ne redéclenche ni visibilitychange ni focus selon les
+    // navigateurs (cas typique iPad/Safari) — pageshow est LE signal fiable de
+    // sortie de bfcache, et popstate couvre les traversées d'historique dans le
+    // même document (App Router). Sans eux, un écran restauré affiche d'anciens
+    // PV jusqu'au prochain rechargement complet.
+    const surRestauration = () => relire();
     window.addEventListener("storage", surStockage);
     document.addEventListener("visibilitychange", surVisibilite);
     window.addEventListener("focus", relire);
+    window.addEventListener("pageshow", surRestauration);
+    window.addEventListener("popstate", surRestauration);
     return () => {
       window.removeEventListener("storage", surStockage);
       document.removeEventListener("visibilitychange", surVisibilite);
       window.removeEventListener("focus", relire);
+      window.removeEventListener("pageshow", surRestauration);
+      window.removeEventListener("popstate", surRestauration);
     };
     // seed / migrer : constantes de module côté appelants (mêmes valeurs à
     // chaque rendu) ; les relire ne doit pas réabonner les écouteurs.
