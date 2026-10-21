@@ -18,7 +18,7 @@ import { DiceRoller } from "@/src/components/dice/DiceRoller";
 
 function PlayInner() {
   const searchParams = useSearchParams();
-  const { items: characters, setItems: setCharacters } = useCharacters();
+  const { items: characters, setItems: setCharacters } = useCharacters("play");
   const { items: scenarios } = useScenarios();
   const { items: npcs } = useNpcs();
   const { items: sessions, setItems: setSessions } = useSessions();

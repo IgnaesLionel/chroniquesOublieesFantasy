@@ -11,7 +11,7 @@ interface Props {
 
 /** Attribue un objet du trésor à un personnage (inventaire, non équipé, modifiable dans le catalogue). */
 export function AttributionObjet({ objet }: Props) {
-  const { items: characters, setItems: setCharacters } = useCharacters();
+  const { items: characters, setItems: setCharacters } = useCharacters("tresors/attribution");
   const { setMaison } = useCatalogueObjets();
   const [beneficiaireId, setBeneficiaireId] = useState("");
   const [message, setMessage] = useState<string | null>(null);

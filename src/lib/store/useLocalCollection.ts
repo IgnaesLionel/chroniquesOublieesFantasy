@@ -1,7 +1,16 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { noterEvenementStockage, noterResync, localStorageAdapter } from "@/src/lib/store/repository";
+import {
+  avecInstance,
+  libelleCle,
+  localStorageAdapter,
+  marquerInstanceActive,
+  noterEvenementStockage,
+  noterResync,
+  retirerInstanceActive,
+} from "@/src/lib/store/repository";
 import { demarrerReconciliation } from "@/src/lib/store/miroir";
+import { codeInterne } from "@/src/lib/store/surveillance";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 
@@ -11,6 +20,15 @@ import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 // synthétique de la réconciliation).
 let reconciliationDemarree = false;
 
+// Fenêtre laissée à la réconciliation IndexedDB (asynchrone) quand la clé est
+// vide : sans elle, un montage pendant un effacement récent écrit les graines
+// (PV plein vie) par-dessus une sauvegarde qui allait être restaurée.
+const FENETRE_RECONCILIATION = 250;
+
+// Numérotation des instances du hook : la chronologie doit nommer l'écran
+// (« characters#3 combat ») car plusieurs composants tiennent la même clé.
+let compteurInstances = 0;
+
 // Collection avec seed initial.
 // persist (défaut true) : lue/écrite en localStorage.
 // persist: false : mémoire seule, toujours depuis les graines du code
@@ -19,17 +37,29 @@ let reconciliationDemarree = false;
 export function useLocalCollection<T extends { id: string }>(
   key: string,
   seed: T[],
-  opts: { persist?: boolean; migrer?: (items: T[]) => T[] } = {}
+  opts: { persist?: boolean; migrer?: (items: T[]) => T[]; libelle?: string } = {}
 ) {
   const persist = opts.persist ?? true;
   const [items, setItemsRaw] = useState<T[]>(seed);
   const [loaded, setLoaded] = useState(false);
   const loadedRef = useRef(false);
+  const numero = useRef(0);
+  if (numero.current === 0) numero.current = ++compteurInstances;
+  const libelle = `${libelleCle(key)}#${numero.current}${opts.libelle ? ` ${opts.libelle}` : ""}`;
+
+  // Instances vivantes : visibles dans la chrono pour repérer un montage
+  // tardif (modale, panneau) qui tiendrait la même clé que l'écran principal.
+  useEffect(() => {
+    marquerInstanceActive(libelle);
+    return () => retirerInstanceActive(libelle);
+  }, [libelle]);
 
   useEffect(() => {
     if (!persist) {
       try {
-        window.localStorage.removeItem(key);
+        // Nettoyage de la clé mémoire seule : notre propre écriture, pas une
+        // mutation étrangère (d'où codeInterne).
+        codeInterne(() => window.localStorage.removeItem(key));
       } catch {
         // Stockage indisponible : rien à nettoyer.
       }
@@ -41,20 +71,48 @@ export function useLocalCollection<T extends { id: string }>(
       reconciliationDemarree = true;
       demarrerReconciliation({ [STORAGE_KEYS.characters]: SEED_CHARACTERS });
     }
-    const stored = localStorageAdapter.load<T[]>(key);
+    const accepter = (stockes: T[]) => {
+      setItemsRaw(preparerStock(stockes, seed, opts.migrer));
+      loadedRef.current = true;
+      setLoaded(true);
+    };
+    const chargement = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
     // Stock existant : on ajoute les graines manquantes (nouveau contenu
     // livré par une mise à jour, ex : scénario ajouté après coup) sans
     // toucher aux données de l’utilisateur, puis on applique la migration
     // éventuelle (ex : renommage de fiches graines).
-    if (stored) setItemsRaw(preparerStock(stored, seed, opts.migrer));
-    loadedRef.current = true;
-    setLoaded(true);
+    if (chargement) {
+      accepter(chargement);
+      return;
+    }
+    // Clé vide : première visite — ou effacement si récent que la
+    // réconciliation (IndexedDB, asynchrone) n'a pas encore rejoué la
+    // sauvegarde. On attend la fin de la fenêtre avant d'accepter les graines,
+    // et surtout avant de les ÉCRIRE : une écriture de graines à cet instant
+    // remplacerait une sauvegarde sur le point d'être restaurée.
+    const minuteur = window.setTimeout(() => {
+      const relecture = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
+      if (relecture) {
+        accepter(relecture);
+        return;
+      }
+      loadedRef.current = true;
+      setLoaded(true);
+    }, FENETRE_RECONCILIATION);
+    return () => window.clearTimeout(minuteur);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, persist]);
 
   useEffect(() => {
-    if (persist && loaded) localStorageAdapter.save(key, items);
-  }, [key, items, loaded, persist]);
+    if (persist && loaded) {
+      // items === seed : l'état n'a jamais reçu de stock — cette écriture est
+      // une CHUTE SUR LES GRAINES, à signaler sans ambiguïté dans la chrono.
+      avecInstance(libelle, () =>
+        localStorageAdapter.save(key, items, { retourAuxGraines: items === seed })
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, items, loaded, persist, libelle]);
 
   // Écriture synchrone : chaque mise à jour est persistée aussitôt, pas
   // seulement après ré-affichage. Sans ça, quitter la page (ex. Combat →
@@ -71,14 +129,16 @@ export function useLocalCollection<T extends { id: string }>(
       setItemsRaw((prev) => {
         const next = typeof update === "function" ? (update as (p: T[]) => T[])(prev) : update;
         try {
-          localStorageAdapter.save(key, next);
+          avecInstance(libelle, () =>
+            localStorageAdapter.save(key, next, { retourAuxGraines: next === seed })
+          );
         } catch {
           // Stockage indisponible : l'état mémoire reste la source de vérité.
         }
         return next;
       });
     },
-    [key, persist]
+    [key, persist, libelle]
   );
 
   // Resynchronisation : un autre onglet peut modifier le stockage (événement
@@ -93,8 +153,8 @@ export function useLocalCollection<T extends { id: string }>(
       // (et non du montage) ; `cause` notée seulement pour les cas rares et
       // porteurs d'information (bfcache/historique), pour ne pas noyer la chrono.
       if (cause) noterResync(key, cause);
-      const stored = localStorageAdapter.load<T[]>(key);
-      if (stored) setItems(preparerStock(stored, seed, opts.migrer));
+      const stocke = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
+      if (stocke) setItems(preparerStock(stocke, seed, opts.migrer));
     };
     const surStockage = (e: StorageEvent) => {
       if (e.key === key) {

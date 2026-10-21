@@ -56,7 +56,7 @@ function resumeEffet(s: Sort): string {
 
 export default function SortsPage() {
   const { items, setItems } = useSorts();
-  const { items: persos, setItems: setPersos } = useCharacters();
+  const { items: persos, setItems: setPersos } = useCharacters("sorts");
   const [editing, setEditing] = useState<Sort | null>(null);
   const [recherche, setRecherche] = useState("");
   const [categorie, setCategorie] = useState<"tous" | "sorts" | "capacites">("tous");

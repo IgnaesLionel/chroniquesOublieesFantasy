@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   // Compteurs réels (persisté + mémoire) : le stockage local ne contient
   // que personnages, sessions et progression.
-  const { items: characters } = useCharacters();
+  const { items: characters } = useCharacters("reglages");
   const { items: monsters } = useMonsters();
   const { items: npcs } = useNpcs();
   const { catalogue } = useCatalogueObjets();

@@ -23,7 +23,7 @@ import { pvTexteColor } from "@/src/lib/ui/pv";
 
 export default function SessionsPage() {
   const { items, setItems } = useSessions();
-  const { items: characters } = useCharacters();
+  const { items: characters } = useCharacters("sessions");
   const { items: scenarios } = useScenarios();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 

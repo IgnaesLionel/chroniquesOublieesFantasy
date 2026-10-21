@@ -1,11 +1,12 @@
 import { miroirSauver, miroirSessionLire } from "@/src/lib/store/miroir";
+import { codeInterne, installerSurveillanceStockage, type MutationStockage } from "@/src/lib/store/surveillance";
 
 // Pattern Repository : l'UI ne parle qu'à StorageAdapter.
 // Aujourd'hui localStorage, demain SQLite/Postgres sans changer l'UI.
 
 export interface StorageAdapter {
   load<T>(key: string): T | null;
-  save<T>(key: string, value: T): void;
+  save<T>(key: string, value: T, opts?: { retourAuxGraines?: boolean }): void;
 }
 
 // Chronologie des accès au stockage (diagnostic) : lectures ET écritures
@@ -22,9 +23,17 @@ export type Trace = {
   origine: string;
   detail: string;
   raw?: string;
+  /** Anomalie (clé vide, retour aux graines, mutation étrangère…) : jamais évincée. */
+  epingle?: boolean;
 };
 
-const TRACES_MAX = 60;
+const TRACES_MAX = 150;
+
+/** Une trace qui raconte un accident : on ne la laisse jamais chuter du haut. */
+function estAnomalie(detail: string): boolean {
+  return /VIDE|JSON INVALIDE|ERREUR|illisible|EXTERNE|RETOUR AUX GRAINES|SUPPRIMÉE/.test(detail);
+}
+
 /** Clé sessionStorage (par onglet) où la chrono est miroirée pour survivre au F5. */
 const SESSION_TRACES = "cof.traces.chrono";
 const traces: Trace[] = [];
@@ -33,14 +42,22 @@ let seqTrace = 0;
 const heure = () => new Date().toTimeString().slice(0, 8);
 
 function noterTrace(t: Omit<Trace, "seq">): void {
-  traces.push({ seq: seqTrace++, ...t });
-  if (traces.length > TRACES_MAX) traces.splice(0, traces.length - TRACES_MAX);
+  const epingle = estAnomalie(t.detail);
+  traces.push({ seq: seqTrace++, ...t, ...(epingle ? { epingle: true } : {}) });
+  // Éviction par le plus ancien NON épinglé : une séquence d'anomalies ne
+  // doit jamais pouvoir se faire supprimer par son propre débit.
+  while (traces.length > TRACES_MAX) {
+    const i = traces.findIndex((x) => !x.epingle);
+    if (i === -1) break;
+    traces.splice(i, 1);
+  }
   // Miroir sessionStorage : les tampons en mémoire meurent au F5, or le
   // réflexe « F5 pour vérifier » est exactement ce qui effacerait la preuve
   // au moment où elle apparaît. sessionStorage est par onglet : chaque
   // onglet garde sa propre chronologie, sans croiser les onglets.
   try {
-    sessionStorage.setItem(SESSION_TRACES, JSON.stringify(traces));
+    const brut = JSON.stringify(traces);
+    if (typeof window !== "undefined") codeInterne(() => sessionStorage.setItem(SESSION_TRACES, brut));
   } catch {
     // Stockage de session indisponible : la chrono vit au moins le document.
   }
@@ -79,6 +96,47 @@ export function lireTracesLectures(cle?: string): Trace[] {
   return lireTraces(cle, "lecture");
 }
 
+// Instance du hook (useLocalCollection) qui déclenche l'accès : plusieurs
+// écrans — voire plusieurs composants d'un même écran — tiennent la même clé,
+// et « qui a écrit » n'a de sens que si la chrono nomme l'instance. Sans ça,
+// deux écritures concurrentes d'une même page sont indiscernables.
+let instanceCourante = "";
+const instancesActives = new Set<string>();
+
+/** « characters » à partir de « cof.characters.v2 » — lisible dans la chrono. */
+export function libelleCle(key: string): string {
+  return key.replace(/^cof\./, "").replace(/\.v\d+$/, "");
+}
+
+/** Exécute `f` en attribuant la trace à l'instance `libelle`. */
+export function avecInstance<T>(libelle: string, f: () => T): T {
+  const precedent = instanceCourante;
+  instanceCourante = libelle;
+  try {
+    return f();
+  } finally {
+    instanceCourante = precedent;
+  }
+}
+
+export function marquerInstanceActive(libelle: string): void {
+  instancesActives.add(libelle);
+}
+
+export function retirerInstanceActive(libelle: string): void {
+  instancesActives.delete(libelle);
+}
+
+/** Instances vivantes d'une clé, ex : [« #2 combat », « #4 »]. */
+export function instancesDe(cle: string): string[] {
+  const prefixe = `${libelleCle(cle)}#`;
+  return [...instancesActives]
+    .filter((l) => l.startsWith(prefixe))
+    .map((l) => l.slice(prefixe.length));
+}
+
+const nommer = (origine: string): string => (instanceCourante ? `${origine} [${instanceCourante}]` : origine);
+
 /**
  * Marque la réception d'un événement `storage` (une AUTRE écriture, faite par
  * un autre onglet/fenêtre, vient d'être détectée ici) avec le contenu reçu.
@@ -96,12 +154,12 @@ export function noterEvenementStockage(cle: string, newValue: string | null): vo
       detail = `autre onglet a écrit une valeur illisible (${newValue.length} car.)`;
     }
   }
-  noterTrace({ h: heure(), type: "evenement", cle, origine: "événement storage", detail });
+  noterTrace({ h: heure(), type: "evenement", cle, origine: nommer("événement storage"), detail });
 }
 
 /** Marque une resynchronisation explicite (relire suite à cause X). */
 export function noterResync(cle: string, cause: string): void {
-  noterTrace({ h: heure(), type: "evenement", cle, origine: `resync (${cause})`, detail: "relire du stockage" });
+  noterTrace({ h: heure(), type: "evenement", cle, origine: nommer(`resync (${cause})`), detail: "relire du stockage" });
 }
 
 // Diagnostic console : __cofTraces() renvoie la chronologie complète
@@ -109,6 +167,11 @@ export function noterResync(cle: string, cause: string): void {
 if (typeof window !== "undefined") {
   (window as unknown as Record<string, unknown>).__cofTraces = lireTraces;
   (window as unknown as Record<string, unknown>).__cofLectures = lireTracesLectures;
+  // Surveillance : toute mutation de stockage faite par un code qui n'est pas
+  // le nôtre (autre application de l'origine, dépendance, script tiers) est
+  // déclarée dans la chrono avec sa pile — c'est le seul moyen de voir un
+  // effacement qui ne passe pas par l'adaptateur.
+  installerSurveillanceStockage(noterMutationExt);
 }
 
 /** Fichier appelant (hors couche stockage), ex : « combat/terminer ».
@@ -121,11 +184,11 @@ function examinerAppel(): { origine: string; raw: string } {
     throw new Error("trace");
   } catch (e) {
     const lignes = (e as Error).stack?.split("\n") ?? [];
-    raw = lignes.slice(1, 13).join(" | ");
+    raw = lignes.slice(1, 20).join(" | ");
     for (const ligne of lignes.slice(1)) {
       const m = ligne.match(/^\s*at\s+([^(]+?)\s*\(/);
       const fn = (m ? m[1] : ligne.replace(/^\s*at\s+/, "").split(" ")[0]).trim();
-      if (fn === "examinerAppel" || fn === "Object.save" || fn === "Object.load") continue;
+      if (fn === "examinerAppel" || fn === "Object.save" || fn === "Object.load" || fn === "avecInstance" || fn === "codeInterne") continue;
       if (fn.includes("useLocalCollection")) {
         hookVu = fn.includes("useEffect")
           ? "useLocalCollection (effet)"
@@ -155,6 +218,47 @@ function resumeValeur(value: unknown): string {
   return typeof value === "object" && value !== null ? "obj." : String(value);
 }
 
+/**
+ * Formule une mutation vue par la surveillance (pure, testable) : c'est le
+ * témoin qui dira si la clé a été effacée par quelqu'un d'autre — et dans le
+ * cas d'une écriture étrangère, quelle valeur elle a plantée à la place.
+ */
+export function detailMutation(
+  m: MutationStockage,
+  resume: (v: unknown) => string = resumeValeur
+): string {
+  if (m.action === "clear") {
+    const liste = (m.perdues ?? []).join(" · ") || "aucune clé cof.*";
+    return `EXTERNE clear(${m.cible}) — efface : ${liste}`;
+  }
+  if (m.action === "removeItem") {
+    const etat = m.avant ? `avait ${m.avant} car.` : "clé déjà absente";
+    return `EXTERNE removeItem(${m.cible}, ${m.cle ?? "?"}) — ${etat}`;
+  }
+  let contenu = `${m.taille ?? 0} car.`;
+  if (m.valeur) {
+    try {
+      contenu = `${resume(JSON.parse(m.valeur))} (${m.taille ?? 0} car.)`;
+    } catch {
+      // Valeur étrangère illisible : la taille suffit à la décrire.
+    }
+  }
+  const avant = m.avant ? `${m.avant} car.` : "vide";
+  return `EXTERNE setItem(${m.cible}, ${m.cle ?? "?"}) → ${contenu} · préc. ${avant}`;
+}
+
+/** Déclare une mutation non interne dans la chrono (épinglée, avec la pile). */
+function noterMutationExt(m: MutationStockage): void {
+  noterTrace({
+    h: heure(),
+    type: "evenement",
+    cle: m.cle ?? m.cible,
+    origine: "surveillance storage",
+    detail: `⚠ ${detailMutation(m)}`,
+    raw: m.pile.slice(0, 500),
+  });
+}
+
 export const localStorageAdapter: StorageAdapter = {
   load<T>(key: string): T | null {
     if (typeof window === "undefined") return null;
@@ -170,7 +274,7 @@ export const localStorageAdapter: StorageAdapter = {
         // avant que les graines ne prennent le relais.
         const miroir = miroirSessionLire(key);
         if (miroir) {
-          window.localStorage.setItem(key, miroir);
+          codeInterne(() => window.localStorage.setItem(key, miroir));
           raw = miroir;
           restaure = true;
         }
@@ -192,15 +296,32 @@ export const localStorageAdapter: StorageAdapter = {
       h: new Date().toTimeString().slice(0, 8),
       type: "lecture",
       cle: key,
-      origine: examinerAppel().origine,
+      origine: nommer(examinerAppel().origine),
       detail,
     });
     return valeur;
   },
-  save(key, value) {
+  save(key, value, opts) {
     if (typeof window === "undefined") return;
     const json = JSON.stringify(value);
-    window.localStorage.setItem(key, json);
+    // Ce qui était EN STOCKAGE avant cette écriture : la question décisive du
+    // bug « plein vie après Terminer » est de savoir si la clé était vide au
+    // moment de l'écriture (chute sur les graines) ou contenait déjà les PV
+    // (quelqu'un a écrit une valeur périmée par-dessus).
+    let precedent = "vide";
+    try {
+      const avant = window.localStorage.getItem(key);
+      if (avant) {
+        try {
+          precedent = `${resumeValeur(JSON.parse(avant))} (${avant.length} car.)`;
+        } catch {
+          precedent = `illisible (${avant.length} car.)`;
+        }
+      }
+    } catch {
+      precedent = "?";
+    }
+    codeInterne(() => window.localStorage.setItem(key, json));
     // Miroirs (onglet + IndexedDB) : imperméables à un localStorage.clear()
     // venant d'une autre application de la même origine.
     miroirSauver(key, json);
@@ -209,9 +330,11 @@ export const localStorageAdapter: StorageAdapter = {
       h: new Date().toTimeString().slice(0, 8),
       type: "ecriture",
       cle: key,
-      origine: appel.origine,
-      detail: `${resumeValeur(value)} (${json.length} car.)`,
-      raw: appel.raw.slice(0, 500),
+      origine: nommer(appel.origine),
+      detail: `${resumeValeur(value)} (${json.length} car.)${
+        opts?.retourAuxGraines ? " ⚠ RETOUR AUX GRAINES" : ""
+      } · préc. ${precedent}`,
+      raw: appel.raw.slice(0, 900),
     });
   },
 };

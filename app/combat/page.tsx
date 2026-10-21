@@ -26,7 +26,7 @@ import { familleDuProfil, classeFamille } from "@/src/lib/ui/famille";
 import { FamilleBadge, FamillePastille } from "@/src/components/ui/Famille";
 
 export default function CombatPage() {
-  const { items: characters, setItems: setCharacters } = useCharacters();
+  const { items: characters, setItems: setCharacters } = useCharacters("combat");
   const { items: monsters } = useMonsters();
   // Même migration douce que le bestiaire : les monstres ajoutés au combat
   // portent leurs sous-catégories même si la sauvegarde locale est ancienne.

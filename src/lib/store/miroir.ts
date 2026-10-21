@@ -1,3 +1,5 @@
+import { codeInterne } from "@/src/lib/store/surveillance";
+
 // Miroirs de sauvegarde : sur une origine partagée (localhost:3000 a hébergé
 // deux applications différentes de la même machine), un localStorage.clear()
 // d'UNE application efface les données de l'AUTRE — c'est la panne « fiches
@@ -21,7 +23,7 @@ const TABLE = "miroirs";
 export function miroirSauver(cle: string, json: string): void {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.setItem(PREFIXE_SESSION + cle, json);
+    codeInterne(() => window.sessionStorage.setItem(PREFIXE_SESSION + cle, json));
   } catch {
     // sessionStorage indisponible (mode privé restreint) : le miroir onglet
     // saute, IndexedDB peut encore jouer son rôle.
@@ -63,10 +65,12 @@ export function miroirSessionLire(cle: string): string | null {
 export function effacerMiroirs(): void {
   if (typeof window === "undefined") return;
   try {
-    for (let i = window.sessionStorage.length - 1; i >= 0; i--) {
-      const k = window.sessionStorage.key(i);
-      if (k && k.startsWith(PREFIXE_SESSION)) window.sessionStorage.removeItem(k);
-    }
+    codeInterne(() => {
+      for (let i = window.sessionStorage.length - 1; i >= 0; i--) {
+        const k = window.sessionStorage.key(i);
+        if (k && k.startsWith(PREFIXE_SESSION)) window.sessionStorage.removeItem(k);
+      }
+    });
   } catch {
     // rien
   }
@@ -107,7 +111,7 @@ export function demarrerReconciliation(graines: Record<string, unknown>): void {
               const vide = !actuel;
               const regrainé = graine !== undefined && actuel === JSON.stringify(graine);
               if ((!vide && !regrainé) || actuel === enregistrement.json) continue;
-              window.localStorage.setItem(enregistrement.cle, enregistrement.json);
+              codeInterne(() => window.localStorage.setItem(enregistrement.cle, enregistrement.json));
               window.dispatchEvent(
                 new StorageEvent("storage", {
                   key: enregistrement.cle,

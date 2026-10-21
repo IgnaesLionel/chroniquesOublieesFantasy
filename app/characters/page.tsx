@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { useCharacters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
-import { exportJson, localStorageAdapter, lireTraces } from "@/src/lib/store/repository";
+import { exportJson, instancesDe, localStorageAdapter, lireTraces } from "@/src/lib/store/repository";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
 import { classeFamille } from "@/src/lib/ui/famille";
@@ -46,7 +46,7 @@ const CARACS = ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"] as const;
 const PEUPLES = ["Humain", "Demi-Elfe", "Elfe haut", "Nain"];
 
 export default function CharactersPage() {
-  const { items: raw, setItems } = useCharacters();
+  const { items: raw, setItems } = useCharacters("personnages");
   const { catalogue: stock } = useCatalogueObjets();
   const [editing, setEditing] = useState<Character | null>(null);
   const [creation, setCreation] = useState(false);
@@ -62,7 +62,9 @@ export default function CharactersPage() {
   // écriture tracée (heure + fichier appelant). S'exécute après chaque rendu
   // (sans dépendances) mais ne provoque pas de boucle : l'état n'est mis à
   // jour que s'il differe vraiment.
-  const [diag, setDiag] = useState<{ stockage: string; memoire: string; chrono: string; hote: string } | null>(null);
+  const [diag, setDiag] = useState<
+    { stockage: string; memoire: string; chrono: string; hote: string; actifs: string } | null
+  >(null);
   useEffect(() => {
     const resume = (liste: Character[]) => liste.map((c) => `${c.nom} ${c.pv}/${c.pvMax}`).join(" · ") || "vide";
     let stockage = "clé absente / illisible";
@@ -75,7 +77,7 @@ export default function CharactersPage() {
       stockage = "erreur de lecture";
     }
     const memoire = resume(items);
-    const chronoBrute = lireTraces(STORAGE_KEYS.characters).slice(-10);
+    const chronoBrute = lireTraces(STORAGE_KEYS.characters).slice(-14);
     const chrono =
       chronoBrute.length === 0
         ? "aucune"
@@ -84,14 +86,16 @@ export default function CharactersPage() {
               (t) =>
                 `${t.h} ${
                   t.type === "ecriture" ? "✍" : t.type === "lecture" ? "📥" : "🔔"
-                } ${t.origine} → ${t.detail.slice(0, 130)}`
+                }${t.epingle ? "📌" : ""} ${t.origine} → ${t.detail.slice(0, 200)}`
             )
             .join("\n");
     const hote = window.location.host;
+    const actifs = instancesDe(STORAGE_KEYS.characters);
+    const ecrans = actifs.length > 0 ? actifs.join(" · ") : "aucun";
     setDiag((p) =>
-      p && p.stockage === stockage && p.memoire === memoire && p.chrono === chrono && p.hote === hote
+      p && p.stockage === stockage && p.memoire === memoire && p.chrono === chrono && p.hote === hote && p.actifs === ecrans
         ? p
-        : { stockage, memoire, chrono, hote }
+        : { stockage, memoire, chrono, hote, actifs: ecrans }
     );
   });
 
@@ -375,7 +379,8 @@ export default function CharactersPage() {
       <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
         🔎 Stockage : {diag?.stockage ?? "…"}<br />
         🖥 Affiché : {diag?.memoire ?? "…"}<br />
-        ✍ écriture · 📥 lecture · 🔔 autre onglet — Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
+        🧩 Écrans tiennent la clé : {diag?.actifs ?? "…"}<br />
+        ✍ écriture · 📥 lecture · 🔔 autre onglet · 📌 anomalie · Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
       </p>
       <p className="text-xs text-zinc-500">
         COF Fantasy : INIT 10+PER · DEF 10+AGI+Équip+Mod · Vigueur Combattant 10+CON / Aventurier 8+CON / Mystique 8+CON / Mage 6+CON ·

@@ -12,7 +12,7 @@ interface Props {
 type Mode = "egales" | "choix";
 
 export function VersementTresor({ resultat }: Props) {
-  const { items: characters, setItems: setCharacters } = useCharacters();
+  const { items: characters, setItems: setCharacters } = useCharacters("tresors/versement");
   const total = totalDistribuable(resultat);
   const [selection, setSelection] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("egales");

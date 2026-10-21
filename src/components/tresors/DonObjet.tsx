@@ -10,7 +10,7 @@ interface Props {
 
 /** Donne un objet du catalogue à un personnage (inventaire, non équipé). */
 export function DonObjet({ item }: Props) {
-  const { items: characters, setItems: setCharacters } = useCharacters();
+  const { items: characters, setItems: setCharacters } = useCharacters("tresors/don");
   const [beneficiaireId, setBeneficiaireId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
