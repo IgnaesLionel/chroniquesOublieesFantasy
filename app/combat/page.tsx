@@ -40,10 +40,24 @@ export default function CombatPage() {
       ),
     [monsters]
   );
+  // Regroupement par NC pour les volets : l'ordre du tri (NC puis nom) est
+  // conservé à l'intérieur de chaque volet.
+  const monstresParNc = useMemo(() => {
+    const groupes = new Map<number, MonsterTemplate[]>();
+    for (const m of monstres) {
+      const g = groupes.get(m.niveau);
+      if (g) g.push(m);
+      else groupes.set(m.niveau, [m]);
+    }
+    return Array.from(groupes.entries()).sort((a, b) => a[0] - b[0]);
+  }, [monstres]);
   const { catalogue } = useCatalogueObjets();
 
   const [staging, setStaging] = useState<CombatParticipant[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  // Volets du panneau Monstres (groupés par NC) : tous repliés par défaut =
+  // menu lisible d'un coup d'œil, on ouvre le seul NC dont on a besoin.
+  const [ncOuverts, setNcOuverts] = useState<Record<string, boolean>>({});
   const [combat, setCombat] = useState<CombatState | null>(null);
   const [attackerId, setAttackerId] = useState<string | null>(null);
   const [attackId, setAttackId] = useState<string | null>(null);
@@ -611,18 +625,50 @@ export default function CombatPage() {
             ))}
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
-            <h2 className="font-bold text-sm uppercase text-zinc-400">Monstres par NC (quantité puis ajouter)</h2>
-            {monstres.map((m) => (
-              <div key={m.id} className="flex justify-between items-center text-sm py-1 border-b border-zinc-800/50 gap-2">
-                <span className="flex-1">{m.nom} <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400" title="Niveau de créature">NC {m.niveau}</span> <span className="text-zinc-500">({m.pv} PV)</span></span>
-                <input
-                  type="number" min={1} max={12} value={quantities[m.id] ?? 1}
-                  onChange={(e) => setQuantities((q) => ({ ...q, [m.id]: Number(e.target.value) }))}
-                  className="w-14 bg-zinc-800 rounded px-1.5 py-1 text-center"
-                />
-                <button onClick={() => addMonsters(m)} className="px-2.5 py-1 rounded bg-red-900 text-xs hover:bg-red-800">+ Ajouter</button>
-              </div>
-            ))}
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-bold text-sm uppercase text-zinc-400">Monstres par NC (quantité puis ajouter)</h2>
+              <button
+                onClick={() => {
+                  const toutOuvrir = monstresParNc.some(([n]) => !ncOuverts[String(n)]);
+                  setNcOuverts(Object.fromEntries(monstresParNc.map(([n]) => [String(n), toutOuvrir])));
+                }}
+                className="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                title="Ouvrir ou replier tous les volets NC"
+              >
+                {monstresParNc.some(([n]) => !ncOuverts[String(n)]) ? "Tout ouvrir" : "Tout fermer"}
+              </button>
+            </div>
+            {monstresParNc.map(([niveau, liste]) => {
+              const cle = String(niveau);
+              const ouvert = !!ncOuverts[cle];
+              return (
+                <div key={cle}>
+                  <button
+                    onClick={() => setNcOuverts((s) => ({ ...s, [cle]: !s[cle] }))}
+                    aria-expanded={ouvert}
+                    className="w-full flex items-center justify-between gap-2 text-sm font-semibold px-2 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700"
+                  >
+                    <span className="text-zinc-200">{ouvert ? "▼" : "▶"} NC {cle}</span>
+                    <span className="text-zinc-400 text-xs">{liste.length} monstre(s)</span>
+                  </button>
+                  {ouvert && (
+                    <div className="mt-1 space-y-0.5">
+                      {liste.map((m) => (
+                        <div key={m.id} className="flex justify-between items-center text-sm py-1 px-1 border-b border-zinc-800/50 gap-2">
+                          <span className="flex-1">{m.nom} <span className="text-zinc-500">({m.pv} PV)</span></span>
+                          <input
+                            type="number" min={1} max={12} value={quantities[m.id] ?? 1}
+                            onChange={(e) => setQuantities((q) => ({ ...q, [m.id]: Number(e.target.value) }))}
+                            className="w-14 bg-zinc-800 rounded px-1.5 py-1 text-center"
+                          />
+                          <button onClick={() => addMonsters(m)} className="px-2.5 py-1 rounded bg-red-900 text-xs hover:bg-red-800">+ Ajouter</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
