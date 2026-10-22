@@ -56,6 +56,14 @@ export default function CombatPage() {
   const addPJ = (c: Character) => {
     setStaging((s) => [...s.filter((p) => p.templateId !== c.id && p.templateId !== `compagnon:loup:${c.id}`), ...pjNeufs(c)]);
   };
+  /** Fiches pas encore dans la rencontre (loup compagnon compris dans le test via le PJ maître). */
+  const pjManquants = characters.filter((c) => !staging.some((p) => p.templateId === c.id));
+  /** Tout le groupe en un clic : ajoute les PJ manquants, sans écraser ceux déjà posés. */
+  const addTousLesPJ = () =>
+    setStaging((s) => [
+      ...s,
+      ...characters.filter((c) => !s.some((p) => p.templateId === c.id)).flatMap((c) => pjNeufs(c)),
+    ]);
   const addMonsters = (m: MonsterTemplate) => {
     const n = Math.max(1, Math.min(12, quantities[m.id] ?? 1));
     // Renumérote sur tout le groupe : 3 ajouts ×1 du même type -> "#1..#3" (pas 3 homonymes).
@@ -575,7 +583,17 @@ export default function CombatPage() {
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
-            <h2 className="font-bold text-sm uppercase text-zinc-400">Personnages</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-bold text-sm uppercase text-zinc-400">Personnages</h2>
+              <button
+                onClick={addTousLesPJ}
+                disabled={pjManquants.length === 0}
+                title={pjManquants.length === 0 ? "Tous les personnages sont déjà dans la rencontre" : `Ajoute en un clic ${pjManquants.length} personnage(s) : ${pjManquants.map((c) => c.nom).join(", ")}`}
+                className="px-3 py-1 rounded bg-blue-900 text-xs font-semibold hover:bg-blue-800 disabled:opacity-40 disabled:cursor-default"
+              >
+                + Tous ({characters.length})
+              </button>
+            </div>
             {characters.map((c) => (
               <div key={c.id} className={`flex justify-between items-center text-sm py-1 border-b border-zinc-800/50 fam-rail ${classeFamille(familleDuProfil(c.profil || c.classe))}`}>
                 <span>{c.nom} <FamilleBadge famille={familleDuProfil(c.profil || c.classe)} className="mx-1" /> <span className="text-zinc-500">({c.pv}/{c.pvMax})</span></span>
