@@ -392,23 +392,6 @@ export default function CharactersPage() {
           <button onClick={reset} className="px-3 py-1.5 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Réinitialiser</button>
         </div>
       </div>
-      {/* Témoin diagnostic (voir plus haut) : lignes à recopier au dev. */}
-      <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
-        🔎 Stockage : {diag?.stockage ?? "…"}<br />
-        🖥 Affiché : {diag?.memoire ?? "…"}<br />
-        🧩 Écrans tiennent la clé : {diag?.actifs ?? "…"}<br />
-        ✍ écriture · 📥 lecture · 🔔 autre onglet · 📌 anomalie · Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
-      </p>
-      <p className="text-xs text-zinc-500">
-        COF Fantasy : INIT 10+PER · DEF 10+AGI+Équip+Mod · Vigueur Combattant 10+CON / Aventurier 8+CON / Mystique 8+CON / Mage 6+CON ·
-        Chance 2+CHA (3+CHA Aventurier) · DR d10 Combattant / d8 Aventurier / d8+1 Mystique / d6 Mage, nombre 2+CON (+1 Mystique) ·
-        Contact niv+FOR / Distance niv+AGI / Magique niv+VOL · Mana VOL+sorts · Idéal/travers narratifs.
-        Création niv. 1 : 2 pts → 2 capacités de rang 1 du profil + rang 1 de peuple gratuit (+ rang 2 gratuit : les 4 Mages).
-        Progression : 2 pts/niveau, R1-2 = 1 pt, R3-5 = 2 pts, rangs précédents requis, niveau ≥ rang, désapprentissage du haut vers le bas.
-        Niveau : PV +gain+CON (rétroactif), attaques +1 (max niv. 10), +2 pts à dépenser, mana via nouveaux sorts, dé évolutif d4→d6 (6)→d8 (9)→…
-      </p>
-
-      <HorsCombatPanel characters={[...items, ...loups]} onUpdate={routerMajHorsCombat} />
       {saveMessage.__tout && (
         <div className="rounded-lg border border-green-700 bg-green-900/40 p-3 text-sm text-green-200">
           {saveMessage.__tout}
@@ -592,7 +575,7 @@ export default function CharactersPage() {
                         <button onClick={() => nouveauCompagnon(c.id)} className="text-xs px-2.5 py-1 rounded bg-green-900 hover:bg-green-800 font-semibold">🐺 Nouveau compagnon</button>
                       </div>
                     ) : (
-                      <p className="text-xs text-zinc-500">Soins : sorts hors combat ci-dessus (bénéficiaire/patient), magie en combat, Lien empathique, ou récupération complète (PV pleins).</p>
+                      <p className="text-xs text-zinc-500">Soins : sorts hors combat ci-dessous (bénéficiaire/patient), magie en combat, Lien empathique, ou récupération complète (PV pleins).</p>
                     )}
                   </div>
                 );
@@ -642,6 +625,25 @@ export default function CharactersPage() {
           );
         })}
       </div>
+
+      <HorsCombatPanel characters={[...items, ...loups]} onUpdate={routerMajHorsCombat} />
+
+      <p className="text-xs text-zinc-500">
+        COF Fantasy : INIT 10+PER · DEF 10+AGI+Équip+Mod · Vigueur Combattant 10+CON / Aventurier 8+CON / Mystique 8+CON / Mage 6+CON ·
+        Chance 2+CHA (3+CHA Aventurier) · DR d10 Combattant / d8 Aventurier / d8+1 Mystique / d6 Mage, nombre 2+CON (+1 Mystique) ·
+        Contact niv+FOR / Distance niv+AGI / Magique niv+VOL · Mana VOL+sorts · Idéal/travers narratifs.
+        Création niv. 1 : 2 pts → 2 capacités de rang 1 du profil + rang 1 de peuple gratuit (+ rang 2 gratuit : les 4 Mages).
+        Progression : 2 pts/niveau, R1-2 = 1 pt, R3-5 = 2 pts, rangs précédents requis, niveau ≥ rang, désapprentissage du haut vers le bas.
+        Niveau : PV +gain+CON (rétroactif), attaques +1 (max niv. 10), +2 pts à dépenser, mana via nouveaux sorts, dé évolutif d4→d6 (6)→d8 (9)→…
+      </p>
+
+      {/* Témoin diagnostic (logique définie plus haut dans le fichier) : lignes à recopier au dev. */}
+      <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
+        🔎 Stockage : {diag?.stockage ?? "…"}<br />
+        🖥 Affiché : {diag?.memoire ?? "…"}<br />
+        🧩 Écrans tiennent la clé : {diag?.actifs ?? "…"}<br />
+        ✍ écriture · 📥 lecture · 🔔 autre onglet · 📌 anomalie · Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
+      </p>
 
       {editing && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
