@@ -30,7 +30,16 @@ export default function CombatPage() {
   const { items: monsters } = useMonsters();
   // Même migration douce que le bestiaire : les monstres ajoutés au combat
   // portent leurs sous-catégories même si la sauvegarde locale est ancienne.
-  const monstres = useMemo(() => avecSousCategoriesGraines(monsters), [monsters]);
+  // Panneau « Monstres » trié par NC croissant (puis nom) : retrouver un profil
+  // de puissance d'un coup d'œil quand le bestiaire grossit. Copie avant tri —
+  // avecSousCategoriesGraines peut renvoyer le tableau du store tel quel.
+  const monstres = useMemo(
+    () =>
+      [...avecSousCategoriesGraines(monsters)].sort(
+        (a, b) => a.niveau - b.niveau || a.nom.localeCompare(b.nom, "fr")
+      ),
+    [monsters]
+  );
   const { catalogue } = useCatalogueObjets();
 
   const [staging, setStaging] = useState<CombatParticipant[]>([]);
@@ -602,10 +611,10 @@ export default function CombatPage() {
             ))}
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
-            <h2 className="font-bold text-sm uppercase text-zinc-400">Monstres (quantité puis ajouter)</h2>
+            <h2 className="font-bold text-sm uppercase text-zinc-400">Monstres par NC (quantité puis ajouter)</h2>
             {monstres.map((m) => (
               <div key={m.id} className="flex justify-between items-center text-sm py-1 border-b border-zinc-800/50 gap-2">
-                <span className="flex-1">{m.nom} <span className="text-zinc-500">({m.pv} PV)</span></span>
+                <span className="flex-1">{m.nom} <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400" title="Niveau de créature">NC {m.niveau}</span> <span className="text-zinc-500">({m.pv} PV)</span></span>
                 <input
                   type="number" min={1} max={12} value={quantities[m.id] ?? 1}
                   onChange={(e) => setQuantities((q) => ({ ...q, [m.id]: Number(e.target.value) }))}
