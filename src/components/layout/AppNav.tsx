@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/sorts", label: "Sorts & Capacités" },
   { href: "/regles", label: "Règles" },
   { href: "/monsters", label: "Bestiaire" },
+  { href: "/encounters", label: "Rencontres" },
   { href: "/dice", label: "Dés" },
   { href: "/combat", label: "Combat" },
   { href: "/scenarios", label: "Scénarios" },
