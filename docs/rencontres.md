@@ -222,6 +222,13 @@ Les ennemis ne soignent jamais par action ; seule la régénération passive s'a
 7. **Éditions** : le bestiaire contient des entrées COF1/V1 et hors DRS. Elles
    sont **exclues par défaut** ; les inclure demande une option explicite et
    affiche un avertissement de compatibilité.
+8. **Budget inférieur au prix plancher d'un thème** : la table Pm est grossière
+   aux bas niveaux (NC 1 = 10 Pm, NC 2 = 20 Pm). Un groupe de niveau effectif 0,5
+   a une cible de 5 Pm : aucun mort-vivant (10 Pm) ni démon (20 Pm) n'entre dans
+   le budget. Le générateur ne rend jamais une composition vide dans ce cas : il
+   propose la créature la moins chère du filtre et ajoute l'avertissement
+   « Budget trop serré pour ce thème ». La difficulté réelle est alors supérieure
+   à celle demandée — c'est assumé, et visible dans l'écart de NR affiché.
 
 ---
 

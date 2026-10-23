@@ -212,6 +212,22 @@ function scoreComposition(
   };
 }
 
+/**
+ * Créatures les moins coûteuses du pool.
+ *
+ * Sert de repli quand le budget cible est trop serré pour le thème demandé :
+ * avec 5 Pm de budget et des morts-vivants dont le moins cher coûte 10 Pm,
+ * aucun profil n'entre dans la fourchette préférée. Renvoyer une composition
+ * vide laisserait le MJ sans rien ; on propose alors le minimum disponible et
+ * le dépassement de budget est signalé dans les avertissements.
+ */
+function plusAbordables(pool: ProfilCreature[], configuration: ConfigurationMoteur): ProfilCreature[] {
+  if (pool.length === 0) return [];
+  const couts = pool.map((p) => pmPourNc(p.nc, configuration.tablePm));
+  const min = Math.min(...couts);
+  return pool.filter((_, i) => couts[i] === min);
+}
+
 function composerAleatoire(
   rng: Rng,
   pool: ProfilCreature[],
@@ -260,11 +276,18 @@ function composerAleatoire(
       const boss = slots
         .map((s) => cache.get(s.monstreId))
         .find((p): p is ProfilCreature => !!p && p.candidatBoss);
-      const candidats = pool.filter((p) => {
+      const dansBudget = pool.filter((p) => {
         if (p.candidatBoss && boss) return false;
         if (boss && p.nc >= boss.nc) return false;
         return pmPourNc(p.nc, configuration.tablePm) <= restant * 1.1;
       });
+      const candidats =
+        dansBudget.length > 0
+          ? dansBudget
+          : plusAbordables(
+              pool.filter((p) => !(boss && p.nc >= boss.nc)),
+              configuration
+            );
       const choix = choixPondere(rng, candidats, (p) => {
         const pmP = pmPourNc(p.nc, configuration.tablePm);
         return (
@@ -278,7 +301,7 @@ function composerAleatoire(
       pm += pmPourNc(choix.nc, configuration.tablePm);
       count += 1;
     }
-    return slots;
+    return garantirNonVide(slots, pool, configuration, verrous);
   }
 
   const placeMax = Math.max(0, Math.min(nbMax, configuration.maxCreatures) - count);
@@ -290,10 +313,13 @@ function composerAleatoire(
     if (count >= configuration.maxCreatures) break;
     const restant = Math.max(0, ciblePm - pm);
     const place = Math.max(1, taille - i);
-    const candidats = pool.filter((p) => {
+    const dansBudget = pool.filter((p) => {
       const pmP = pmPourNc(p.nc, configuration.tablePm);
       return pmP <= Math.max(3, restant * 1.25) && pmP <= Math.max(4, objectif * 1.35);
     });
+    // Budget trop serré pour ce thème : on part de la créature la moins chère
+    // plutôt que de rendre une composition vide (cf. plusAbordables).
+    const candidats = dansBudget.length > 0 ? dansBudget : plusAbordables(pool, configuration);
     if (candidats.length === 0) break;
     const choix = choixPondere(rng, candidats, (p) => {
       const pmP = pmPourNc(p.nc, configuration.tablePm);
@@ -318,7 +344,23 @@ function composerAleatoire(
     pm += pmChoix * qte;
     count += qte;
   }
-  return slots;
+  return garantirNonVide(slots, pool, configuration, verrous);
+}
+
+/**
+ * Dernier filet : une composition ne doit jamais être vide quand le pool ne
+ * l'est pas. Sans cela, l'interface n'affichait rien du tout — ni composition,
+ * ni explication — pour un thème au budget trop serré.
+ */
+function garantirNonVide(
+  slots: SlotRencontre[],
+  pool: ProfilCreature[],
+  configuration: ConfigurationMoteur,
+  verrous: SlotRencontre[]
+): SlotRencontre[] {
+  if (quantiteTotale(slots) > 0 || verrous.length > 0) return slots;
+  const secours = plusAbordables(pool, configuration);
+  return secours.length > 0 ? ajouterSlot(slots, secours[0].id, 1) : slots;
 }
 
 function cleComposition(slots: SlotRencontre[]): string {
@@ -372,6 +414,17 @@ export function genererRencontre(options: OptionsGeneration): ResultatGeneration
   if (cibleNr > ncMax + 1) {
     avertissements.push(
       `Le bestiaire filtré plafonne à NC ${ncMax} : la cible NR ${Math.round(cibleNr * 100) / 100} demandera plusieurs créatures ou restera sous le budget.`
+    );
+  }
+
+  // Budget inférieur au prix de la créature la moins chère du filtre : cas
+  // typique d'un thème restreint sur un petit groupe (morts-vivants à 10 Pm
+  // pour une cible de 5 Pm). La composition est produite quand même, mais le
+  // dépassement doit être dit explicitement.
+  const coutMin = Math.min(...pool.map((p) => pmPourNc(p.nc, configuration.tablePm)));
+  if (coutMin > cible) {
+    avertissements.push(
+      `Budget trop serré pour ce thème : la cible est de ${Math.round(cible * 10) / 10} Pm, mais la créature la moins chère du filtre en coûte ${coutMin}. La composition proposée dépasse donc le budget — envisager « Toutes » comme thème, autoriser d'autres sources, ou agrandir le groupe.`
     );
   }
 

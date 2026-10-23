@@ -500,6 +500,16 @@ export function EncounterGenerator() {
             </div>
           )}
 
+          {resultat && resultat.candidats.length === 0 && (
+            <div className="rounded-lg border border-red-800 bg-red-950/40 p-4 text-sm text-red-200 space-y-1">
+              <div className="font-bold">Aucune composition trouvée.</div>
+              <div>
+                Les filtres ne laissent aucune créature compatible avec ce budget. Essayez le thème « Toutes »,
+                autorisez les sources V1 / hors DRS, ou agrandissez le groupe. Le détail des filtres est ci-dessous.
+              </div>
+            </div>
+          )}
+
           {resultat && resultat.candidats.length > 1 && (
             <div className="flex gap-1 flex-wrap">
               {resultat.candidats.map((c, i) => (

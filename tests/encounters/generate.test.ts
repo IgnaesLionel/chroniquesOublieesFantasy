@@ -126,6 +126,27 @@ describe("génération de compositions", () => {
     }
   });
 
+  it("ne rend jamais une composition vide quand le budget est sous le prix plancher du thème", () => {
+    // Régression signalée en usage : avec un thème restreint (« Mort-vivant »,
+    // « Démon »), le générateur ne produisait aucune composition et l'interface
+    // n'affichait rien. Cause : le budget cible peut être inférieur au prix de
+    // la créature la moins chère du filtre (10 Pm pour un mort-vivant, 20 pour
+    // un démon). Ici un PJ unique de niveau 1 donne une cible de 2,5 Pm.
+    const faible = groupeSimplifie(1, 1);
+    for (const theme of ["Mort-vivant", "Démon"]) {
+      const res = genererRencontre({
+        groupe: faible,
+        bestiaire: SEED_MONSTERS,
+        difficulte: "normal",
+        contexte: contexte({ theme }),
+        graine: 42,
+      });
+      expect(res.candidats.length).toBeGreaterThan(0);
+      expect(res.candidats[0].nombreEnnemis).toBeGreaterThan(0);
+      expect(res.avertissements.some((a) => /Budget trop serré/i.test(a))).toBe(true);
+    }
+  });
+
   it("signale un bestiaire vide au lieu de planter", () => {
     const res = genererRencontre({
       groupe,
