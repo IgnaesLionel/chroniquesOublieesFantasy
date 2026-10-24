@@ -62,6 +62,18 @@ information que l'écran ne peut pas trancher :
 
 Le pourcentage ne modifie **aucun jet** : il informe le MJ avant qu'il clique.
 
+## Effets (panneau MJ)
+
+Le panneau `✦ Effets` liste les effets du participant affiché et permet d'en
+poser sur **n'importe quel participant** grâce au sélecteur « Appliquer l'effet
+à » : l'acteur par défaut (comportement historique), puis un allié ou un ennemi
+— par exemple une torche enflammée lancée sur un adversaire.
+
+- Le choix persiste tant qu'on reste sur le même acteur ; changer d'acteur
+  remet la cible sur lui (la liste affiche toujours les effets de l'acteur).
+- Le journal enregistre la cible réelle : `Effet "X" sur Y`.
+- Panneau compacté : liste limitée en hauteur, retrait par `✕`.
+
 ## Fiche de créature en combat
 
 Quand l'acteur sélectionné est une créature (monstre), ses capacités du

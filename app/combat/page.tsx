@@ -949,9 +949,10 @@ function CombatInner() {
             onToggle={toggleEquipe}
           />
           <EffectsPanel
+            participants={combat.participants}
             participant={selectedParticipant}
-            onAdd={(key, duree) =>
-              setCombat((c) => (c && attackerId ? addParticipantEffect(c, attackerId, createEffect(key, { dureeTours: duree })) : c))
+            onAdd={(cibleId, key, duree) =>
+              setCombat((c) => (c ? addParticipantEffect(c, cibleId, createEffect(key, { dureeTours: duree })) : c))
             }
             onRemove={(effetId) =>
               setCombat((c) => (c && attackerId ? removeParticipantEffect(c, attackerId, effetId) : c))
