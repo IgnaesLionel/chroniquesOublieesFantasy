@@ -559,8 +559,9 @@ export function EncounterGenerator({
                     {onConvertirEnCombat && (
                       <button
                         onClick={() => onConvertirEnCombat(evaluation.slots)}
+                        disabled={evaluation.slots.length === 0}
                         title="Reprend cette composition comme camp ennemi en préparation de combat (les PJ déjà posés sont conservés)"
-                        className="px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-white text-sm font-bold border border-red-500"
+                        className="px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-white text-sm font-bold border border-red-500 disabled:opacity-40"
                       >
                         ⚔ Transformer en combat
                       </button>
@@ -696,6 +697,16 @@ export function EncounterGenerator({
                   <button onClick={relancer} className="px-3 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-sm">
                     Relancer (verrous conservés)
                   </button>
+                  {onConvertirEnCombat && (
+                    <button
+                      onClick={() => onConvertirEnCombat(evaluation.slots)}
+                      disabled={evaluation.slots.length === 0}
+                      title="Reprend cette composition comme camp ennemi en préparation de combat (les PJ déjà posés sont conservés)"
+                      className="px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-white text-sm font-bold border border-red-500 disabled:opacity-40"
+                    >
+                      ⚔ Transformer en combat
+                    </button>
+                  )}
                 </div>
 
                 {evaluation.slots.length === 0 && <p className="text-sm text-amber-300 mt-2">Composition vide : ajouter ou générer une créature.</p>}
