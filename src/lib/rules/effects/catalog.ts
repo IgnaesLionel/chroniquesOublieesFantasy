@@ -37,7 +37,7 @@ export const EFFECT_CATALOG: EffectTemplate[] = [
   { key: "riposte-posture", nom: "Posture de riposte", description: "LDB (L ou A, au contact) : déclarée en début de round ; si attaqué au contact, riposte immédiate sur son tour (1/round — avant sa propre initiative : attaque seule). Le MJ fait jouer la riposte (sélectionner le riposteur comme attaquant).", dureeDefaut: 1, modificateurs: { ripostePosture: 1 } },
   { key: "soutien-tactique", nom: "Soutien", description: "LDB (L) : sacrifie toutes ses actions — +5 en attaque au contact à un allié contre la créature désignée, jusqu’au tour de l’allié au round suivant. Au contact de la créature, action offensive (MJ).", dureeDefaut: 1, modificateurs: { attaque: 5 } },
   // Effets génériques (assistant, ajustables par le MJ).
-  { key: "empoisonne", nom: "Empoisonné", description: "−2 aux jets d'attaque (générique).", dureeDefaut: 3, modificateurs: { attaque: -2 } },
+  { key: "empoisonne", nom: "Empoisonné", description: "Perd 1 PV au début de son tour et −2 aux jets d'attaque (générique, ajustable par le MJ).", dureeDefaut: 3, modificateurs: { attaque: -2, pvParTour: -1 } },
   { key: "saignement", nom: "Saignement", description: "Perd 2 PV au début de son tour (générique).", dureeDefaut: 3, modificateurs: { pvParTour: -2 } },
   { key: "protection", nom: "Protection", description: "+2 défense (générique).", dureeDefaut: 3, modificateurs: { defense: 2 } },
   { key: "bonus-attaque", nom: "Bonus d'attaque", description: "+2 attaque (générique).", dureeDefaut: 2, modificateurs: { attaque: 2 } },

@@ -73,6 +73,9 @@ poser sur **n'importe quel participant** grâce au sélecteur « Appliquer l'eff
   remet la cible sur lui (la liste affiche toujours les effets de l'acteur).
 - Le journal enregistre la cible réelle : `Effet "X" sur Y`.
 - Panneau compacté : liste limitée en hauteur, retrait par `✕`.
+- Effets génériques à dégâts par tour (appliqués à la fin du tour du porteur,
+  comme les autres effets) : `Brûlure` 1 PV, `Saignement` 2 PV,
+  `Empoisonné` 1 PV **et** −2 aux jets d'attaque.
 
 ## Fiche de créature en combat
 

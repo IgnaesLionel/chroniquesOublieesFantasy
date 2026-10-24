@@ -17,10 +17,11 @@ function participant(nom: string): CombatParticipant {
 }
 
 describe("effets temporaires", () => {
-  it("poison : -2 attaque, durée 3 -> 2 après tick", () => {
+  it("poison : -2 attaque et 1 PV/tour, durée 3 -> 2 après tick", () => {
     const poison = createEffect("empoisonne", { source: "Gobelin" });
     expect(poison.toursRestants).toBe(3);
     expect(getModifier([poison], "attaque")).toBe(-2);
+    expect(tickEffects([poison]).pvDelta).toBe(-1);
     const t = tickEffects([poison]);
     expect(t.restants[0].toursRestants).toBe(2);
     expect(t.expires).toHaveLength(0);
