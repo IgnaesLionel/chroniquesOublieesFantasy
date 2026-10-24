@@ -2,7 +2,8 @@
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import { canAct, getModifier, attaqueInterdite } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable, estAttaqueContact, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, raisonSeuilPv, raisonExigeVivant, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable, estAttaqueContact, estAttaqueArme, estAttaqueDistance, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, raisonSeuilPv, raisonExigeVivant, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { composantesAttaque, probabiliteToucher, seuilDefense } from "@/src/lib/rules/combat/touche";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { labelFamilleArme } from "@/src/lib/rules/world/types";
 import { PopupValidationMJ, type QuestionMJ } from "@/src/components/combat/PopupValidationMJ";
@@ -120,6 +121,50 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     { cle: "ralenti", nom: "Ralenti" },
     { cle: "immobilise", nom: "Immobilisé" },
   ];
+  /**
+   * Chance de toucher pour une option tactique, calculée comme le moteur
+   * (composantesAttaque / seuilDefense / probabiliteToucher) : d20 + bonus
+   * contre la DEF de la cible, 1 naturel = échec, 20 naturel = touche (ou le
+   * seuil de critique : 19-20 avec Science du critique), dé bonus/malus inclus.
+   * null quand la notion n'a pas de sens : multi-cibles, test opposé magique,
+   * difficulté fixe de sort (formule non résolue ici).
+   */
+  const chanceToucher = (option: "normale" | "assuree" | "precise" | "violente"): number | null => {
+    if (!attacker || !selAttaqueTop || choixMultiples) return null;
+    if (!cibleSel || cibleSel.statut !== "actif") return null;
+    if (selSortTop?.testOppose === "magique" || selSortTop?.difficulteAttaque) return null;
+    if (selAttaqueTop.toucheAuto) return 1;
+    if (getModifier(cibleSel.effets, "paralyse") > 0) return 1;
+    const modTactique = option === "assuree" ? 5 : option === "precise" ? -3 : option === "violente" ? -7 : 0;
+    const modManuel = mod.trim() !== "" && Number.isFinite(Number(mod)) ? Number(mod) : 0;
+    const situation = composantesAttaque(attacker, selAttaqueTop, {
+      modAttaque:
+        modManuel +
+        modTactique +
+        (double && proposeDouble ? -2 : 0) +
+        (circulaire && proposeCirculaire ? -2 : 0),
+      bonusOverride: eclair && connaitEclair ? attacker.niveau + (attacker.caracs?.AGI ?? 0) : undefined,
+      arme: estAttaqueArme(selAttaqueTop),
+      distance: estAttaqueDistance(selAttaqueTop),
+    });
+    const aBonus =
+      getModifier(attacker.effets, "deBonus") > 0 ||
+      (parfaite && connaitParfaite) ||
+      (fleche && connaitFleche) ||
+      (equipeContact && proposeEquipe);
+    const aMalus =
+      getModifier(attacker.effets, "deMalus") > 0 || (puissante && connaitPuissante) || (mille && connaitMille);
+    const avantage = aBonus && !aMalus ? ("bonus" as const) : !aBonus && aMalus ? ("malus" as const) : null;
+    const seuils = attacker.effets
+      .map((e) => e.modificateurs["seuilCrit"])
+      .filter((v): v is number => typeof v === "number");
+    const critiqueAuto = situation.predilection > 0 && talents.has(normaliserNomCapacite("Science du critique"));
+    const seuilCrit = Math.min(...(seuils.length ? seuils : [20]), critiqueAuto ? 19 : 20);
+    return probabiliteToucher(situation.bonus, seuilDefense(cibleSel), avantage, seuilCrit);
+  };
+  const chanceAffichee = chanceToucher("normale") != null;
+  const pourcent = (p: number) => `${Math.round(p * 100)} %`;
+  const tonChance = (p: number) => (p >= 0.75 ? "text-green-400" : p >= 0.4 ? "text-amber-300" : "text-red-400");
   const lancer = (force = false) => {
     const opts: AttaqueOpts = {};
     const modN = Number(mod);
@@ -316,7 +361,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           <>
           <label className="block text-sm">Arme / sort
             {mana && <span className="ml-2 font-mono text-xs text-violet-300">mana {mana.actuel}/{mana.max}</span>}
-            <select value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+            <select id="combat-attaque" name="attaque" value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
               {attacker.attaques.map((a) => {
                 const { cout, raisons, sort } = info(a.id);
                 const jouable = raisons.length === 0;
@@ -377,7 +422,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               )}
               {concPossible && (
                 <label className="flex items-center gap-2" title="Sort (A) lancé en action limitée (L) : −2 PM. Le lanceur se prive de déplacement.">
-                  <input type="checkbox" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
+                  <input type="checkbox" id="combat-concentration" name="concentration" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
                   <span>Concentration accrue (−2 PM → {Math.max(0, coutBase - 2)} PM, action L)</span>
                 </label>
               )}
@@ -400,7 +445,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         <div className="rounded border border-amber-700 bg-amber-950/40 p-2 text-sm space-y-1">
           <div className="text-xs uppercase text-amber-300 font-bold">🐺 Travail d&apos;équipe</div>
           <label className="flex items-center gap-2" title="Le loup est au contact du rôdeur (positions non suivies : à déclarer par le MJ). Le dé bonus du rôdeur aux tests de pistage et anti-surprise reste au MJ.">
-            <input type="checkbox" checked={equipeContact} onChange={(e) => setEquipeContact(e.target.checked)} />
+            <input type="checkbox" id="combat-travail-equipe" name="travailEquipe" checked={equipeContact} onChange={(e) => setEquipeContact(e.target.checked)} />
             <span>Au contact de {propositionEquipe?.maitreNom} : dé bonus en attaque</span>
           </label>
         </div>
@@ -422,6 +467,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0 && !attaqueInterdite(attacker?.effets ?? [], p.instanceId)).map((p) => (
               <label key={p.instanceId} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
+                  id={`combat-cible-${p.instanceId}`}
+                  name={`cible-${p.instanceId}`}
                   type="checkbox"
                   checked={ciblesAffichees.includes(p.instanceId)}
                   disabled={!ciblesAffichees.includes(p.instanceId) && maxCibles != null && ciblesAffichees.length >= maxCibles}
@@ -434,7 +481,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             <p className="text-xs text-zinc-500">Ennemis pré-cochés{estZoneTop ? " (alliés dans la zone : cochez-les, ex. Explosion de feu)" : ""}.</p>
           </div>
         ) : (
-          <select value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+          <select id="combat-cible" name="cible" value={targetId ?? ""} onChange={(e) => onTarget(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
             {vivants.filter((p) => p.instanceId !== attackerId && getModifier(p.effets, "inciblable") <= 0 && !attaqueInterdite(attacker?.effets ?? [], p.instanceId)).map((p) => (
               <option key={p.instanceId} value={p.instanceId}>{p.nom} — Déf {p.defense + getModifier(p.effets, "defense")} — {p.pv}/{p.pvMax} PV</option>
             ))}
@@ -454,7 +501,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           <div className="text-xs uppercase text-zinc-500 font-bold">Coup spécial</div>
           {connaitPuissante && (
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={puissante} onChange={(e) => setPuissante(e.target.checked)} />
+              <input type="checkbox" id="combat-puissante" name="puissante" checked={puissante} onChange={(e) => setPuissante(e.target.checked)} />
               <span>Puissante (dé malus, +{variante === "L" ? "3d4°" : "2d4°"})</span>
               <select value={variante} onChange={(e) => setVariante(e.target.value as "A" | "L")} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
                 <option value="A">A</option>
@@ -464,13 +511,13 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           )}
           {connaitParfaite && (
             <label className="flex items-center gap-2" title="Arme de prédilection requise (MJ)">
-              <input type="checkbox" checked={parfaite} onChange={(e) => setParfaite(e.target.checked)} />
+              <input type="checkbox" id="combat-parfaite" name="parfaite" checked={parfaite} onChange={(e) => setParfaite(e.target.checked)} />
               <span>Parfaite (dé bonus, +1d4°)</span>
             </label>
           )}
           {connaitMille && (
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={mille} onChange={(e) => setMille(e.target.checked)} />
+              <input type="checkbox" id="combat-dans-le-mille" name="dansLeMille" checked={mille} onChange={(e) => setMille(e.target.checked)} />
               <span>Dans le mille (dé malus, +{varianteMille === "L" ? "3d4°" : "2d4°"})</span>
               <select value={varianteMille} onChange={(e) => setVarianteMille(e.target.value as "A" | "L")} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
                 <option value="A">A</option>
@@ -481,7 +528,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           {connaitFleche && (
             <div className="flex items-center gap-2 flex-wrap">
               <label className="flex items-center gap-2" title="NC inférieur au vôtre, 1/combat par état (MJ)">
-                <input type="checkbox" checked={fleche} onChange={(e) => setFleche(e.target.checked)} />
+                <input type="checkbox" id="combat-fleche-de-mort" name="flecheDeMort" checked={fleche} onChange={(e) => setFleche(e.target.checked)} />
                 <span>Flèche de mort (dé bonus)</span>
               </label>
               <select value={modeFleche} onChange={(e) => setModeFleche(e.target.value as "dm" | "statut")} className="bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
@@ -497,13 +544,15 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           )}
           {connaitEclair && (
             <label className="flex items-center gap-2" title="Bonus et DM à l'AGI au lieu de la FOR (+10 m au rang 5, MJ)">
-              <input type="checkbox" checked={eclair} onChange={(e) => setEclair(e.target.checked)} />
+              <input type="checkbox" id="combat-attaque-eclair" name="attaqueEclair" checked={eclair} onChange={(e) => setEclair(e.target.checked)} />
               <span>Attaque éclair (AGI)</span>
             </label>
           )}
           {proposeDouble && (
             <label className="flex items-center gap-2" title="Action limitée (L) : deux attaques au contact à −2 chacune, même cible — 2 résolutions successives (voie du combat R4)">
               <input
+                id="combat-double-attaque"
+                name="doubleAttaque"
                 type="checkbox"
                 checked={double}
                 onChange={(e) => { setDouble(e.target.checked); if (e.target.checked) setCirculaire(false); }}
@@ -514,6 +563,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           {proposeCirculaire && (
             <label className="flex items-center gap-2" title="Action limitée (L) : une attaque à −2 par adversaire au contact — tous les ennemis pré-cochés, décochez au besoin (voie du combat R5)">
               <input
+                id="combat-attaque-circulaire"
+                name="attaqueCirculaire"
                 type="checkbox"
                 checked={circulaire}
                 onChange={(e) => { setCirculaire(e.target.checked); if (e.target.checked) { setDouble(false); } }}
@@ -529,17 +580,36 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           const estAttaque = v === "assuree" || v === "precise" || v === "violente";
           const indisponible = estMagiqueTop && estAttaque;
           const valeur = estAttaque && estMagiqueTop ? "normale" : tactique;
+          const optionAttaque =
+            v === "normale" || v === "assuree" || v === "precise" || v === "violente" ? v : null;
+          const chance = optionAttaque && !indisponible ? chanceToucher(optionAttaque) : null;
           return (
             <label key={v} className={`flex items-center gap-2 ${indisponible ? "opacity-40" : ""}`} title={v === "normale" ? "Attaque normale" : aide}>
-              <input type="radio" checked={valeur === v} disabled={indisponible} onChange={() => setTactique(v)} />
-              <span>{label}</span>
+              <input type="radio" id={`tactique-${v}`} name="option-tactique" checked={valeur === v} disabled={indisponible} onChange={() => setTactique(v)} />
+              <span className="flex-1">
+                {label}
+                {chance != null && (
+                  <span
+                    className={`ml-1.5 font-mono font-bold ${tonChance(chance)}`}
+                    title={`${pourcent(chance)} de toucher ${cibleSel?.nom ?? "la cible"} avec cette option (DEF et effets compris)`}
+                  >
+                    {pourcent(chance)}
+                  </span>
+                )}
+              </span>
             </label>
           );
         })}
+        {chanceAffichee && (
+          <p className="text-[11px] text-zinc-500">
+            Chance de toucher : d20 + bonus ≥ DEF de la cible. 1 naturel = échec, 20 = touche
+            (19-20 avec Science du critique).
+          </p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">Mod. attaque<input value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Mod. manuel résiduel : prédilection +1 et Spécialisation +N DM sont automatiques, Double/Circulaire ont leur case" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
-        <label className="block text-xs">Bonus DM<input value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
+        <label className="block text-xs">Mod. attaque<input id="combat-mod-attaque" name="modAttaque" value={mod} onChange={(e) => setMod(e.target.value)} placeholder="+1 / −2" title="Mod. manuel résiduel : prédilection +1 et Spécialisation +N DM sont automatiques, Double/Circulaire ont leur case" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
+        <label className="block text-xs">Bonus DM<input id="combat-bonus-dm" name="bonusDm" value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
       </div>
       <button
         onClick={() => lancer()}
@@ -573,7 +643,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             const cible = participants.find((p) => p.instanceId === targetId);
             return cible ? `🤝 Soutenir ${cible.nom} (+5)` : "🤝 Soutenir un allié";
           }
-          return "⚔️ Lancer l'attaque";
+          const chance = chanceToucher(eff);
+          return chance == null ? "⚔️ Lancer l'attaque" : `⚔️ Lancer l'attaque — ${pourcent(chance)}`;
         })()}
       </button>
       {last && (

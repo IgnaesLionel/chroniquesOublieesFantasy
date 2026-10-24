@@ -42,6 +42,7 @@ import type {
   TypeAttaqueGratuite,
 } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/combat/types";
+import { composantesAttaque, seuilDefense } from "@/src/lib/rules/combat/touche";
 
 function stamp(): string {
   return new Date().toISOString();
@@ -397,17 +398,24 @@ export function resolveAttack(
   if (sort && !paiement.dejaPaye) s = payerCoutSort(s, attackerId, sort, paiement, rng).state;
   if (sort?.coutPV && !paiement.dejaPaye) s = applyCoutPV(s, attackerId, sort.coutPV, rng, niveauEffectif(attaquant)).state;
 
-  const modAttaque = getModifier(attaquant.effets, "attaque") + (attaqueOpts.modAttaque ?? 0);
+  // Décomposition partagée avec l'affichage de la chance de toucher
+  // (touche.ts) : mêmes chiffres dans l'interface et dans le moteur.
+  const situationAttaque = composantesAttaque(attaquant, attaque, {
+    modAttaque: attaqueOpts.modAttaque,
+    bonusOverride: attaqueOpts.bonusOverride,
+    arme: estAttaqueArme(attaque),
+    distance: estAttaqueDistance(attaque),
+  });
+  const modAttaque = situationAttaque.modEffets;
   // Aveuglé : −5 supplémentaire aux attaques à distance (−10 au total).
-  const modDistance = estAttaqueDistance(attaque) ? getModifier(attaquant.effets, "attaqueDistance") : 0;
+  const modDistance = situationAttaque.modDistance;
   const modDefense = getModifier(cible.effets, "defense");
-  const bonusBase = attaqueOpts.bonusOverride ?? attaque.bonus;
+  const bonusBase = situationAttaque.base;
   // Maître d'armes : la prédilection de la fiche couvre cette attaque ?
   // (+1 attaque, Science du critique 19-20, Spécialisation +N DM — auto).
-  const matchPredilection =
-    !!attaquant.famillePredilection && estAttaqueArme(attaque) && (attaque.familles ?? []).includes(attaquant.famillePredilection);
-  const bonusPredilection = matchPredilection ? 1 : 0;
-  const bonusEffectif = bonusBase + modAttaque + modDistance + bonusPredilection;
+  const matchPredilection = situationAttaque.predilection > 0;
+  const bonusPredilection = situationAttaque.predilection;
+  const bonusEffectif = situationAttaque.bonus;
   // Attaque assurée : DM divisés (après le critique, plancher entier).
   const diviseDM = attaqueOpts.diviseDM && attaqueOpts.diviseDM > 1 ? Math.floor(attaqueOpts.diviseDM) : 1;
   // Difficulté fixe du sort (ex: Saignements diff 10+CON de la cible) :
@@ -415,7 +423,7 @@ export function resolveAttack(
   const difficulteSort = sort?.difficulteAttaque
     ? { formule: sort.difficulteAttaque, seuil: resoudreFormuleSort(sort.difficulteAttaque, cible.caracs ?? {}) }
     : null;
-  const defenseEffective = difficulteSort ? difficulteSort.seuil : cible.defense + modDefense;
+  const defenseEffective = difficulteSort ? difficulteSort.seuil : seuilDefense(cible);
   // Dés évolutifs (°) résolus au niveau de l'attaquant (d4 1-5 ... d12 15+).
   const nivAttaquant = niveauEffectif(attaquant);
   const degatsExpr = substituerDesEvolutifs(attaqueOpts.degatsOverride ?? attaque.degats, nivAttaquant);
@@ -1458,7 +1466,7 @@ export function trouverMaitreLoup(
 }
 
 /** Attaque d'arme (ni sort, ni accordée, ni renvoi, ni invocation) ? */
-function estAttaqueArme(attaque: { id: string }): boolean {
+export function estAttaqueArme(attaque: { id: string }): boolean {
   return (
     !attaque.id.startsWith("sort:") &&
     !attaque.id.startsWith("sort-tmp:") &&

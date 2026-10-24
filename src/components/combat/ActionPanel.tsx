@@ -98,7 +98,7 @@ export function ActionPanel(props: Props) {
       <div className={`rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-3 fam-rail ${classeFamille(familleDuProfil(acteur?.profil))}`}>
         <h2 className="font-bold text-sm uppercase text-zinc-400">👤 Acteur — {acteur?.nom ?? "—"} <FamilleBadge famille={familleDuProfil(acteur?.profil)} /></h2>
         <label className="block text-sm">Acteur
-          <select value={attackerId ?? ""} onChange={(e) => props.onAttacker(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+          <select id="combat-acteur" name="acteur" value={attackerId ?? ""} onChange={(e) => props.onAttacker(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
             {participants.map((p) => (
               <option key={p.instanceId} value={p.instanceId}>{p.nom} ({p.pv}/{p.pvMax})</option>
             ))}

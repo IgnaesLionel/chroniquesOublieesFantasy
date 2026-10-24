@@ -636,17 +636,17 @@ function CombatInner() {
           )}
           {staging.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2 items-center">
-              <select value={staging.find((p) => p.instanceId === etatCible)?.instanceId ?? staging[0].instanceId} onChange={(e) => setEtatCible(e.target.value)} title="Participant subissant l'état initial" className="bg-zinc-800 rounded px-2 py-1.5 text-xs">
+              <select id="combat-etat-cible" name="etatCible" value={staging.find((p) => p.instanceId === etatCible)?.instanceId ?? staging[0].instanceId} onChange={(e) => setEtatCible(e.target.value)} title="Participant subissant l'état initial" className="bg-zinc-800 rounded px-2 py-1.5 text-xs">
                 {staging.map((p) => (
                   <option key={p.instanceId} value={p.instanceId}>{p.nom}</option>
                 ))}
               </select>
-              <select value={etatCle} onChange={(e) => setEtatCle(e.target.value)} title="État préjudiciable initial (avant l'initiative)" className="bg-zinc-800 rounded px-2 py-1.5 text-xs">
+              <select id="combat-etat-cle" name="etatCle" value={etatCle} onChange={(e) => setEtatCle(e.target.value)} title="État préjudiciable initial (avant l'initiative)" className="bg-zinc-800 rounded px-2 py-1.5 text-xs">
                 {EFFECT_CATALOG.map((t) => (
                   <option key={t.key} value={t.key}>{t.nom} ({t.dureeDefaut ?? "∞"})</option>
                 ))}
               </select>
-              <input value={etatDuree} onChange={(e) => setEtatDuree(e.target.value)} placeholder={EFFECT_CATALOG.find((t) => t.key === etatCle)?.dureeDefaut != null ? String(EFFECT_CATALOG.find((t) => t.key === etatCle)?.dureeDefaut) : "∞"} title="Durée en tours (vide = défaut)" className="w-14 bg-zinc-800 rounded px-2 py-1.5 text-xs text-center" />
+              <input id="combat-etat-duree" name="etatDuree" value={etatDuree} onChange={(e) => setEtatDuree(e.target.value)} placeholder={EFFECT_CATALOG.find((t) => t.key === etatCle)?.dureeDefaut != null ? String(EFFECT_CATALOG.find((t) => t.key === etatCle)?.dureeDefaut) : "∞"} title="Durée en tours (vide = défaut)" className="w-14 bg-zinc-800 rounded px-2 py-1.5 text-xs text-center" />
               <button onClick={appliquerEtatStaging} className="px-3 py-1.5 rounded bg-violet-700 hover:bg-violet-600 text-xs font-semibold">
                 + État initial
               </button>
@@ -745,6 +745,8 @@ function CombatInner() {
                         <div key={m.id} className="flex justify-between items-center text-sm py-1 px-1 border-b border-zinc-800/50 gap-2">
                           <span className="flex-1">{m.nom} <span className="text-zinc-500">({m.pv} PV)</span></span>
                           <input
+                            id={`combat-quantite-${m.id}`}
+                            name={`quantite-${m.id}`}
                             type="number" min={1} max={12} value={quantities[m.id] ?? 1}
                             onChange={(e) => setQuantities((q) => ({ ...q, [m.id]: Number(e.target.value) }))}
                             className="w-14 bg-zinc-800 rounded px-1.5 py-1 text-center"
