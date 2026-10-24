@@ -71,10 +71,24 @@ export function useLocalCollection<T extends { id: string }>(
       reconciliationDemarree = true;
       demarrerReconciliation({ [STORAGE_KEYS.characters]: SEED_CHARACTERS });
     }
+    const persister = (valeur: T[], retourAuxGraines = false) =>
+      avecInstance(libelle, () =>
+        localStorageAdapter.save(key, valeur, { retourAuxGraines, protegerPv: opts.protegerPv })
+      );
     const accepter = (stockes: T[]) => {
-      setItemsRaw(preparerStock(stockes, seed, opts.migrer));
+      const prepares = preparerStock(stockes, seed, opts.migrer);
+      setItemsRaw(prepares);
       loadedRef.current = true;
       setLoaded(true);
+      // N'écrire QUE si la préparation a réellement changé quelque chose
+      // (graines manquantes ajoutées, migration de fiche). Réécrire à
+      // l'identique ce qui vient d'être lu était inutile — et c'était la
+      // porte ouverte au bug « fiche écrasée par un autre onglet » : les
+      // écrans restent montés (état conservé pendant la navigation), et un
+      // écran périmé réécrivait son ancien tampon juste après avoir relu le
+      // stockage frais. Seul le mutateur `setItems` écrit désormais un état
+      // modifié ; le chargement ne fait que lire.
+      if (prepares !== stockes) persister(prepares);
     };
     const chargement = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
     // Stock existant : on ajoute les graines manquantes (nouveau contenu
@@ -98,24 +112,20 @@ export function useLocalCollection<T extends { id: string }>(
       }
       loadedRef.current = true;
       setLoaded(true);
+      // Première visite (stock vide après la fenêtre de réconciliation) :
+      // les graines doivent être persistées pour la prochaine ouverture.
+      persister(seed, true);
     }, FENETRE_RECONCILIATION);
     return () => window.clearTimeout(minuteur);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, persist]);
 
-  useEffect(() => {
-    if (persist && loaded) {
-      // items === seed : l'état n'a jamais reçu de stock — cette écriture est
-      // une CHUTE SUR LES GRAINES, à signaler sans ambiguïté dans la chrono.
-      // protegerPv : l'écriture automatique ne doit jamais changer les PV par
-      // rapport au stockage (seules les actions utilisateur le peuvent) — une
-      // divergence est un tampon stale, bloquée et épinglée par le dépôt.
-      avecInstance(libelle, () =>
-        localStorageAdapter.save(key, items, { retourAuxGraines: items === seed, protegerPv: opts.protegerPv })
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, items, loaded, persist, libelle]);
+  // Plus d'écriture automatique à chaque changement de `items` : `setItems`
+  // persiste déjà de façon synchrone (voir ci-dessous), et le chargement
+  // n'écrit que si les graines/migrations ont réellement modifié le stock.
+  // L'ancien effet réécrivait le tampon d'un écran resté monté après une
+  // relecture — un écran périmé écrasait alors la fiche qu'un autre venait de
+  // sauvegarder (ex. « Tout sauvegarder » puis passage sur Combat).
 
   // Écriture synchrone : chaque mise à jour est persistée aussitôt, pas
   // seulement après ré-affichage. Sans ça, quitter la page (ex. Combat →
@@ -149,6 +159,9 @@ export function useLocalCollection<T extends { id: string }>(
   // page montée avant (visibilité, focus). Toute écriture étant persistée
   // aussitôt, relire converge vers des données à jour sans rien écraser
   // d'utile (les brouillons d'édition vivent dans des états séparés).
+  // Relire NE DOIT PAS écrire : c'est un chargement, pas une modification.
+  // Une relecture suivie d'une écriture du tampon local est exactement ce qui
+  // permettait à un écran périmé de recouvrir une sauvegarde fraîche.
   useEffect(() => {
     if (!persist) return;
     const relire = (cause?: string) => {
@@ -157,7 +170,7 @@ export function useLocalCollection<T extends { id: string }>(
       // porteurs d'information (bfcache/historique), pour ne pas noyer la chrono.
       if (cause) noterResync(key, cause);
       const stocke = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
-      if (stocke) setItems(preparerStock(stocke, seed, opts.migrer));
+      if (stocke) setItemsRaw(preparerStock(stocke, seed, opts.migrer));
     };
     const surStockage = (e: StorageEvent) => {
       if (e.key === key) {
@@ -194,7 +207,7 @@ export function useLocalCollection<T extends { id: string }>(
     // seed / migrer : constantes de module côté appelants (mêmes valeurs à
     // chaque rendu) ; les relire ne doit pas réabonner les écouteurs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, persist, setItems]);
+  }, [key, persist]);
 
   return { items, setItems, loaded };
 }
