@@ -64,9 +64,10 @@ Le pourcentage ne modifie **aucun jet** : il informe le MJ avant qu'il clique.
 
 ## Fiche de créature en combat
 
-Chaque monstre de la table porte un bouton `🧠` (aperçu des deux premières
-capacités, `+N` au-delà) qui ouvre sa fiche : NC, PV/DEF/Init, attaques et
-**capacités du bestiaire** avec leur texte.
+Quand l'acteur sélectionné est une créature (monstre), ses capacités du
+bestiaire s'affichent **sous les trois boutons de la carte « Acteur »** :
+chaque capacité est un repli (`▸`) avec son résumé, à ouvrir pour lire le
+texte de règle.
 
 - Les capacités sont **copiées dans le participant** à l'instanciation
   (`capacitesDetails`, `capacitesPartagees`) : la fiche reste lisible même si
@@ -81,5 +82,5 @@ capacités, `+N` au-delà) qui ouvre sa fiche : NC, PV/DEF/Init, attaques et
 | Fichier | Rôle |
 |---|---|
 | `src/lib/rules/combat/fiche-creature.ts` | `capacitesCreature` (dédoublonnage, nettoyage) |
-| `src/components/combat/FicheCreature.tsx` | Modale de fiche |
+| `src/components/combat/ActionPanel.tsx` | Liste dépliable sous les onglets de la carte Acteur |
 | `tests/rules/fiche-creature.test.ts` | Aigle commun, doublons, images Notion |

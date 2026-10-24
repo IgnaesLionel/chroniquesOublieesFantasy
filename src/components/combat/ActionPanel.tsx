@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import { sortUtilisable, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { capacitesCreature } from "@/src/lib/rules/combat/fiche-creature";
 import { talentsLancables } from "@/src/lib/data/capacites-usables";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
 import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
@@ -72,6 +73,8 @@ export function ActionPanel(props: Props) {
     (s) => s.type !== "offensif" && sortUtilisable(acteur!.niveau, s).ok
   ).length;
   const nbCapacites = talentsLancables(acteur?.capacites ?? []).length;
+  /** Créature (monstre) : capacités du bestiaire, lisibles sous les onglets. */
+  const capacitesCreatureActeur = acteur?.camp === "monstre" ? capacitesCreature(acteur) : [];
 
   const onglets: { id: Onglet; label: string; titre: string; badge: string | null; vide: string | null; teinte: string }[] = [
     {
@@ -118,6 +121,25 @@ export function ActionPanel(props: Props) {
             </button>
           ))}
         </div>
+        {capacitesCreatureActeur.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs uppercase text-zinc-500 font-bold" title="Capacités du bestiaire — informatives, le MJ les applique">
+              🧠 Capacités de la créature
+            </div>
+            {capacitesCreatureActeur.map((c) => (
+              <details key={c.nom} className="rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1.5">
+                <summary className="cursor-pointer text-sm text-sky-200 hover:text-sky-100">
+                  {c.origine === "partagee" ? "⛓ " : ""}
+                  {c.nom}
+                  {c.resume ? <span className="text-xs font-normal text-zinc-400"> — {c.resume}</span> : null}
+                </summary>
+                <p className="mt-1 text-xs text-zinc-300 whitespace-pre-line">
+                  {c.texte ?? "Texte non fourni par le bestiaire (voir la fiche)."}
+                </p>
+              </details>
+            ))}
+          </div>
+        )}
       </div>
       {actif.vide ? (
         <p className="text-xs text-zinc-500">{actif.vide}</p>
