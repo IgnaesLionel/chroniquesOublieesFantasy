@@ -35,7 +35,12 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
   if (!lanceur || soutiens.length === 0) return null;
   const jouables = soutiens.filter((s) => sortUtilisable(lanceur.niveau, s).ok);
   const sort = soutiens.find((s) => s.id === sortId && sortUtilisable(lanceur.niveau, s).ok) ?? jouables[0] ?? soutiens[0];
-  const allies = participants.filter((p) => p.statut === "actif" && p.camp === lanceur.camp);
+  // Alliés ciblables : les KO restent soignables (le sort les relève dès que
+  // les PV remontent), les morts jamais. Les actifs passent devant pour rester
+  // la cible par défaut.
+  const allies = participants
+    .filter((p) => p.camp === lanceur.camp && p.statut !== "mort")
+    .sort((a, b) => Number(b.statut === "actif") - Number(a.statut === "actif"));
   const cible = allies.find((p) => p.instanceId === cibleId) ?? allies[0] ?? null;
   const bloque = !canAct(lanceur.effets);
   const mana = lanceur.ressources["mana"];
@@ -77,7 +82,7 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
         </div>
       )}
       <label className="block text-sm">Sort
-        <select value={sort.id} onChange={(e) => { setSortId(e.target.value); setAttenteMj(null); }} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+        <select id="soutien-sort" name="soutien-sort" value={sort.id} onChange={(e) => { setSortId(e.target.value); setAttenteMj(null); }} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
           {soutiens.map((s) => {
             const u = sortUtilisable(lanceur.niveau, s);
             const flags = [
@@ -116,15 +121,17 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
       )}
       {sort.soin && cible?.soinMagiqueRecu && (
         <label className="flex items-center gap-2 text-xs text-zinc-400" title="Règle de table : 1 soin magique / cible / combat. Cocher pour outrepasser (table sans limite).">
-          <input type="checkbox" checked={outrepasserSoin} onChange={(e) => setOutrepasserSoin(e.target.checked)} />
+          <input id="soutien-outrepasser" name="soutien-outrepasser" type="checkbox" checked={outrepasserSoin} onChange={(e) => setOutrepasserSoin(e.target.checked)} />
           <span>{cible.nom} déjà soigné ce combat — outrepasser MJ (1 soin/combat)</span>
         </label>
       )}
       <label className="block text-sm">Bénéficiaire
         {cible && <FamilleBadge famille={cible.camp === "pj" ? familleDuProfil(cible.profil) : null} className="ml-2" />}
-        <select value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+        <select id="soutien-cible" name="soutien-cible" value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
           {allies.map((p) => (
-            <option key={p.instanceId} value={p.instanceId}>{p.nom} — {p.pv}/{p.pvMax} PV</option>
+            <option key={p.instanceId} value={p.instanceId}>
+              {p.nom} — {p.pv}/{p.pvMax} PV{p.statut === "ko" ? " (KO — soin possible)" : ""}
+            </option>
           ))}
         </select>
       </label>
@@ -132,11 +139,11 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
         <div className={`rounded border border-zinc-800 p-2 space-y-1.5 text-sm fam-rail ${classeFamille(familleDuSort(sort))}`}>
           <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
           <label className="flex items-center gap-2" title="Incantation classique : paie le coût en mana">
-            <input type="radio" checked={modeLancement === "mana"} onChange={() => setModeLancement("mana")} />
+            <input id="soutien-mode-mana" name="soutien-mode" type="radio" value="mana" checked={modeLancement === "mana"} onChange={() => setModeLancement("mana")} />
             <span>Incantation ({coutEff} PM{concActive && coutEff !== coutBase ? `, concentré depuis ${coutBase}` : ""})</span>
           </label>
           <label className={`flex items-center gap-2 ${burnPossible ? "" : "opacity-40"}`} title={raisonBrulure() ?? `Brûlure de mana : paie en PV (1 ${lanceur.deRecuperation ?? "DR"} par PM, sans RD, KO possible) — jamais pour les soins`}>
-            <input type="radio" checked={modeLancement === "brulure"} disabled={!burnPossible} onChange={() => setModeLancement("brulure")} />
+            <input id="soutien-mode-brulure" name="soutien-mode" type="radio" value="brulure" checked={modeLancement === "brulure"} disabled={!burnPossible} onChange={() => setModeLancement("brulure")} />
             <span>Brûlure de mana ({coutEff}{lanceur.deRecuperation ?? "?"} de PV)</span>
           </label>
           {modeLancement === "brulure" && !burnPossible && raisonBrulure() && (
@@ -144,7 +151,7 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
           )}
           {concPossible && (
             <label className="flex items-center gap-2" title="Sort (A) lancé en action limitée (L) : −2 PM. Le lanceur se prive de déplacement.">
-              <input type="checkbox" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
+              <input id="soutien-concentration" name="soutien-concentration" type="checkbox" checked={concentration} onChange={(e) => setConcentration(e.target.checked)} />
               <span>Concentration accrue (−2 PM → {Math.max(0, coutBase - 2)} PM, action L)</span>
             </label>
           )}

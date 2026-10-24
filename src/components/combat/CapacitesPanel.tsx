@@ -73,6 +73,12 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
   const effetActif = effetCle || defaut?.effetCle || "";
   const dureeActive = duree !== "" ? Number(duree) : defaut?.dureeTours ?? null;
   const actifs = participants.filter((p) => p.statut === "actif");
+  // Un soin peut relever un allié KO (le moteur repasse son statut à « actif »
+  // dès que les PV remontent) ; les autres capacités exigent un allié actif.
+  const soinCapacite = !!defaut?.soin || defaut?.montantMJ === "soin";
+  const alliesCiblables = participants
+    .filter((p) => p.camp === lanceur.camp && (p.statut === "actif" || (soinCapacite && p.statut === "ko")))
+    .sort((a, b) => Number(b.statut === "actif") - Number(a.statut === "actif"));
   // Animer un cadavre : la « cible » n'est pas un participant actif mais un
   // cadavre de zombie — relevé sur place (hors combat, NC ≤ 2, jamais animé)
   // ou choisi dans le bestiaire (le MJ déclare un corps de zombie sur place).
@@ -102,7 +108,7 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
   const ciblesPossibles = defaut?.cibles === "soi"
       ? actifs.filter((p) => p.instanceId === lanceur.instanceId)
       : defaut?.cibles === "allies"
-        ? actifs.filter((p) => p.camp === lanceur.camp && p.instanceId !== lanceur.instanceId)
+        ? alliesCiblables.filter((p) => p.instanceId !== lanceur.instanceId)
         : defaut?.cibles === "ennemis"
           ? actifs.filter((p) => p.camp !== lanceur.camp)
           : actifs;
@@ -199,7 +205,7 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
           <select value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
             {cibles.map((p) => (
               <option key={p.instanceId} value={p.instanceId}>
-                {`${p.nom} — ${p.pv}/${p.pvMax} PV${p.effets.length > 0 ? ` · ✦${p.effets.length}` : ""}`}
+                {`${p.nom} — ${p.pv}/${p.pvMax} PV${p.statut === "ko" ? " (KO — soin possible)" : ""}${p.effets.length > 0 ? ` · ✦${p.effets.length}` : ""}`}
               </option>
             ))}
           </select>

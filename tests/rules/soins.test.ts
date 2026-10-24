@@ -92,6 +92,19 @@ describe("voie des soins (LDB)", () => {
     expect(() => castSoutien(s2, a, t, mineure, fixedRng([0.5]))).toThrow(/quota épuisé/);
   });
 
+  it("mineure : relève un allié à 0 PV (compagnon KO)", () => {
+    const mineure = SEED_SORTS.find((s) => s.id === "sort-recuperation-mineure")!;
+    const pretre = { ...pj("Prêtre"), capacites: ["Récupération mineure"], sorts: [mineure] };
+    const loup = { ...pj("Loup (Nyssa)"), templateId: "compagnon:loup:nyssa", pv: 0, statut: "ko" as const };
+    const s = createCombat([pretre, loup]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    // 1d4 : 3 + CHA 2 = 5 → le compagnon repasse actif.
+    const r = castSoutien(s, a, t, mineure, fixedRng([0.5]));
+    expect(r.resolution.soinTotal).toBe(5);
+    expect(r.state.participants[1].pv).toBe(5);
+    expect(r.state.participants[1].statut).toBe("actif");
+  });
+
   it("majeure : +1d4° par rang 5 (2 R5 -> 5 dés)", () => {
     const majeure = SEED_SORTS.find((s) => s.id === "sort-recuperation-majeure")!;
     const pretre = {
