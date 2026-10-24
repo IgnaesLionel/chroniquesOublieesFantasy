@@ -188,6 +188,8 @@ export function monsterInstances(template: MonsterTemplate, count: number): Comb
     effets: [],
     sorts: [],
     capacites: [...(template.capacites ?? [])],
+    capacitesDetails: (template.capacitesDetails ?? []).map((c) => ({ ...c })),
+    capacitesPartagees: [...(template.capacitesPartagees ?? [])],
     ressources: {},
     niveau: template.niveau,
     statut: "actif" as const,

@@ -1,11 +1,14 @@
 "use client";
+import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { LABEL_ATTAQUE_GRATUITE, type AttaqueGratuite, type TypeAttaqueGratuite } from "@/src/lib/rules/combat/types";
 import { getModifier } from "@/src/lib/rules/effects/effects";
 import { talentConnu } from "@/src/lib/rules/combat/attack";
+import { capacitesCreature } from "@/src/lib/rules/combat/fiche-creature";
 import { pvBarreColor, pvTexteColor } from "@/src/lib/ui/pv";
 import { classeFamille, familleDuProfil } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { FicheCreature } from "@/src/components/combat/FicheCreature";
 
 function tonEffet(e: { modificateurs: Record<string, number> }): string {
   const m = e.modificateurs ?? {};
@@ -29,7 +32,11 @@ interface Props {
 }
 
 export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerId, onSync, syncIds, onGratuite, onEffaceGratuite, onAjouteGratuite }: Props) {
+  /** Créature dont la fiche (capacités du bestiaire) est ouverte. */
+  const [ficheId, setFicheId] = useState<string | null>(null);
+  const fiche = ficheId ? combat.participants.find((p) => p.instanceId === ficheId) ?? null : null;
   return (
+    <>
     <div className="rounded-lg border border-zinc-800 overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-zinc-900 text-zinc-400 text-xs uppercase">
@@ -50,6 +57,10 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
             const modDef = getModifier(p.effets, "defense");
             const nomDe = (id?: string) =>
               id ? (combat.participants.find((x) => x.instanceId === id)?.nom ?? "?") : "";
+            // Créatures : capacités du bestiaire (aperçu + fiche détaillée au clic).
+            const capacites = p.camp === "monstre" ? capacitesCreature(p) : [];
+            const apercuCapacites = capacites.slice(0, 2).map((c) => c.nom).join(" · ");
+            const resteCapacites = capacites.length - 2;
             return (
               <tr
                 key={p.instanceId}
@@ -75,6 +86,15 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
                   )}
                   <span className="font-semibold">{p.nom}</span>
                   <FamilleBadge famille={p.camp === "pj" ? familleDuProfil(p.profil) : null} className="ml-1.5" />
+                  {capacites.length > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setFicheId(p.instanceId); }}
+                      title="Capacités de la créature (bestiaire) — cliquer pour le détail"
+                      className="mt-1 block text-left text-[10px] text-sky-300/90 hover:text-sky-100"
+                    >
+                      🧠 {apercuCapacites}{resteCapacites > 0 ? ` +${resteCapacites}` : ""}
+                    </button>
+                  )}
                   {(p.sousCategories ?? []).length > 0 && (
                     <span className="block text-[10px] text-amber-300/80" title="Sous-catégories (dégâts bonus de certains sorts)">
                       💀 {(p.sousCategories ?? []).join(" · ")}
@@ -158,5 +178,7 @@ export function CombatTable({ combat, onHit, onHeal, onSelectAttacker, attackerI
         </tbody>
       </table>
     </div>
+    {fiche && <FicheCreature participant={fiche} onClose={() => setFicheId(null)} />}
+    </>
   );
 }

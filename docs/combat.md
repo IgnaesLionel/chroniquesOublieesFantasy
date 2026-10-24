@@ -61,3 +61,25 @@ information que l'écran ne peut pas trancher :
 | `tests/rules/touche.test.ts` | Bornes 1/20, dé bonus/malus, seuil de critique, DEF avec effets |
 
 Le pourcentage ne modifie **aucun jet** : il informe le MJ avant qu'il clique.
+
+## Fiche de créature en combat
+
+Chaque monstre de la table porte un bouton `🧠` (aperçu des deux premières
+capacités, `+N` au-delà) qui ouvre sa fiche : NC, PV/DEF/Init, attaques et
+**capacités du bestiaire** avec leur texte.
+
+- Les capacités sont **copiées dans le participant** à l'instanciation
+  (`capacitesDetails`, `capacitesPartagees`) : la fiche reste lisible même si
+  le bestiaire change en cours de partie.
+- Priorité des textes : catalogue partagé (`CAPACITES_PARTAGEES`) → texte de la
+  fiche → nom seul (mention « Texte non fourni »).
+- Doublons fusionnés : `Vol rapide` et `Vol rapide (Capacité)` n'apparaissent
+  qu'une fois ; les références d'images importées de Notion sont retirées.
+- **Informatif** : le moteur n'automatise pas ces capacités, le MJ les joue
+  (journal de combat pour la trace).
+
+| Fichier | Rôle |
+|---|---|
+| `src/lib/rules/combat/fiche-creature.ts` | `capacitesCreature` (dédoublonnage, nettoyage) |
+| `src/components/combat/FicheCreature.tsx` | Modale de fiche |
+| `tests/rules/fiche-creature.test.ts` | Aigle commun, doublons, images Notion |

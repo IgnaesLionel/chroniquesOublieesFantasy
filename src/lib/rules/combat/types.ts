@@ -57,6 +57,13 @@ export interface CombatParticipant {
   niveau: number;
   /** Talents connus (noms) : utilisables tels quels via le panneau Capacités. */
   capacites: string[];
+  /**
+   * Capacités de créature détaillées (bestiaire) : nom + texte, affichées par
+   * la fiche en combat. Copiées à l'instanciation (les fiches peuvent évoluer).
+   */
+  capacitesDetails?: { nom: string; description: string }[];
+  /** Références du catalogue partagé (CAPACITES_PARTAGEES : vol-rapide, emporter-airs...). */
+  capacitesPartagees?: string[];
   /** Copie des ressources du personnage (ex: mana) pour les coûts de sorts. */
   ressources: Record<string, { max: number; actuel: number }>;
   /** Dé de récupération de la fiche (d6/d8/d10) : brûlure de mana (1 DR par PM). Absent = pas de brûlure (monstres, invocations). */
