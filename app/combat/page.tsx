@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { avecSousCategoriesGraines } from "@/src/lib/data/seeds";
 import { useCharacters, useMonsters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
@@ -22,10 +23,22 @@ import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 import { ActionPanel } from "@/src/components/combat/ActionPanel";
+import { EncounterGenerator } from "@/src/components/encounters/EncounterGenerator";
+import { stagingDepuisRencontre } from "@/src/lib/rules/combat/depuis-rencontre";
+import type { SlotResolu } from "@/src/lib/encounters/types";
 import { familleDuProfil, classeFamille } from "@/src/lib/ui/famille";
 import { FamilleBadge, FamillePastille } from "@/src/components/ui/Famille";
 
 export default function CombatPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-zinc-500">Chargement du combat.</p>}>
+      <CombatInner />
+    </Suspense>
+  );
+}
+
+function CombatInner() {
+  const searchParams = useSearchParams();
   const { items: characters, setItems: setCharacters } = useCharacters("combat");
   const { items: monsters } = useMonsters();
   // Même migration douce que le bestiaire : les monstres ajoutés au combat
@@ -69,6 +82,16 @@ export default function CombatPage() {
   const [etatCible, setEtatCible] = useState<string | null>(null);
   const [etatCle, setEtatCle] = useState("surpris");
   const [etatDuree, setEtatDuree] = useState("");
+  // Préparation : générateur de rencontres ou composition manuelle. Le
+  // générateur reste monté (masqué) pour ne pas perdre la rencontre affichée
+  // quand le MJ bascule sur la composition manuelle.
+  // Liens entrants : « ?vue=composition » ouvre la préparation manuelle
+  // (bouton Combat de Partie, « + Combat » du Bestiaire, tuile Campagne).
+  // Les autres entrées tombent sur le générateur, cœur de l'onglet fusionné.
+  const [vuePrep, setVuePrep] = useState<"rencontres" | "manuel">(() =>
+    searchParams.get("vue") === "composition" ? "manuel" : "rencontres"
+  );
+  const [infoConversion, setInfoConversion] = useState<string | null>(null);
 
   const active = combat ? getActive(combat) : null;
 
@@ -97,6 +120,26 @@ export default function CombatPage() {
       renommerDoublonsMonstres(s.filter((x) => x.instanceId !== instanceId && x.instanceId !== `compagnon-${instanceId}`))
     );
 
+  /**
+   * Rencontre générée -> préparation de combat. Le camp ennemi est remplacé
+   * (pas empilé : régénérer puis reconvertir ne doit pas doubler les monstres),
+   * les PJ déjà posés et leurs états initiaux sont conservés. On bascule sur la
+   * composition manuelle pour que le MJ vérifie puis lance les initiatives.
+   */
+  const convertirEnCombat = (slots: SlotResolu[]) => {
+    const total = slots.reduce((n, s) => n + Math.max(1, Math.floor(s.quantite)), 0);
+    const pj = staging.filter((p) => p.camp === "pj").length;
+    setStaging((s) => stagingDepuisRencontre(s, slots));
+    setVuePrep("manuel");
+    setInfoConversion(
+      `Rencontre convertie : ${total} créature(s).${
+        pj > 0
+          ? ` ${pj} PJ conservé(s) dans la préparation.`
+          : " Ajoutez vos PJ (panneau Personnages) avant de lancer les initiatives."
+      }`
+    );
+  };
+
   const resyncStaging = () => setStaging((s) => stagingAJour(s));
   /** Pose un état pré-combat (conservé au resync et au lancement). */
   const appliquerEtatStaging = () => {
@@ -117,6 +160,7 @@ export default function CombatPage() {
     if (staging.length < 2) return;
     const frais = stagingAJour(staging);
     setStaging(frais);
+    setInfoConversion(null);
     // Auras de début de combat (ex. Effroi) : test avant tout tour, quel que
     // soit l'ordre d'initiative (donc même si le monstre n'agit pas en premier).
     const rolled = appliquerAurasDebutCombat(rollInitiatives(createCombat(frais)));
@@ -511,14 +555,58 @@ export default function CombatPage() {
   }, [combat, attackerId]);
 
   if (!combat) {
+    const pjPoses = staging.filter((p) => p.camp === "pj").length;
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Combat — préparation</h1>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold">Combat — préparation</h1>
+          <div className="flex gap-1 p-1 rounded-lg bg-zinc-900 border border-zinc-800" role="tablist" aria-label="Préparation">
+            <button
+              role="tab"
+              aria-selected={vuePrep === "rencontres"}
+              onClick={() => setVuePrep("rencontres")}
+              className={`px-3 py-1.5 rounded text-sm font-semibold ${
+                vuePrep === "rencontres" ? "bg-amber-400 text-black" : "text-zinc-300 hover:bg-zinc-800"
+              }`}
+            >
+              🧭 Rencontres
+            </button>
+            <button
+              role="tab"
+              aria-selected={vuePrep === "manuel"}
+              onClick={() => setVuePrep("manuel")}
+              className={`px-3 py-1.5 rounded text-sm font-semibold ${
+                vuePrep === "manuel" ? "bg-amber-400 text-black" : "text-zinc-300 hover:bg-zinc-800"
+              }`}
+            >
+              ⚔ Composition{staging.length > 0 ? ` (${staging.length})` : ""}
+            </button>
+          </div>
+        </div>
+        {infoConversion && (
+          <div className="rounded-lg border border-sky-700 bg-sky-950/40 p-3 text-sm text-sky-200">
+            {infoConversion}
+            <button onClick={() => setInfoConversion(null)} className="ml-2 text-sky-400" aria-label="Masquer">
+              ✕
+            </button>
+          </div>
+        )}
         {termineMessage && (
           <div className="rounded-lg border border-green-700 bg-green-900/40 p-3 text-sm text-green-200">
             ✅ {termineMessage}
             <div className="text-xs text-green-300/70 mt-1">Vérifiez l&apos;onglet Personnages : les PV affichés sont à jour.</div>
           </div>
+        )}
+        {/* Le générateur reste monté : basculer sur la composition manuelle ne
+            doit pas effacer la rencontre affichée (graine, variantes, verrous). */}
+        <div className={vuePrep === "rencontres" ? "" : "hidden"}>
+          <EncounterGenerator integre onConvertirEnCombat={convertirEnCombat} />
+        </div>
+        <div className={vuePrep === "manuel" ? "space-y-4" : "hidden"}>
+        {staging.length > 0 && pjPoses === 0 && (
+          <p className="text-sm text-amber-300/90">
+            La rencontre ne contient que des adversaires : ajoutez au moins un PJ (panneau Personnages) pour lancer les initiatives.
+          </p>
         )}
         <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
           <h2 className="font-bold text-sm uppercase text-zinc-400 mb-2">Rencontre ({staging.length})</h2>
@@ -670,6 +758,7 @@ export default function CombatPage() {
               );
             })}
           </div>
+        </div>
         </div>
       </div>
     );

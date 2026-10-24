@@ -153,7 +153,7 @@ export default function MonstersPage() {
               <button onClick={() => setFicheId(m.id)} className="flex-1 py-2 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Fiche</button>
               <button onClick={() => setEditing({ ...m, attaques: m.attaques.map((a) => ({ ...a })), capacites: [...m.capacites], capacitesPartagees: [...(m.capacitesPartagees ?? [])], sousCategories: [...(m.sousCategories ?? [])] })} className="flex-1 py-2 rounded bg-zinc-800 text-sm hover:bg-zinc-700">Éditer</button>
               <button onClick={() => { if (confirm(`Supprimer ${m.nom} ?`)) setItems((prev) => prev.filter((x) => x.id !== m.id)); }} title="Supprimer" className="px-3 py-2 rounded bg-zinc-800 text-sm hover:bg-red-900">✕</button>
-              <a href="/combat" className="flex-1 text-center py-2 rounded bg-amber-400/10 border border-amber-400/40 text-amber-300 text-sm font-semibold hover:bg-amber-400/20">
+              <a href="/combat?vue=composition" className="flex-1 text-center py-2 rounded bg-amber-400/10 border border-amber-400/40 text-amber-300 text-sm font-semibold hover:bg-amber-400/20">
                 + Combat
               </a>
             </div>

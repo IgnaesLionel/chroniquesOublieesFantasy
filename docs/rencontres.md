@@ -22,9 +22,31 @@ signalée comme telle.
 | `src/lib/encounters/generate.ts` | Recherche de compositions, score, verrous du MJ |
 | `src/lib/encounters/calibration.ts` | Simulation Monte-Carlo simplifiée |
 | `src/components/encounters/EncounterGenerator.tsx` | Interface |
+| `src/lib/rules/combat/depuis-rencontre.ts` | Conversion composition → participants de combat |
 
 Le calcul (`evaluate.ts`, `generate.ts`) est **indépendant de l'interface** : les
 tests le pilotent directement, sans navigateur.
+
+### 1.1 Intégration au combat
+
+Le générateur n'a plus d'onglet dédié : il vit dans `/combat`, sous l'onglet
+**Rencontres** de la préparation (`/encounters` redirige vers `/combat`).
+« ⚔ Transformer en combat » convertit la composition affichée en participants
+(`monsterInstances`, même `MonsterTemplate` que le bestiaire, PV indépendants).
+
+Règles de la conversion :
+
+- le **camp ennemi est remplacé**, pas empilé — régénérer puis reconvertir ne
+  double pas les monstres ;
+- les **PJ déjà posés** (et leurs états initiaux) sont **conservés** ;
+- la rencontre devient un staging ordinaire : le MJ peut retirer une créature,
+  en ajouter, poser des états, puis lancer les initiatives. Aucun jet n'est
+  automatique — la conversion ne fait que remplir la préparation.
+
+Les liens qui mènent à un combat déjà préparé (bouton « Combat » de Partie,
+« + Combat » du Bestiaire, tuile Campagne) ciblent `?vue=composition` pour
+ouvrir directement la préparation manuelle ; l'entrée de navigation
+« Combat & rencontres » ouvre, elle, le générateur.
 
 ---
 

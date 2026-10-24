@@ -99,7 +99,7 @@ function PlayInner() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">▶ Partie <span className="text-sm font-normal text-zinc-500">— vue MJ épurée</span></h1>
         <div className="flex gap-2">
-          <Link href="/combat" className="px-4 py-2 rounded bg-red-700 font-bold text-sm">Combat</Link>
+          <Link href="/combat?vue=composition" className="px-4 py-2 rounded bg-red-700 font-bold text-sm">Combat</Link>
           <Link href="/scenarios" className="px-4 py-2 rounded bg-zinc-800 text-sm">Préparer</Link>
         </div>
       </div>

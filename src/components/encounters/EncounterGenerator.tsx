@@ -84,7 +84,15 @@ function nombreRatio(v: number): string {
   return `${Math.round(v * 100) / 100}`;
 }
 
-export function EncounterGenerator() {
+export function EncounterGenerator({
+  onConvertirEnCombat,
+  integre = false,
+}: {
+  /** Fourni par la page Combat : affiche « Transformer en combat ». */
+  onConvertirEnCombat?: (slots: SlotResolu[]) => void;
+  /** Intégré dans un écran qui porte déjà son titre : en-tête réduit. */
+  integre?: boolean;
+} = {}) {
   const { items: characters } = useCharacters("rencontres");
   const { items: monsters } = useMonsters();
   const { catalogue } = useCatalogueObjets();
@@ -270,11 +278,13 @@ export function EncounterGenerator() {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Générateur de rencontres COF2</h1>
-          <p className="text-sm text-zinc-400 max-w-3xl">
-            Budget sur la table NC → Pm du DRS, corrigé par un modèle tactique explicite. Facile, Normal et Boss
-            sont des objectifs du logiciel, pas des catégories officielles de l&apos;éditeur.
-          </p>
+          <h1 className={integre ? "text-lg font-bold" : "text-2xl font-bold"}>Générateur de rencontres COF2</h1>
+          {!integre && (
+            <p className="text-sm text-zinc-400 max-w-3xl">
+              Budget sur la table NC → Pm du DRS, corrigé par un modèle tactique explicite. Facile, Normal et Boss
+              sont des objectifs du logiciel, pas des catégories officielles de l&apos;éditeur.
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <button
@@ -328,6 +338,8 @@ export function EncounterGenerator() {
                   {characters.map((c) => (
                     <label key={c.id} className="flex items-center gap-2 text-sm bg-zinc-950/50 border border-zinc-800 rounded px-2 py-1.5">
                       <input
+                        id={`rencontre-pj-${c.id}`}
+                        name={`pj-${c.id}`}
                         type="checkbox"
                         checked={selection.includes(c.id)}
                         onChange={(e) =>
@@ -543,7 +555,16 @@ export function EncounterGenerator() {
                       Cible {nombre(resultat?.ciblePm ?? 0)} Pm
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
+                    {onConvertirEnCombat && (
+                      <button
+                        onClick={() => onConvertirEnCombat(evaluation.slots)}
+                        title="Reprend cette composition comme camp ennemi en préparation de combat (les PJ déjà posés sont conservés)"
+                        className="px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-white text-sm font-bold border border-red-500"
+                      >
+                        ⚔ Transformer en combat
+                      </button>
+                    )}
                     <Badge ton={evaluation.difficulteEstimee === "facile" ? "emerald" : evaluation.difficulteEstimee === "normal" ? "amber" : "red"}>
                       Estimé : {LIBELLES_DIFFICULTE[evaluation.difficulteEstimee].nom}
                     </Badge>

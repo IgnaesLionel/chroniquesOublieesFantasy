@@ -10,7 +10,7 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
   { href: "/regles", t: "Règles", d: "Référence COF 2 à valider", key: null },
   { href: "/monsters", t: "Bestiaire", d: "Préparer rencontres", key: "monsters" },
   { href: "/dice", t: "Dés", d: "Lanceur + historique", key: null },
-  { href: "/combat", t: "Combat", d: "Initiative, tours, effets", key: null },
+  { href: "/combat?vue=composition", t: "Combat", d: "Initiative, tours, effets", key: null },
   { href: "/scenarios", t: "Scénarios", d: "Scènes, choix, conditions", key: "scenarios" },
   { href: "/sessions", t: "Sessions", d: "Tables, groupes, campagnes", key: "sessions" },
   { href: "/npcs", t: "PNJ", d: "Dialogues et secrets MJ", key: "npcs" },
