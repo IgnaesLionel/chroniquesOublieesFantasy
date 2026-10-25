@@ -10,6 +10,8 @@ import {
   raisonExigeVivant,
   sortUtilisable,
   estCadavre,
+  estLoupCompagnon,
+  trouverMaitreLoup,
   profilAnimable,
   NC_MAX_ANIMATION,
   type AttaqueOpts,
@@ -206,6 +208,7 @@ export function ActionPanel(props: Props) {
       if (bloque) raisons.push("ne peut pas agir");
 
       const estRenvoi = defaut?.actionSpeciale === "renvoi";
+      const estLien = defaut?.actionSpeciale === "lien-empathique";
       if (estRenvoi) {
         if (!acteur.sortAbsorbe) {
           raisons.push("aucun sort absorbé");
@@ -226,21 +229,33 @@ export function ActionPanel(props: Props) {
         if (total === 0) raisons.push(`aucun cadavre NC ≤ ${NC_MAX_ANIMATION}`);
         else notes.push(`${total} cadavre${total > 1 ? "s" : ""}`);
       } else if (!estRenvoi && defaut) {
-        // Mêmes règles de cible que le panneau Capacités : un soin peut viser
-        // un allié KO, les autres talents exigent une cible active.
-        const soinCapacite = !!defaut.soin || defaut.montantMJ === "soin";
-        const alliesCiblables = participants.filter(
-          (p) => p.camp === acteur.camp && (p.statut === "actif" || (soinCapacite && p.statut === "ko"))
-        );
-        const ciblesPossibles =
-          defaut.cibles === "soi"
-            ? actifs.filter((p) => p.instanceId === acteur.instanceId)
-            : defaut.cibles === "allies"
-              ? alliesCiblables.filter((p) => p.instanceId !== acteur.instanceId)
-              : defaut.cibles === "ennemis"
-                ? actifs.filter((p) => p.camp !== acteur.camp)
-                : actifs;
-        if (ciblesPossibles.length === 0) raisons.push("aucune cible valide");
+        if (estLien) {
+          // Lien empathique ne cible jamais un PJ : uniquement le loup du rôdeur.
+          const loupsLies = participants.filter(
+            (p) =>
+              p.statut !== "mort" &&
+              estLoupCompagnon(p) &&
+              trouverMaitreLoup(participants, p)?.instanceId === acteur.instanceId
+          );
+          if (loupsLies.length === 0) raisons.push("aucun loup compagnon");
+          else notes.push(`loup : ${loupsLies.map((p) => p.nom).join(", ")}`);
+        } else {
+          // Mêmes règles de cible que le panneau Capacités : un soin peut viser
+          // un allié KO, les autres talents exigent une cible active.
+          const soinCapacite = !!defaut.soin || defaut.montantMJ === "soin";
+          const alliesCiblables = participants.filter(
+            (p) => p.camp === acteur.camp && (p.statut === "actif" || (soinCapacite && p.statut === "ko"))
+          );
+          const ciblesPossibles =
+            defaut.cibles === "soi"
+              ? actifs.filter((p) => p.instanceId === acteur.instanceId)
+              : defaut.cibles === "allies"
+                ? alliesCiblables.filter((p) => p.instanceId !== acteur.instanceId)
+                : defaut.cibles === "ennemis"
+                  ? actifs.filter((p) => p.camp !== acteur.camp)
+                  : actifs;
+          if (ciblesPossibles.length === 0) raisons.push("aucune cible valide");
+        }
       }
 
       const details = [

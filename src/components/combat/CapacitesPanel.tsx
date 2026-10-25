@@ -7,7 +7,13 @@ import { ACTION_LABEL, ACTION_LETTER, actionDeTalent, infererAction } from "@/sr
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { canAct } from "@/src/lib/rules/effects/effects";
-import { estCadavre, profilAnimable, NC_MAX_ANIMATION } from "@/src/lib/rules/combat/attack";
+import {
+  estCadavre,
+  estLoupCompagnon,
+  trouverMaitreLoup,
+  profilAnimable,
+  NC_MAX_ANIMATION,
+} from "@/src/lib/rules/combat/attack";
 import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjDejaValide } from "@/src/lib/ui/validations-mj";
 import { familleDuProfil } from "@/src/lib/ui/famille";
@@ -117,6 +123,14 @@ export function CapacitesPanel({
   const estAnimer = normaliserNomCapacite(talent) === "animer un cadavre";
   /** Renvoi de sort : seule cible autorisée = le lanceur du sort absorbé. */
   const estRenvoi = defaut?.actionSpeciale === "renvoi";
+  /** Lien empathique : seule cible autorisée = le loup compagnon du rôdeur. */
+  const estLien = defaut?.actionSpeciale === "lien-empathique";
+  const loupsCompagnon = participants.filter(
+    (p) =>
+      p.statut !== "mort" &&
+      estLoupCompagnon(p) &&
+      trouverMaitreLoup(participants, p)?.instanceId === lanceur.instanceId
+  );
   const cadavres = participants.filter((p) => p.instanceId !== lanceur.instanceId && estCadavre(p));
   const profilsCadavres = (profils ?? [])
     .filter((m) => profilAnimable(m))
@@ -143,13 +157,15 @@ export function CapacitesPanel({
   const cibleRenvoi = lanceur.sortAbsorbe?.lanceurId ?? null;
   const ciblesPossibles = estRenvoi
     ? actifs.filter((p) => p.instanceId === cibleRenvoi)
-    : defaut?.cibles === "soi"
-      ? actifs.filter((p) => p.instanceId === lanceur.instanceId)
-      : defaut?.cibles === "allies"
-        ? alliesCiblables.filter((p) => p.instanceId !== lanceur.instanceId)
-        : defaut?.cibles === "ennemis"
-          ? actifs.filter((p) => p.camp !== lanceur.camp)
-          : actifs;
+    : estLien
+      ? loupsCompagnon
+      : defaut?.cibles === "soi"
+        ? actifs.filter((p) => p.instanceId === lanceur.instanceId)
+        : defaut?.cibles === "allies"
+          ? alliesCiblables.filter((p) => p.instanceId !== lanceur.instanceId)
+          : defaut?.cibles === "ennemis"
+            ? actifs.filter((p) => p.camp !== lanceur.camp)
+            : actifs;
   // Strict : pas de repli vers soi ou vers un ennemi. Si la liste est vide
   // (ex. Protéger sans allié actif), le bouton reste désactivé.
   const cibles = ciblesPossibles;
@@ -240,12 +256,12 @@ export function CapacitesPanel({
       {defaut && (
         <p className="text-xs text-zinc-500">
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
-          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
+          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {estLien ? "loup compagnon" : defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
           {defaut.questionMJ ? ` ⚖️ ${defaut.questionMJ}` : ""}
         </p>
       )}
-      <label className="block text-sm">{estAnimer ? `Cadavre de zombie (NC ≤ ${NC_MAX_ANIMATION})` : "Cible"}
+      <label className="block text-sm">{estAnimer ? `Cadavre de zombie (NC ≤ ${NC_MAX_ANIMATION})` : estLien ? "Loup" : "Cible"}
         {estAnimer ? (
           <select value={cadavre ?? ""} onChange={(e) => setCadavreChoisi(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
             {groupesCadavre.map((g) => (
@@ -332,7 +348,9 @@ export function CapacitesPanel({
             ? `Aucun cadavre de zombie utilisable (zombie hors combat jamais animé, ou profil de zombie du bestiaire, NC ≤ ${NC_MAX_ANIMATION}).`
             : estRenvoi
               ? "Aucun sort absorbé à renvoyer (ou lanceur d'origine hors combat). Le renvoi doit être immédiat."
-              : "Aucune cible valide pour ce talent (aucun allié actif)."}
+              : estLien
+                ? "Aucun loup compagnon valide pour Lien empathique (le loup doit être vivant ou KO)."
+                : "Aucune cible valide pour ce talent (aucun allié actif)."}
         </p>
       )}
       <button
