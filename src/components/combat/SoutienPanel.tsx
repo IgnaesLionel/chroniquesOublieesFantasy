@@ -17,25 +17,45 @@ import { aideAction } from "@/src/lib/ui/actions";
 interface Props {
   participants: CombatParticipant[];
   lanceurId: string | null;
+  /** Sort sélectionné par la palette d'actions (mode contrôlé). */
+  sortId?: string | null;
+  onSortChange?: (id: string) => void;
+  /** Masquer le sélecteur local : la palette d'actions fait office de sélecteur. */
+  masquerSelecteur?: boolean;
   onCast: (lanceurId: string, cibleId: string, sort: Sort, paiement?: PaiementSort) => void;
   /** Trace « MJ a validé » au journal de combat. */
   onLogMJ?: (message: string) => void;
 }
 
-export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props) {
+export function SoutienPanel({
+  participants,
+  lanceurId,
+  sortId: sortIdControle,
+  onSortChange,
+  masquerSelecteur = false,
+  onCast,
+  onLogMJ,
+}: Props) {
   const lanceur = participants.find((p) => p.instanceId === lanceurId) ?? null;
   const soutiens = (lanceur?.sorts ?? []).filter((s) => s.type !== "offensif");
-  const [sortId, setSortId] = useState<string | null>(null);
+  const [sortIdInterne, setSortIdInterne] = useState<string | null>(null);
+  const sortId = sortIdControle !== undefined ? sortIdControle : sortIdInterne;
   const [cibleId, setCibleId] = useState<string | null>(null);
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
   const [outrepasserSoin, setOutrepasserSoin] = useState(false);
   /** Question MJ en attente (pop-up ouverte) : bloque la résolution. */
   const [attenteMj, setAttenteMj] = useState<string | null>(null);
+  const choisirSort = (id: string) => {
+    if (onSortChange) onSortChange(id);
+    else setSortIdInterne(id);
+    setAttenteMj(null);
+  };
 
   if (!lanceur || soutiens.length === 0) return null;
   const jouables = soutiens.filter((s) => sortUtilisable(lanceur.niveau, s).ok);
-  const sort = soutiens.find((s) => s.id === sortId && sortUtilisable(lanceur.niveau, s).ok) ?? jouables[0] ?? soutiens[0];
+  const sort = soutiens.find((s) => s.id === sortId) ?? jouables[0] ?? soutiens[0];
+  const sortJouable = sortUtilisable(lanceur.niveau, sort);
   // Alliés ciblables : les KO restent soignables (le sort les relève dès que
   // les PV remontent), les morts jamais. Les actifs passent devant pour rester
   // la cible par défaut.
@@ -83,28 +103,30 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
           {lanceur.nom} ne peut pas agir.
         </div>
       )}
-      <label className="block text-sm">Sort
-        <select id="soutien-sort" name="soutien-sort" value={sort.id} onChange={(e) => { setSortId(e.target.value); setAttenteMj(null); }} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-          {soutiens.map((s) => {
-            const u = sortUtilisable(lanceur.niveau, s);
-            const flags = [
-              s.action ? ACTION_LETTER[s.action] : "P",
-              s.soin ? `+${s.soin}` : "",
-              s.cout ? `${s.cout.montant} ${s.cout.ressource}` : "",
-              s.coutPV ? `${s.coutPV} PV` : "",
-              s.invocation ? "invoque" : "",
-              s.zone ? "zone" : "",
-              s.rituelHorsCombat ? "rituel HC" : "",
-              s.attaqueAccordee ? "+attaque" : "",
-            ].filter(Boolean).join(" · ");
-            return (
-              <option key={s.id} value={s.id} disabled={!u.ok}>
-                🛡 {s.nom} · {flags}{u.ok ? "" : ` (${u.raison})`}
-              </option>
-            );
-          })}
-        </select>
-      </label>
+      {!masquerSelecteur && (
+        <label className="block text-sm">Sort
+          <select id="soutien-sort" name="soutien-sort" value={sort.id} onChange={(e) => choisirSort(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+            {soutiens.map((s) => {
+              const u = sortUtilisable(lanceur.niveau, s);
+              const flags = [
+                s.action ? ACTION_LETTER[s.action] : "P",
+                s.soin ? `+${s.soin}` : "",
+                s.cout ? `${s.cout.montant} ${s.cout.ressource}` : "",
+                s.coutPV ? `${s.coutPV} PV` : "",
+                s.invocation ? "invoque" : "",
+                s.zone ? "zone" : "",
+                s.rituelHorsCombat ? "rituel HC" : "",
+                s.attaqueAccordee ? "+attaque" : "",
+              ].filter(Boolean).join(" · ");
+              return (
+                <option key={s.id} value={s.id} disabled={!u.ok}>
+                  🛡 {s.nom} · {flags}{u.ok ? "" : ` (${u.raison})`}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      )}
       <div
         className="flex items-start gap-2 rounded border border-zinc-700 bg-zinc-950/60 px-2.5 py-2"
         title="Type d'action du sort de soutien sélectionné — le logiciel ne décrémente pas automatiquement l'action et le mouvement."
@@ -184,9 +206,9 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
           }
           executerLancement();
         }}
-        disabled={bloque || !cible || estRituel || cibleDejaSoignee || (estMineure && (restantsMineure ?? 1) <= 0)}
+        disabled={bloque || !cible || estRituel || cibleDejaSoignee || !sortJouable.ok || (estMineure && (restantsMineure ?? 1) <= 0)}
         className="w-full py-2.5 rounded bg-violet-700 hover:bg-violet-600 font-bold disabled:opacity-40"
-        title={estRituel ? "Rituel hors combat — lancez hors combat" : cibleDejaSoignee ? "Cible déjà soignée ce combat (outrepasser MJ pour forcer)" : undefined}
+        title={!sortJouable.ok ? sortJouable.raison : estRituel ? "Rituel hors combat — lancez hors combat" : cibleDejaSoignee ? "Cible déjà soignée ce combat (outrepasser MJ pour forcer)" : undefined}
       >
         Lancer {sort.nom}
       </button>

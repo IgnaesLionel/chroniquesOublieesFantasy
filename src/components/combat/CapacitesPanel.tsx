@@ -18,6 +18,11 @@ import { aideAction } from "@/src/lib/ui/actions";
 interface Props {
   participants: CombatParticipant[];
   lanceurId: string | null;
+  /** Talent sélectionné par la palette d'actions (mode contrôlé). */
+  talentNom?: string | null;
+  onTalentChange?: (nom: string) => void;
+  /** Masquer le sélecteur local : la palette d'actions fait office de sélecteur. */
+  masquerSelecteur?: boolean;
   /**
    * Profils du bestiaire proposés comme cadavres (Animer un cadavre : NC ≤ 2,
    * le MJ choisit la créature morte relevée). Absent = cadavres du combat seuls.
@@ -52,9 +57,19 @@ function defautPour(nom: string) {
   return CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q);
 }
 
-export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, onLogMJ }: Props) {
+export function CapacitesPanel({
+  participants,
+  lanceurId,
+  talentNom: talentNomControle,
+  onTalentChange,
+  masquerSelecteur = false,
+  profils,
+  onUtiliser,
+  onLogMJ,
+}: Props) {
   const lanceur = participants.find((p) => p.instanceId === lanceurId) ?? null;
-  const [talentNom, setTalentNom] = useState<string | null>(null);
+  const [talentNomInterne, setTalentNomInterne] = useState<string | null>(null);
+  const talentNom = talentNomControle !== undefined ? talentNomControle : talentNomInterne;
   const [cibleId, setCibleId] = useState<string | null>(null);
   /** Cadavre choisi pour « Animer un cadavre » : "cadavre:<instanceId>" ou "profil:<templateId>". */
   const [cadavreChoisi, setCadavreChoisi] = useState<string | null>(null);
@@ -65,6 +80,16 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
   const [outrepasserSoin, setOutrepasserSoin] = useState(false);
   /** Question MJ en attente (pop-up ouverte) : bloque la résolution. */
   const [attenteMj, setAttenteMj] = useState<{ cle: string; question: string; note?: string } | null>(null);
+  const choisirTalent = (nom: string) => {
+    if (onTalentChange) onTalentChange(nom);
+    else setTalentNomInterne(nom);
+    setEffetCle("");
+    setDuree("");
+    setMontant("");
+    setCibleId(null);
+    setCadavreChoisi(null);
+    setAttenteMj(null);
+  };
 
   if (!lanceur) return null;
   // Passifs, manœuvres du panneau Attaque et talents narratifs exclus :
@@ -184,20 +209,22 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
           ))
           : "aucun"}
       </p>
-      <label className="block text-sm">Talent
-        <select
-          value={talent}
-          onChange={(e) => { setTalentNom(e.target.value); setEffetCle(""); setDuree(""); setMontant(""); setCibleId(null); setCadavreChoisi(null); setAttenteMj(null); }}
-          className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
-        >
-          {lancables.map((t) => {
-            const q = CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === normaliserNomCapacite(t))?.questionMJ;
-            const action = actionTalent(t);
-            const lettre = action ? ACTION_LETTER[action] : "P";
-            return <option key={t} value={t}>[{lettre}] ◈ {t}{q ? " ⚖️" : ""}</option>;
-          })}
-        </select>
-      </label>
+      {!masquerSelecteur && (
+        <label className="block text-sm">Talent
+          <select
+            value={talent}
+            onChange={(e) => choisirTalent(e.target.value)}
+            className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
+          >
+            {lancables.map((t) => {
+              const q = CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === normaliserNomCapacite(t))?.questionMJ;
+              const action = actionTalent(t);
+              const lettre = action ? ACTION_LETTER[action] : "P";
+              return <option key={t} value={t}>[{lettre}] ◈ {t}{q ? " ⚖️" : ""}</option>;
+            })}
+          </select>
+        </label>
+      )}
       <div
         className="flex items-start gap-2 rounded border border-zinc-700 bg-zinc-950/60 px-2.5 py-2"
         title="Type d'action de la capacité sélectionnée — le logiciel ne décrémente pas automatiquement l'action et le mouvement."
