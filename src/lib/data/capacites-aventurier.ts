@@ -134,7 +134,7 @@ export const CAPACITES_AVENTURIER: Record<string, VoieDetail[]> = {
       voie: "Voie du compagnon animal",
       capacites: [
         { nom: "Le loup", rang: 1, resume: "Compagnon loup permanent (AGI+1 CON+1 FOR+2 PER+2 CHA-2 INT-3 VOL+2 ; DEF 12+rang dans la voie, PV niv×4, contact bonus magique 1d4+2, sa propre initiative), ordres simples (MJ+joueur). Ajouté auto en préparation de combat. En ville : reste dehors (ou gros chien). Fuit à 0 PV en nature (revient en 8 h, MJ) ; nouveau au niveau suivant si mort." },
-        { nom: "Travail d'équipe", rang: 2, resume: "Au contact (MJ : adjacence déclarée via Capacités sur le loup) : loup en dé bonus d'attaque auto, rôdeur en dé bonus de pistage et anti-surprise (MJ)." },
+        { nom: "Travail d'équipe", rang: 2, resume: "Au contact (question à chaque attaque du loup) : dé bonus au test d'attaque du loup. Le rôdeur gagne un dé bonus pour pister et éviter la surprise (Vigilance), jamais pour ses attaques (tests manuels)." },
         { nom: "Lien empathique", rang: 3, resume: "Action limitée (L) : télépathie + soigne le loup avec ses propres PV, 1 pour 1 sans limite (2 pour 1 avec Tactiques). Via Capacités (montant saisi)." },
         { nom: "Loup alpha", rang: 4, resume: "Upgrade auto du loup appelé (AGI+1 CON+3 FOR+5 PER+2 CHA-2 INT-3 VOL+2 ; DEF 12+rang dans la voie, PV niv×4, contact bonus magique 1d4°+5)." },
         { nom: "Tactiques de meute", rang: 5, resume: "Auto : même cible même manche que le rôdeur = loup +1d4° DM ; PV du Lien doublés ; +1 DEF chacun par rang 5 en voie de rôdeur (voie incluse)." },

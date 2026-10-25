@@ -44,5 +44,4 @@ export const EFFECT_CATALOG: EffectTemplate[] = [
   { key: "brulure", nom: "Brûlure", description: "Perd 1 PV au début de son tour (Feu, générique).", dureeDefaut: 2, modificateurs: { pvParTour: -1 } },
   { key: "gele", nom: "Gelé", description: "−1 attaque, ralenti (Glace, générique).", dureeDefaut: 1, modificateurs: { attaque: -1 } },
   { key: "concentration", nom: "Concentration", description: "Marqueur, aucun modificateur.", dureeDefaut: null, modificateurs: {} },
-  { key: "travail-equipe", nom: "Travail d'équipe", description: "Loup au contact du rôdeur (MJ : adjacence déclarée) : dé bonus en attaque.", dureeDefaut: null, modificateurs: { deBonus: 1 } },
 ];

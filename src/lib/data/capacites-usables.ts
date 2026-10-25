@@ -404,14 +404,6 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     note: "Rôdeur (L), 1/combat (MJ) : à 0 PV, +4d4°+CON au prochain tour, +5 DEF 1 round, purge des états non permanents.",
   },
   {
-    talent: "Travail d'équipe",
-    effetCle: "travail-equipe",
-    dureeTours: null,
-    cibles: "allies",
-    mods: { deBonus: 1 },
-    note: "Rôdeur, loup au contact (MJ : adjacence déclarée) : dé bonus en attaque au loup ciblé (retirer l'effet à la séparation). Piste/anti-surprise du rôdeur : MJ.",
-  },
-  {
     talent: "Lien empathique",
     effetCle: null,
     dureeTours: null,

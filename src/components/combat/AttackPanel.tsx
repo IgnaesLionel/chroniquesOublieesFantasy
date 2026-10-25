@@ -7,6 +7,7 @@ import { composantesAttaque, probabiliteToucher, seuilDefense } from "@/src/lib/
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { labelFamilleArme } from "@/src/lib/rules/world/types";
 import { PopupValidationMJ, type QuestionMJ } from "@/src/components/combat/PopupValidationMJ";
+import { PopupTravailEquipe } from "@/src/components/combat/PopupTravailEquipe";
 import { mjFiltrerAValider } from "@/src/lib/ui/validations-mj";
 import { familleDuProfil, familleDuSort, classeFamille } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
@@ -62,6 +63,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [cibles, setCibles] = useState<string[] | null>(null);
   /** Questions MJ en attente (pop-up ouverte) : bloque la résolution. */
   const [attenteMj, setAttenteMj] = useState<QuestionMJ[] | null>(null);
+  /** Contact loup/rôdeur en attente de réponse (pop-up Travail d'équipe). */
+  const [attenteContact, setAttenteContact] = useState(false);
   // Sort sélectionné : zone et multi-cibles affichent des cases à cocher.
   const selIdTop = attackId ?? attacker?.attaques[0]?.id;
   const selAttaqueTop = attacker?.attaques.find((x) => x.id === selIdTop);
@@ -98,6 +101,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     setCleMemorisee(cleSelection);
     setCibles(null);
     setEquipeContact(false);
+    setAttenteContact(false);
     setDouble(false);
     setCirculaire(false);
     setAttenteMj(null);
@@ -106,7 +110,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [concentration, setConcentration] = useState(false);
   const [tactique, setTactique] = useState<"normale" | "assuree" | "precise" | "violente" | "defense-partielle" | "defense-totale" | "riposte" | "soutenir">("normale");
   // Travail d'équipe (Rôdeur) : si l'attaquant est le loup et son maître a le
-  // talent, proposer le dé bonus (adjacence déclarée par le MJ, pas de positions suivies).
+  // talent, une pop-up demande à chaque attaque si le loup est au contact
+  // (positions non suivies par le moteur). « Oui » = dé bonus à cette attaque.
   // Trois cas affichés : proposition (talent OK), astuce R2 (sans talent),
   // diagnostic (maître introuvable : staging à reconstruire).
   const loupAttaquant = attacker && estLoupCompagnon(attacker) ? attacker : null;
@@ -167,7 +172,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const chanceAffichee = chanceToucher("normale") != null;
   const pourcent = (p: number) => `${Math.round(p * 100)} %`;
   const tonChance = (p: number) => (p >= 0.75 ? "text-green-400" : p >= 0.4 ? "text-amber-300" : "text-red-400");
-  const lancer = (force = false) => {
+  const lancer = (force = false, contactEquipe?: boolean) => {
+    const contact = contactEquipe ?? equipeContact;
     const opts: AttaqueOpts = {};
     const modN = Number(mod);
     if (mod.trim() !== "" && Number.isFinite(modN) && modN !== 0) opts.modAttaque = modN;
@@ -190,7 +196,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       if (modeFleche === "dm") opts.degatsBonus = [...(opts.degatsBonus ?? []), "1d4°"];
       else opts.effetSupp = { cle: statutFleche, duree: 1 };
     }
-    if (equipeContact && proposeEquipe) {
+    if (contact && proposeEquipe) {
       opts.deBonus = true;
     }
     if (eclair && connaitEclair && attacker) {
@@ -243,6 +249,11 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       const contexte = tactiqueEff === "soutenir" ? "Soutenir un allié" : (selAttaque?.nom ?? "attaque");
       onLogMJ?.(`⚖️ MJ validé — ⚔️ ${contexte} (${attacker?.nom ?? ""}) : ${questionsActives.map((q) => q.question).join(" / ")}`);
     }
+    if (proposeEquipe) {
+      onLogMJ?.(
+        `🐺 Travail d'équipe — ${attacker?.nom ?? "Loup"} ${contact ? "au contact" : "hors contact"} de ${propositionEquipe?.maitreNom ?? "son rôdeur"} : ${contact ? "dé bonus à l'attaque" : "attaque normale"}.`
+      );
+    }
     if (tactiqueEff === "assuree") {
       opts.modAttaque = (opts.modAttaque ?? 0) + 5;
       opts.diviseDM = 2;
@@ -293,6 +304,17 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       return;
     }
     onRoll(opts, paiement);
+  };
+  /** Attaque du loup : demande toujours le contact avant de résoudre. */
+  const demanderContactEtLancer = () => {
+    const eff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && estMagiqueTop ? "normale" : tactique;
+    const posture = eff === "defense-partielle" || eff === "defense-totale" || eff === "riposte" || eff === "soutenir";
+    if (proposeEquipe && !posture) {
+      setEquipeContact(false);
+      setAttenteContact(true);
+      return;
+    }
+    lancer();
   };
   const basculerCible = (id: string) => {
     setCibles((prev) => {
@@ -446,15 +468,17 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       {proposeEquipe && (
         <div className="rounded border border-amber-700 bg-amber-950/40 p-2 text-sm space-y-1">
           <div className="text-xs uppercase text-amber-300 font-bold">🐺 Travail d&apos;équipe</div>
-          <label className="flex items-center gap-2" title="Le loup est au contact du rôdeur (positions non suivies : à déclarer par le MJ). Le dé bonus du rôdeur aux tests de pistage et anti-surprise reste au MJ.">
-            <input type="checkbox" id="combat-travail-equipe" name="travailEquipe" checked={equipeContact} onChange={(e) => setEquipeContact(e.target.checked)} />
-            <span>Au contact de {propositionEquipe?.maitreNom} : dé bonus en attaque</span>
-          </label>
+          <p className="text-xs text-amber-100/90">
+            À chaque attaque de {attacker?.nom}, une question demandera s&apos;il est au contact de {propositionEquipe?.maitreNom}. « Oui » = dé bonus à cette attaque.
+          </p>
+          <p className="text-[11px] text-zinc-400">
+            Le rôdeur gagne aussi un dé bonus pour pister et Vigilance au contact, jamais pour ses attaques (tests manuels).
+          </p>
         </div>
       )}
       {loupSansTalent && (
         <p className="text-xs text-zinc-500" title="Le dé bonus au contact vient de Travail d'équipe (R2 du Rôdeur, fiche Personnages). Le rôdeur garde son dé bonus de pistage/anti-surprise au MJ.">
-          💡 Travail d&apos;équipe (R2) non connu : aucun dé bonus proposé. Le talent s&apos;apprend sur la fiche du rôdeur.
+          💡 Travail d&apos;équipe (R2) non connu : aucune question de contact ni dé bonus. Le talent s&apos;apprend sur la fiche du rôdeur.
         </p>
       )}
       {loupSansMaitre && (
@@ -614,7 +638,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
         <label className="block text-xs">Bonus DM<input id="combat-bonus-dm" name="bonusDm" value={dm} onChange={(e) => setDm(e.target.value)} placeholder="+1" title="Spécialisation +1…" className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5 font-mono" /></label>
       </div>
       <button
-        onClick={() => lancer()}
+        onClick={() => demanderContactEtLancer()}
         disabled={(() => {
           if (!attackerId || bloque) return true;
           const eff = (tactique === "assuree" || tactique === "precise" || tactique === "violente") && estMagiqueTop ? "normale" : tactique;
@@ -710,6 +734,23 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           )}
         </div>
       )}
+      {attenteContact && propositionEquipe && (
+        <PopupTravailEquipe
+          loupNom={attacker?.nom ?? "Loup"}
+          maitreNom={propositionEquipe.maitreNom}
+          onOui={() => {
+            setAttenteContact(false);
+            setEquipeContact(true);
+            lancer(false, true);
+          }}
+          onNon={() => {
+            setAttenteContact(false);
+            setEquipeContact(false);
+            lancer(false, false);
+          }}
+          onAnnuler={() => setAttenteContact(false)}
+        />
+      )}
       {attenteMj && (
         <PopupValidationMJ
           titre={`Attaque — ${attacker?.nom ?? ""}`}
@@ -718,7 +759,10 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             setAttenteMj(null);
             lancer(true);
           }}
-          onAnnuler={() => setAttenteMj(null)}
+          onAnnuler={() => {
+            setAttenteMj(null);
+            setEquipeContact(false);
+          }}
         />
       )}
     </div>

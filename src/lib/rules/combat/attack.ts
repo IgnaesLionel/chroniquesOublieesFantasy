@@ -1448,10 +1448,11 @@ export function estLoupCompagnon(p: Pick<CombatParticipant, "templateId" | "nom"
 
 /**
  * Proposition Travail d'équipe au moment d'attaquer (panneau Attaque) :
- * le loup dont le maître a le talent gagne un dé bonus s'il est au contact
- * (adjacence déclarée par le MJ, case à cocher). Null si non applicable
- * (pas un loup, maître introuvable/sans talent, dé bonus déjà actif).
- * Pur et testable ; le panneau n'a plus qu'à afficher la case.
+ * le loup dont le maître a le talent gagne un dé bonus s'il est au contact.
+ * Le moteur ne suivant pas les positions, le panneau ouvre une pop-up de
+ * contact à chaque attaque ; « oui » passe `deBonus` à la résolution.
+ * Null si non applicable (pas un loup, maître introuvable/sans talent, dé
+ * bonus déjà actif). Pur et testable.
  */
 export function propositionTravailEquipe(
   participants: CombatParticipant[],

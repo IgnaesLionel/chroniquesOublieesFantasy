@@ -9,8 +9,8 @@ import {
   propositionTravailEquipe,
   resolveAttack,
   transfererVieAuLoup,
-  utiliserCapacite,
 } from "@/src/lib/rules/combat/attack";
+import { createEffect } from "@/src/lib/rules/effects/effects";
 import { construirePJCombat } from "@/src/lib/rules/combat/staging";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { talentsLancables } from "@/src/lib/data/capacites-usables";
@@ -141,18 +141,24 @@ describe("voie du compagnon animal (LDB)", () => {
     expect(() => transfererVieAuLoup(s, rid, lid, 99)).toThrow(/insuffisants/);
   });
 
-  it("travail d'équipe : dé bonus au loup via Capacités (adjacence MJ)", () => {
-    expect(talentsLancables(["Travail d'équipe", "Lien empathique"])).toEqual(["Travail d'équipe", "Lien empathique"]);
+  it("travail d'équipe : pop-up de contact, dé bonus au loup (jamais au rôdeur)", () => {
+    // Talent passif : plus d'entrée « lançable » dans le panneau Capacités.
+    expect(talentsLancables(["Travail d'équipe", "Lien empathique"])).toEqual(["Lien empathique"]);
     const r = { ...rodeur(), capacites: ["Le loup", "Travail d'équipe"] };
     const loup = { ...construireLoupCompagnon(r), compagnonDe: r.instanceId };
-    const s = createCombat([{ ...r, capacites: [...r.capacites, "Travail d'équipe"] }, loup, gobelin("G")]);
+    const s = createCombat([r, loup, gobelin("G")]);
     const [rid, lid, ga] = s.participants.map((p) => p.instanceId);
-    const pose = utiliserCapacite(s, rid, lid, "Travail d'équipe", { effetCle: "travail-equipe", dureeTours: null, mods: { deBonus: 1 } });
-    expect(pose.state.participants[1].effets[0].modificateurs).toMatchObject({ deBonus: 1 });
-    // 3 puis 19 gardé (dé bonus).
-    const atk = resolveAttack(pose.state, lid, ga, "loup-morsure", fixedRng([0.1, 0.9, 0.5]));
+    // Le panneau Attaque ne propose le contact que pour le loup du rôdeur.
+    expect(propositionTravailEquipe(s.participants, lid)).toEqual({ maitreNom: "Rodeur" });
+    expect(propositionTravailEquipe(s.participants, rid)).toBeNull();
+    // Réponse « oui » : dé bonus passé à la résolution, 3 puis 19 gardé.
+    const atk = resolveAttack(s, lid, ga, "loup-morsure", fixedRng([0.1, 0.9, 0.5]), undefined, { deBonus: true });
     expect(atk.resolution.desAvantage).toBe("bonus");
     expect(atk.resolution.jetNaturel).toBe(19);
+    // Réponse « non » : attaque normale, pas de dé bonus.
+    const normal = resolveAttack(s, lid, ga, "loup-morsure", fixedRng([0.1, 0.5]));
+    expect(normal.resolution.desAvantage).toBeNull();
+    expect(normal.resolution.jetNaturel).toBe(3);
   });
 
   it("alpha dès le rang 4 dans la voie (repli rang, ex. libellé édité)", () => {
@@ -251,9 +257,15 @@ describe("voie du compagnon animal (LDB)", () => {
     const loup2 = { ...construireLoupCompagnon(r2), compagnonDe: r2.instanceId };
     const s2 = createCombat([r2, loup2, gobelin("G2")]);
     expect(propositionTravailEquipe(s2.participants, s2.participants[1].instanceId)).toBeNull();
-    // Dé bonus déjà actif (effet Capacités) → null (pas de double proposition).
-    const pose = utiliserCapacite(s, rid, lid, "Travail d'équipe", { effetCle: "travail-equipe", dureeTours: null, mods: { deBonus: 1 } });
-    expect(propositionTravailEquipe(pose.state.participants, lid)).toBeNull();
+    // Dé bonus déjà actif (autre source) → null (pas de double proposition).
+    const effetDeBonus = createEffect("deBonus", { dureeTours: null, modificateurs: { deBonus: 1 } });
+    const pose = {
+      ...s,
+      participants: s.participants.map((p) =>
+        p.instanceId === lid ? { ...p, effets: [...p.effets, effetDeBonus] } : p
+      ),
+    };
+    expect(propositionTravailEquipe(pose.participants, lid)).toBeNull();
     // Repli nom (sans compagnonDe ni template) → maître retrouvé.
     const loupNu = { ...loup, compagnonDe: undefined, templateId: "x", nom: "Loup (Rodeur)" };
     const s3 = createCombat([r, loupNu, gobelin("G3")]);
