@@ -158,9 +158,12 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
   log.push(entry(manche, `Tour de ${actif?.nom ?? "—"} (manche ${manche}).`));
   // Signaux d'attaque gratuite : les marques consommées des manches passées
   // sont purgées (le 1/round se juge sur la manche en cours uniquement).
+  // Renvoi de sort : un sort absorbé non renvoyé avant la fin du tour est
+  // oublié (le renvoi doit être immédiat).
   participants = participants.map((p) => {
-    if (!p.attaquesGratuites?.some((g) => g.lancee != null && g.lancee < manche)) return p;
-    return { ...p, attaquesGratuites: p.attaquesGratuites.filter((g) => !g.lancee || g.lancee >= manche) };
+    const nettoye = p.sortAbsorbe ? { ...p, sortAbsorbe: undefined } : p;
+    if (!nettoye.attaquesGratuites?.some((g) => g.lancee != null && g.lancee < manche)) return nettoye;
+    return { ...nettoye, attaquesGratuites: nettoye.attaquesGratuites.filter((g) => !g.lancee || g.lancee >= manche) };
   });
   return checkEnd({ ...state, participants, tourIndex: idx, manche, log });
 }

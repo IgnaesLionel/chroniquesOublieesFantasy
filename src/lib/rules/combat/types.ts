@@ -142,9 +142,15 @@ export interface CombatParticipant {
   attaquesGratuites?: AttaqueGratuite[];
 }
 
-/** Sort absorbé par un bouclier, renvoyable (Renvoi de sort ; zones rejouées en mono-cible, MJ au cas par cas). */
+/** Sort absorbé par un bouclier, renvoyable immédiatement à son lanceur (jamais les sorts de zone). */
 export interface SortAbsorbe {
   nom: string;
+  /** Lanceur d'origine : seule cible autorisée pour le renvoi. */
+  lanceurId: string;
+  lanceurNom: string;
+  /** Tour de l'absorption : le renvoi n'est possible que dans ce même tour. */
+  manche: number;
+  tourIndex: number;
   bonus: number;
   degats: string;
   effetCle?: string;
@@ -219,4 +225,6 @@ export interface AttackResolution {
   cibleTombe: boolean;
   /** Riposte Sang mordant (null si non déclenchée). */
   sangMordant?: { degats: number; pvAttaquantApres: number } | null;
+  /** Absorption réussie par la cible : renvoi immédiat proposé dans le résultat. */
+  absorption?: { renvoyable: boolean };
 }

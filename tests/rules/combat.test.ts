@@ -871,7 +871,7 @@ describe("guerrier (voies du livre)", () => {
     expect(bonusOppositionContact(affaibli)).toMatchObject({ bonus: 7, avantage: "malus" });
   });
 
-  it("absorber + renvoyer : parade requise, sort stocké puis retourné (zones rejouées)", () => {
+  it("absorber + renvoyer : parade requise, sort stocké puis renvoyé immédiatement au lanceur", () => {
     const baiser = { id: "x", nom: "Baiser du vampire", type: "offensif" as const, cout: { ressource: "mana", montant: 3 } };
     const atk = {
       ...sorcier(),
@@ -881,6 +881,7 @@ describe("guerrier (voies du livre)", () => {
     const def = {
       ...guerrier(),
       bouclierBonus: 2,
+      capacites: ["Renvoi de sort"],
       effets: [
         createEffect("Parade", { modificateurs: { parade: 1 }, dureeTours: 1 }),
         createEffect("Absorption", { modificateurs: { absorption: 1 }, dureeTours: 1 }),
@@ -900,7 +901,24 @@ describe("guerrier (voies du livre)", () => {
     expect(r1.state.participants[1].pv).toBe(40);
     expect(r1.state.participants[1].effets).toHaveLength(0);
     expect(r1.state.participants[1].sortAbsorbe?.nom).toBe("Baiser du vampire");
+    expect(r1.state.participants[1].sortAbsorbe?.lanceurId).toBe(a);
+    expect(r1.state.participants[1].sortAbsorbe?.manche).toBe(r1.state.manche);
+    expect(r1.state.participants[1].sortAbsorbe?.tourIndex).toBe(r1.state.tourIndex);
+    expect(r1.resolution.absorption).toEqual({ renvoyable: true });
     expect(r1.state.log.some((l) => l.message.includes("absorbe"))).toBe(true);
+    // Le renvoi ne peut viser que le lanceur d'origine...
+    expect(() => renvoyerSort(r1.state, t, t)).toThrow(/lanceur d'origine/);
+    // ... et seulement immédiatement (même tour).
+    const plusTard = { ...r1.state, tourIndex: r1.state.tourIndex + 1 };
+    expect(() => renvoyerSort(plusTard, t, a)).toThrow(/immédiat/);
+    // Le tour suivant efface le sort absorbé non renvoyé.
+    expect(nextTurn(r1.state).participants[1].sortAbsorbe).toBeUndefined();
+    // ... avec le talent Renvoi de sort.
+    const sansTalent = {
+      ...r1.state,
+      participants: r1.state.participants.map((p) => (p.instanceId === t ? { ...p, capacites: [] } : p)),
+    };
+    expect(() => renvoyerSort(sansTalent, t, a)).toThrow(/ne connaît pas/);
     // Renvoi : 19+4 = 23 ≥ 12, 1d6 : 4 DM au lanceur d'origine.
     const r2 = renvoyerSort(r1.state, t, a, fixedRng([0.9, 0.5]));
     expect(r2.resolution.touche).toBe(true);
@@ -910,18 +928,12 @@ describe("guerrier (voies du livre)", () => {
     expect(r2.state.participants[1].attaques).toHaveLength(1);
     // Sans sort absorbé : erreur.
     expect(() => renvoyerSort(r2.state, t, a)).toThrow(/aucun sort absorbé/);
-    // Zone : désormais renvoyée en mono-cible contre le lanceur (19+1 = 20 ≥ 12 ; 1d6 : 4).
-    const zone = { ...r2.state.participants[1], sortAbsorbe: { nom: "Z", bonus: 1, degats: "1d6", zone: true } };
-    const sz = { ...r2.state, participants: r2.state.participants.map((p) => (p.instanceId === t ? zone : p)) };
-    const rz = renvoyerSort(sz, t, a, fixedRng([0.9, 0.5]));
-    expect(rz.resolution.touche).toBe(true);
-    expect(rz.resolution.degatsTotal).toBe(4);
     // Renvoi sans bouclier : refusé.
     const sn = { ...r1.state, participants: r1.state.participants.map((p) => (p.instanceId === t ? { ...p, bouclierBonus: null } : p)) };
     expect(() => renvoyerSort(sn, t, a)).toThrow(/bouclier requis/);
   });
 
-  it("zone : Défense au bouclier −rang (sauf surpris), absorption du guerrier seul", () => {
+  it("zone : Défense au bouclier −rang (sauf surpris), absorption du guerrier seul et non renvoyable", () => {
     const boom = { id: "z", nom: "Explosion", type: "offensif" as const, zone: true, degats: "2d6", cout: { ressource: "mana", montant: 3 } };
     const lanceur = { ...sorcier(), sorts: [boom], attaques: [] };
     const garde = {
@@ -940,10 +952,13 @@ describe("guerrier (voies du livre)", () => {
     const apres = r.state.participants;
     expect(apres[1].pv).toBe(40);
     expect(apres[1].effets).toHaveLength(0);
-    expect(apres[1].sortAbsorbe?.nom).toBe("Explosion");
+    // Zone : jamais stockée ni renvoyable.
+    expect(apres[1].sortAbsorbe).toBeUndefined();
     expect(apres[2].pv).toBe(0);
     expect(r.state.log.some((l) => l.message.includes("Défense au bouclier"))).toBe(true);
     expect(r.state.log.some((l) => l.message.includes("absorbe Explosion"))).toBe(true);
+    expect(r.state.log.some((l) => l.message.includes("non renvoyable"))).toBe(true);
+    expect(() => renvoyerSort(r.state, ids[1], ids[0])).toThrow(/aucun sort absorbé/);
     // Surpris : ni réduction ni parade — 8 DM.
     const garde2 = {
       ...guerrier(),

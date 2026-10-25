@@ -375,7 +375,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: 1,
     cibles: "soi",
     mods: { absorption: 1 },
-    note: "Guerrier (après parade préparée) : le prochain sort réussi est annulé sur test opposé (zones : autres affectés, MJ). Stocké pour Renvoi.",
+    note: "Guerrier (après parade préparée, bouclier requis) : remplace cette parade — test d'attaque au contact opposé à l'attaque magique. Annule le sort sur le guerrier (sur zone, lui seul est protégé). Un sort de zone n'est jamais renvoyable ; un sort ciblé est stocké pour un Renvoi immédiat.",
   },
   {
     talent: "Renvoi de sort",
@@ -383,7 +383,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: null,
     cibles: "ennemis",
     actionSpeciale: "renvoi",
-    note: "Guerrier (G, bouclier requis) : renvoie le sort absorbé contre son lanceur (effets appliqués ; zones rejouées en mono-cible, MJ).",
+    note: "Guerrier (G, bouclier requis) : renvoie immédiatement le sort ciblé absorbé à son lanceur d'origine, effets appliqués. Un sort de zone ne peut pas être renvoyé.",
   },
   {
     talent: "Science du critique",

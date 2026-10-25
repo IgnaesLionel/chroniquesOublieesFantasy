@@ -787,7 +787,11 @@ function CombatInner() {
       )}
 
       <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setCombat((c) => (c ? prevTurn(c) : c))} className="flex-1 min-w-28 py-2.5 rounded bg-zinc-800 font-semibold hover:bg-zinc-700">◀ Précédent</button>
+        <button onClick={() => {
+          setCombat((c) => (c ? prevTurn(c) : c));
+          setLast(null);
+          setLastAttaque(null);
+        }} className="flex-1 min-w-28 py-2.5 rounded bg-zinc-800 font-semibold hover:bg-zinc-700">◀ Précédent</button>
         <button
           onClick={() => setCombat((c) => {
             if (!c) return c;
@@ -795,6 +799,8 @@ function CombatInner() {
             const suivant = n.participants[n.tourIndex]?.instanceId ?? null;
             setAttackerId(suivant);
             setTargetId(recibrerCible(n, suivant, targetId));
+            setLast(null);
+            setLastAttaque(null);
             return n;
           })}
           className="flex-[2] min-w-40 py-2.5 rounded bg-amber-400 text-black font-bold hover:bg-amber-300"
@@ -855,6 +861,21 @@ function CombatInner() {
             onDouble={() => rollDouble()}
             onMultiArmes={(lanceurId, attackIdSel, cibleIds, opts) => rollCirculaire(lanceurId, attackIdSel, cibleIds, opts)}
             onChance={useChance}
+            onRenvoiImmediat={() => {
+              if (!combat || !last?.absorption) return;
+              try {
+                // Cible forcée par le moteur : le lanceur d'origine du sort.
+                const { state } = renvoyerSort(combat, last.cibleId, last.attaquantId);
+                setCombat(state);
+                setLast(null);
+                setLastAttaque(null);
+              } catch (e) {
+                const message = e instanceof Error ? e.message : "Renvoi impossible.";
+                setCombat((c) =>
+                  c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+                );
+              }
+            }}
             onLogMJ={(message) => {
               setCombat((c) =>
                 c ? { ...c, log: [...c.log, { id: `mj-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c

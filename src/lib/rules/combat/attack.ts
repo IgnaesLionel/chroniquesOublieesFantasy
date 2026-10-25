@@ -514,6 +514,8 @@ export function resolveAttack(
   // zones : autres cibles affectées (voir frapperZone).
   let pare = false;
   let absorbe: SortAbsorbe | null = null;
+  /** Absorption réussie, même si le sort (zone) n'est pas renvoyable. */
+  let absorptionReussie: { renvoyable: boolean } | null = null;
   let paradeLog: string | null = null;
   const sortAttaque = sortDeAttaque(attaquant, attaque.id);
   if (touche && !attaque.toucheAuto) {
@@ -540,17 +542,29 @@ export function resolveAttack(
       if (jetP + bonusParade >= jetTotal) {
         pare = true;
         if (veutAbsorber && sortAttaque) {
-          absorbe = {
-            nom: sortAttaque.nom,
-            bonus: attaque.bonus,
-            degats: attaque.degats,
-            effetCle: sortAttaque.effetCle,
-            effetDuree: dureeEffetSort(sortAttaque.effetDuree, attaquant.caracs ?? {}),
-            effetDegats: sortAttaque.effetDegats,
-            effetMods: sortAttaque.effetMods,
-            zone: sortAttaque.zone,
-          };
-          paradeLog = `${cible.nom} absorbe ${sortAttaque.nom} (${detail}${bonusParade}=${jetP + bonusParade} vs ${jetTotal}) — Renvoi possible via Capacités`;
+          if (sortAttaque.zone) {
+            // Un sort de zone est annulé sur le guerrier mais ne peut jamais
+            // être stocké/renvoyé (seule la voie ciblée l'autorise).
+            absorptionReussie = { renvoyable: false };
+            paradeLog = `${cible.nom} absorbe ${sortAttaque.nom} (${detail}${bonusParade}=${jetP + bonusParade} vs ${jetTotal}) — sort de zone : non renvoyable`;
+          } else {
+            absorbe = {
+              nom: sortAttaque.nom,
+              lanceurId: attackerId,
+              lanceurNom: attaquant.nom,
+              manche: s.manche,
+              tourIndex: s.tourIndex,
+              bonus: attaque.bonus,
+              degats: attaque.degats,
+              effetCle: sortAttaque.effetCle,
+              effetDuree: dureeEffetSort(sortAttaque.effetDuree, attaquant.caracs ?? {}),
+              effetDegats: sortAttaque.effetDegats,
+              effetMods: sortAttaque.effetMods,
+              zone: false,
+            };
+            absorptionReussie = { renvoyable: true };
+            paradeLog = `${cible.nom} absorbe ${sortAttaque.nom} (${detail}${bonusParade}=${jetP + bonusParade} vs ${jetTotal}) — Renvoi immédiat possible`;
+          }
         } else {
           paradeLog = `${cible.nom} pare l'attaque de ${attaquant.nom} (${detail}${bonusParade}=${jetP + bonusParade} vs ${jetTotal}) !`;
         }
@@ -833,6 +847,7 @@ export function resolveAttack(
     jetTotal, defenseCible: opposeMagique ? jetDefTotal : defenseEffective,
     touche: toucheVraie, critique, degatsDetails, degatsTotal, pvAvant, pvApres, cibleTombe,
     sangMordant: sangLog ? { degats: sangDegats, pvAttaquantApres: pvAttaquantApresSang as number } : null,
+    ...(absorptionReussie ? { absorption: absorptionReussie } : {}),
   };
 
   return { state: appliquerPhenixAutomatique(checkEnd({ ...s, participants: participantsAvecSignaux, log }), rng), resolution };
@@ -949,10 +964,11 @@ export function depenserChanceApresCoup(
 }
 
 /**
- * Renvoie un sort absorbé contre son expéditeur (Renvoi de sort, Guerrier,
- * bouclier requis) : rejoue l'attaque stockée sans coût — le lanceur subit
- * les effets de sa propre attaque — puis oublie le sort (qu'il touche ou non).
- * Zones : rejouées en mono-cible contre le lanceur (MJ au cas par cas).
+ * Renvoie immédiatement un sort absorbé à son lanceur d'origine (Renvoi de
+ * sort, Guerrier, bouclier requis). Le sort ne peut être renvoyé que dans le
+ * tour de l'absorption, vers le lanceur, et jamais s'il s'agissait d'un sort
+ * de zone (celui-ci est seulement annulé pour le guerrier). L'attaque stockée
+ * est rejouée sans coût, puis oubliée qu'elle touche ou non.
  */
 export function renvoyerSort(
   state: CombatState,
@@ -964,8 +980,20 @@ export function renvoyerSort(
   if (!lanceur) throw new Error("Lanceur introuvable.");
   const abs = lanceur.sortAbsorbe;
   if (!abs) throw new Error(`${lanceur.nom} : aucun sort absorbé à renvoyer.`);
+  if (!lanceur.capacites.some((t) => normaliserNomCapacite(t) === normaliserNomCapacite("Renvoi de sort"))) {
+    throw new Error(`${lanceur.nom} ne connaît pas « Renvoi de sort ».`);
+  }
+  if (abs.manche !== state.manche || abs.tourIndex !== state.tourIndex) {
+    throw new Error(`${lanceur.nom} : le renvoi doit être immédiat (même tour que l'absorption).`);
+  }
+  if (cibleId !== abs.lanceurId) {
+    throw new Error(`${lanceur.nom} : le renvoi ne peut viser que ${abs.lanceurNom}, le lanceur d'origine.`);
+  }
   if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
   exigeBouclier(lanceur);
+  const cible = state.participants.find((p) => p.instanceId === abs.lanceurId);
+  if (!cible) throw new Error(`${lanceur.nom} : lanceur d'origine introuvable (${abs.lanceurNom}).`);
+  if (cible.statut !== "actif") throw new Error(`${lanceur.nom} : ${abs.lanceurNom} n'est plus en état de recevoir le renvoi.`);
 
   const tmpId = `renvoi-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`;
   const tmp: AttackDef = {
@@ -983,7 +1011,7 @@ export function renvoyerSort(
       p.instanceId === lanceurId ? { ...p, attaques: [...p.attaques, tmp] } : p
     ),
   };
-  const { state: apres, resolution } = resolveAttack(avec, lanceurId, cibleId, tmpId, rng);
+  const { state: apres, resolution } = resolveAttack(avec, lanceurId, abs.lanceurId, tmpId, rng);
   const nettoye = apres.participants.map((p) =>
     p.instanceId === lanceurId
       ? { ...p, attaques: p.attaques.filter((a) => a.id !== tmpId), sortAbsorbe: undefined }
@@ -2479,8 +2507,9 @@ export function frapperZone(
     }
     // Absorption (parade préparée requise) : test contact opposé au jet du
     // sort (d20 + bonus magique du lanceur). Seul le guerrier est protégé,
-    // les autres cibles sont affectées normalement ; sort stocké (Renvoi).
-    let sortStocke: SortAbsorbe | null = null;
+    // les autres cibles sont affectées normalement. Un sort de zone est
+    // annulé pour lui mais ne peut jamais être renvoyé.
+    let aAbsorbe = false;
     if (
       getModifier(p.effets, "parade") > 0 &&
       getModifier(p.effets, "absorption") > 0
@@ -2497,17 +2526,8 @@ export function frapperZone(
       if (jetP + bonusAbs >= diffSort) {
         dmZone = 0;
         effetZone = null;
-        sortStocke = {
-          nom: sort.nom,
-          bonus: sort.bonus ?? lanceur.bonusMagique ?? lanceur.niveau,
-          degats: sort.degats ?? "1d1-1",
-          effetCle: sort.effetCle,
-          effetDuree: dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, niveauEffectif(lanceur)),
-          effetDegats: sort.effetDegats,
-          effetMods: sort.effetMods,
-          zone: sort.zone,
-        };
-        absorbesZone.push(`${p.nom} absorbe ${sort.nom} (${jetP}+${bonusAbs}=${jetP + bonusAbs} vs ${diffSort}) — Renvoi possible via Capacités`);
+        aAbsorbe = true;
+        absorbesZone.push(`${p.nom} absorbe ${sort.nom} (${jetP}+${bonusAbs}=${jetP + bonusAbs} vs ${diffSort}) — sort de zone : non renvoyable`);
       } else {
         absorbesZone.push(`${p.nom} rate son absorption (${jetP}+${bonusAbs}=${jetP + bonusAbs} vs ${diffSort}).`);
       }
@@ -2516,7 +2536,7 @@ export function frapperZone(
     const pvApres = Math.max(0, pvAvant - dmZone);
     touches.push({ cibleNom: p.nom, pvAvant, pvApres, tombe: pvAvant > 0 && pvApres === 0 });
     // Absorption réussie : stances consommées (comme la parade ciblée).
-    const sansStances = sortStocke
+    const sansStances = aAbsorbe
       ? p.effets.filter((e) => !(e.modificateurs["parade"] > 0) && !(e.modificateurs["absorption"] > 0))
       : p.effets;
     return {
@@ -2524,7 +2544,6 @@ export function frapperZone(
       pv: pvApres,
       statut: pvApres <= 0 ? ("ko" as const) : p.statut,
       effets: effetZone ? [...sansStances, effetZone] : sansStances,
-      ...(sortStocke ? { sortAbsorbe: sortStocke } : {}),
     };
   });
 

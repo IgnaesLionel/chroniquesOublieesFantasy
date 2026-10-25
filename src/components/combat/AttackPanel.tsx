@@ -34,9 +34,11 @@ interface Props {
   onMultiArmes?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts) => void;
   /** Trace « MJ a validé » au journal de combat. */
   onLogMJ?: (message: string) => void;
+  /** Renvoi immédiat du sort absorbé (bouton affiché dans le résultat d'attaque). */
+  onRenvoiImmediat?: () => void;
 }
 
-export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onDouble, onMultiArmes, onTactique, onLogMJ }: Props) {
+export function AttackPanel({ participants, attackerId, attackId, targetId, last, onAttack, onTarget, onRoll, onChance, onMulti, onDouble, onMultiArmes, onTactique, onLogMJ, onRenvoiImmediat }: Props) {
   const attacker = participants.find((p) => p.instanceId === attackerId) ?? null;
   const vivants = participants.filter((p) => p.statut === "actif");
   /** Cible courante (badge de famille/camp à côté du libellé « Cible »). */
@@ -658,10 +660,10 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
             </div>
           )}
           <div>Défense : {last.defenseCible}</div>
-          <div className={`font-bold ${last.touche ? "text-green-400" : "text-red-400"}`}>
-            → {last.touche ? (last.critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ"}
+          <div className={`font-bold ${last.absorption || last.touche ? "text-green-400" : "text-red-400"}`}>
+            → {last.absorption ? "ABSORBÉ" : last.touche ? (last.critique ? "CRITIQUE" : "TOUCHÉ") : "MANQUÉ"}
           </div>
-          {!last.touche && (() => {
+          {!last.touche && !last.absorption && (() => {
             const lanceur = participants.find((p) => p.instanceId === last.attaquantId);
             const pc = lanceur?.ressources["chance"]?.actuel ?? 0;
             return (
@@ -673,6 +675,30 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               >
                 🍀 Chance +10 ({pc} PC)
               </button>
+            );
+          })()}
+          {last.absorption && (() => {
+            const absorbeur = participants.find((p) => p.instanceId === last.cibleId);
+            const connaitRenvoi = !!absorbeur?.capacites.some(
+              (t) => normaliserNomCapacite(t) === normaliserNomCapacite("Renvoi de sort")
+            );
+            return (
+              <div className="mt-1 rounded border border-amber-800 bg-amber-950/30 p-2 space-y-1">
+                <div>🛡️ Sort absorbé par le bouclier.</div>
+                {last.absorption.renvoyable && connaitRenvoi && onRenvoiImmediat ? (
+                  <button
+                    onClick={onRenvoiImmediat}
+                    className="w-full py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold"
+                    title="Renvoi de sort : uniquement immédiatement, vers le lanceur d'origine"
+                  >
+                    ↩ Renvoyer immédiatement à {last.attaquantNom}
+                  </button>
+                ) : (
+                  <div className="text-xs text-zinc-400">
+                    {last.absorption.renvoyable ? "Renvoi de sort non connu." : "Sort de zone : non renvoyable."}
+                  </div>
+                )}
+              </div>
             );
           })()}
           {last.touche && (

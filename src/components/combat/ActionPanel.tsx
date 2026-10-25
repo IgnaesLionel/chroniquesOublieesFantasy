@@ -55,6 +55,8 @@ interface Props {
   onLogMJ?: (message: string) => void;
   /** Profils du bestiaire proposés comme cadavres (Animer un cadavre, NC ≤ 2). */
   profils?: MonsterTemplate[];
+  /** Renvoi immédiat d'un sort absorbé (résultat de l'attaque en cours). */
+  onRenvoiImmediat?: () => void;
 }
 
 /**
@@ -161,6 +163,7 @@ export function ActionPanel(props: Props) {
               onChance={props.onChance}
               onTactique={props.onTactique}
               onLogMJ={props.onLogMJ}
+              onRenvoiImmediat={props.onRenvoiImmediat}
             />
           )}
           {onglet === "capacites" && (

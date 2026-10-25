@@ -83,6 +83,8 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
   // cadavre de zombie — relevé sur place (hors combat, NC ≤ 2, jamais animé)
   // ou choisi dans le bestiaire (le MJ déclare un corps de zombie sur place).
   const estAnimer = normaliserNomCapacite(talent) === "animer un cadavre";
+  /** Renvoi de sort : seule cible autorisée = le lanceur du sort absorbé. */
+  const estRenvoi = defaut?.actionSpeciale === "renvoi";
   const cadavres = participants.filter((p) => p.instanceId !== lanceur.instanceId && estCadavre(p));
   const profilsCadavres = (profils ?? [])
     .filter((m) => profilAnimable(m))
@@ -104,8 +106,12 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
     ?? optionsCadavre[0]?.valeur ?? null;
   // Cibles proposées selon le type de capacité : "soi" = posture sur soi
   // (Parer, Absorber...), "allies" = alliés hors soi (Protéger...),
-  // "ennemis" = camp adverse, "tous" = tout le monde.
-  const ciblesPossibles = defaut?.cibles === "soi"
+  // "ennemis" = camp adverse, "tous" = tout le monde. Renvoi de sort :
+  // uniquement le lanceur mémorisé lors de l'absorption.
+  const cibleRenvoi = lanceur.sortAbsorbe?.lanceurId ?? null;
+  const ciblesPossibles = estRenvoi
+    ? actifs.filter((p) => p.instanceId === cibleRenvoi)
+    : defaut?.cibles === "soi"
       ? actifs.filter((p) => p.instanceId === lanceur.instanceId)
       : defaut?.cibles === "allies"
         ? alliesCiblables.filter((p) => p.instanceId !== lanceur.instanceId)
@@ -275,7 +281,9 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
         <p className="text-xs text-red-400">
           {estAnimer
             ? `Aucun cadavre de zombie utilisable (zombie hors combat jamais animé, ou profil de zombie du bestiaire, NC ≤ ${NC_MAX_ANIMATION}).`
-            : "Aucune cible valide pour ce talent (aucun allié actif)."}
+            : estRenvoi
+              ? "Aucun sort absorbé à renvoyer (ou lanceur d'origine hors combat). Le renvoi doit être immédiat."
+              : "Aucune cible valide pour ce talent (aucun allié actif)."}
         </p>
       )}
       <button
