@@ -8,6 +8,8 @@ import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { pvTexteColor } from "@/src/lib/ui/pv";
 import { classeFamille } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
+import { actionDeCapacite, actionDeTalent } from "@/src/lib/data/capacites";
 import type { Character } from "@/src/lib/rules/types";
 import { ARME_FAMILLES, labelFamilleArme } from "@/src/lib/rules/world/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
@@ -520,6 +522,7 @@ export default function CharactersPage() {
                       return (
                         <span key={`${t}-${i}`}>
                           {i > 0 && " · "}
+                          <ActionBadge action={actionDeTalent(t, c.profil)} className="mr-1" />
                           {e.effectif ? (
                             t
                           ) : (
@@ -754,7 +757,7 @@ export default function CharactersPage() {
                               title={verrouille ? "Bloqué : voie du peuple remplacée par la Voie du mage" : undefined}
                               onChange={() => toggleTrait(c.nom)}
                             />
-                            <span><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
+                            <span><ActionBadge action={actionDeCapacite(c)} className="mr-1" /><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
                           </label>
                         );
                       })}
@@ -780,7 +783,7 @@ export default function CharactersPage() {
                                 checked={(editing.traitsPeuple ?? []).includes(c.nom)}
                                 onChange={() => toggleTrait(c.nom)}
                               />
-                              <span><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
+                              <span><ActionBadge action={actionDeCapacite(c)} className="mr-1" /><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
                             </label>
                           ))}
                         </div>

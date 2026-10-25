@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { voiesDe } from "@/src/lib/data/capacites";
+import { actionDeCapacite, actionDeTalent, voiesDe } from "@/src/lib/data/capacites";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { VOIE_MAGE, adopterVoieMage, traitsInitiaux, voiePeupleDe } from "@/src/lib/data/peuples";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/rules/creation";
 import { classeFamille } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
 
 const CARACS = ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"] as const;
 type Carac = (typeof CARACS)[number];
@@ -265,7 +266,7 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
                 return (
                   <label key={c.nom} className={`flex items-start gap-2 text-sm ${verrouille ? "opacity-40" : ""}`}>
                     <input type="checkbox" className="mt-1" checked={traits.includes(c.nom)} disabled={verrouille} onChange={() => toggleTrait(c.nom)} />
-                    <span><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
+                    <span><ActionBadge action={actionDeCapacite(c)} className="mr-1" /><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
                   </label>
                 );
               })
@@ -278,7 +279,7 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
                 {VOIE_MAGE.capacites.map((c) => (
                   <label key={c.nom} className="flex items-start gap-2 text-sm">
                     <input type="checkbox" className="mt-1" checked={traits.includes(c.nom)} onChange={() => toggleTrait(c.nom)} />
-                    <span><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
+                    <span><ActionBadge action={actionDeCapacite(c)} className="mr-1" /><b>R{c.rang} · {c.nom}</b> — <span className="text-zinc-400">{c.resume}</span></span>
                   </label>
                 ))}
               </div>
@@ -295,7 +296,7 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
               {rangs1.map((c) => (
                 <label key={c.nom} className="flex items-start gap-2 text-sm">
                   <input type="checkbox" className="mt-1" checked={talents.includes(c.nom)} onChange={() => toggleTalent(c.nom)} />
-                  <span><b>{c.nom}</b> <span className="text-zinc-500">— {c.voie}</span><span className="block text-xs text-zinc-500">{c.resume}</span></span>
+                  <span><ActionBadge action={actionDeCapacite(c)} className="mr-1" /><b>{c.nom}</b> <span className="text-zinc-500">— {c.voie}</span><span className="block text-xs text-zinc-500">{c.resume}</span></span>
                 </label>
               ))}
               {rangs1.length === 0 && <p className="text-xs text-zinc-500">Aucune capacité rang 1 pour ce profil.</p>}
@@ -306,7 +307,7 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
                 {rangs2.map((c) => (
                   <label key={c.nom} className="flex items-start gap-2 text-sm">
                     <input type="checkbox" className="mt-1" checked={talents.includes(c.nom)} onChange={() => toggleTalent(c.nom)} />
-                    <span><b>{c.nom}</b> <span className="text-zinc-500">— {c.voie}</span></span>
+                    <span><ActionBadge action={actionDeTalent(c.nom, profil)} className="mr-1" /><b>{c.nom}</b> <span className="text-zinc-500">— {c.voie}</span></span>
                   </label>
                 ))}
               </div>

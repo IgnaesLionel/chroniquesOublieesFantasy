@@ -9,6 +9,7 @@ import type { ActionDRS, Sort, SortType } from "@/src/lib/rules/types";
 import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
 import { classeFamille, familleDuProfil, familleDuSort } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
 import { ajouterCapacite, apprendreSort, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { apprendreTalentComplet, peutApprendre } from "@/src/lib/rules/creation";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
@@ -314,6 +315,7 @@ export default function SortsPage() {
                 <tr key={s.id} className="border-t border-zinc-800 bg-zinc-950">
                   <td className={`px-3 py-2 fam-rail ${classeFamille(familleDuSort(s))}`}>
                     <span className="font-semibold">{s.type === "offensif" ? "✦ " : s.type === "defensif" ? "🛡 " : "🔮 "}{s.nom}</span>
+                    <ActionBadge action={s.action} className="ml-1.5" />
                     <FamilleBadge famille={familleDuSort(s)} className="ml-1.5" />
                     {s.rang !== undefined && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 font-mono">R{s.rang}</span>}
                     {s.ecole && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-violet-900/60 text-violet-200">{s.ecole}</span>}
@@ -361,6 +363,7 @@ export default function SortsPage() {
                   <tr key={c.id} className="border-t border-zinc-800 bg-zinc-950">
                     <td className={`px-3 py-2 fam-rail ${classeFamille(famille)}`}>
                       <span className="font-semibold">◈ {c.nom}</span>
+                      <ActionBadge action={c.action} className="ml-1.5" />
                       <FamilleBadge famille={famille} className="ml-1.5" />
                       <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200 font-mono">R{c.rang}</span>
                       <span className="block text-xs text-zinc-500">{c.voie}</span>

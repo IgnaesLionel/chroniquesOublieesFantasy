@@ -4,10 +4,11 @@ import Link from "next/link";
 import { CLASSES } from "@/src/lib/data/classes";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { VOIES_PEUPLE, VOIE_MAGE } from "@/src/lib/data/peuples";
-import { voiesDe, type Capacite } from "@/src/lib/data/capacites";
+import { actionDeCapacite, voiesDe, type Capacite } from "@/src/lib/data/capacites";
 import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
 import { classeFamille, familleDeLaVoie } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
 
 function VoieBloc({ voie, capacites, ouvert, onToggle }: {
   voie: string;
@@ -39,6 +40,7 @@ function VoieBloc({ voie, capacites, ouvert, onToggle }: {
                   <span>
                     <span className="font-mono text-amber-300 font-bold">R{c.rang}</span>
                     {" "}<span className="font-semibold">{c.nom}</span>
+                    <ActionBadge action={actionDeCapacite(c)} className="ml-1.5" />
                   </span>
                   {sort && (
                     <span className="font-mono text-violet-300 shrink-0">✦ {sort.cout ? `${sort.cout.montant} PM` : "sort"}</span>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { MonsterTemplate } from "@/src/lib/rules/types";
 import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
+import { ACTION_LETTER, actionDeTalent, infererAction } from "@/src/lib/data/capacites";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { canAct } from "@/src/lib/rules/effects/effects";
@@ -11,6 +12,7 @@ import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjDejaValide } from "@/src/lib/ui/validations-mj";
 import { familleDuProfil } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
 
 interface Props {
   participants: CombatParticipant[];
@@ -70,6 +72,9 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
   if (lancables.length === 0) return null;
   const talent = lancables.includes(talentNom ?? "") ? talentNom! : lancables[0];
   const defaut = defautPour(talent);
+  /** Type d'action du talent : catalogue des voies, puis note mécanique. */
+  const actionTalent = (nom: string) =>
+    actionDeTalent(nom, lanceur.profil) ?? infererAction(defautPour(nom)?.note ?? "");
   const effetActif = effetCle || defaut?.effetCle || "";
   const dureeActive = duree !== "" ? Number(duree) : defaut?.dureeTours ?? null;
   const actifs = participants.filter((p) => p.statut === "actif");
@@ -169,6 +174,7 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
           ? lanceur.capacites.map((t, i) => (
             <span key={`${t}-${i}`}>
               {i > 0 && " · "}
+              <ActionBadge action={actionTalent(t)} className="mr-1" />
               <span title={lancables.includes(t) ? "Utilisable dans ce panneau" : "Passif ou géré ailleurs (panneau Attaque, MJ)"}>
                 {lancables.includes(t) ? `◈ ${t}` : t}
               </span>
@@ -184,12 +190,15 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
         >
           {lancables.map((t) => {
             const q = CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === normaliserNomCapacite(t))?.questionMJ;
-            return <option key={t} value={t}>◈ {t}{q ? " ⚖️" : ""}</option>;
+            const action = actionTalent(t);
+            const lettre = action ? ACTION_LETTER[action] : "P";
+            return <option key={t} value={t}>[{lettre}] ◈ {t}{q ? " ⚖️" : ""}</option>;
           })}
         </select>
       </label>
       {defaut && (
         <p className="text-xs text-zinc-500">
+          <ActionBadge action={actionTalent(talent)} className="mr-1" />
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
           {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
@@ -298,6 +307,7 @@ export function CapacitesPanel({ participants, lanceurId, profils, onUtiliser, o
         disabled={bloque || !choixValide}
         className="w-full py-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold disabled:opacity-40"
       >
+        <ActionBadge action={actionTalent(talent)} className="mr-1.5" />
         Utiliser {talent}{defaut?.coutPV ? ` (${defaut.coutPV} PV)` : ""}{defaut?.actionSpeciale === "renvoi" ? " ↩" : ""}
       </button>
       {attenteMj && (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CLASSES } from "@/src/lib/data/classes";
-import { CAPACITES, catalogueCapacites, infererAction, voiesDe } from "@/src/lib/data/capacites";
+import { CAPACITES, actionDeCapacite, actionDeTalent, catalogueCapacites, infererAction, voiesDe } from "@/src/lib/data/capacites";
 import { VOIES_PEUPLE, VOIE_MAGE } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { PROFILS_PAR_FAMILLE, REGLES_PROFILS } from "@/src/lib/rules/personnage";
@@ -50,6 +50,28 @@ describe("onglet classes (DRS)", () => {
     expect(infererAction("Action d'attaque : sournoise contre surpris.")).toBe("attaque");
     expect(infererAction("Dé malus en attaque au contact pour +2d4 DM.")).toBeUndefined();
     expect(infererAction("FOR +1 et dé bonus aux tests de FOR.")).toBeUndefined();
+    // Un passif peut parler de mouvement sans être une action de mouvement.
+    expect(infererAction("Passif : +3 Init et +1 mouvement/combat.")).toBeUndefined();
+    expect(infererAction("+2 DEF, se relever en mouvement.")).toBeUndefined();
+    // Le premier marqueur gagne : (M) de base, (G) seulement au rang 5.
+    expect(infererAction("Bouclier requis. (M) : posture. Rang 5 : (G) 1/round.")).toBe("mouvement");
+  });
+
+  it("actionDeCapacite / actionDeTalent : sort lié, résumé et passifs", () => {
+    const toutes = Object.values(CAPACITES).flatMap((voies) => voies.flatMap((v) => v.capacites));
+    const souplesse = toutes.find((c) => c.nom === "Souplesse du félin");
+    expect(souplesse).toBeTruthy();
+    expect(actionDeCapacite(souplesse!)).toBeUndefined();
+
+    // Rétablissement n'a pas de marqueur dans son résumé : l'action vient du sort lié.
+    const retablissement = toutes.find((c) => c.nom === "Rétablissement");
+    expect(retablissement).toBeTruthy();
+    expect(actionDeCapacite(retablissement!)).toBe("limitee");
+
+    expect(actionDeTalent("Protéger un allié", "Guerrier")).toBe("gratuite");
+    expect(actionDeTalent("Parer un coup", "Guerrier")).toBe("mouvement");
+    expect(actionDeTalent("Souplesse du félin")).toBeUndefined();
+    expect(actionDeTalent("Rétablissement")).toBe("limitee");
   });
 
   it("catalogueCapacites : tous les talents non-sorts, ids uniques", () => {

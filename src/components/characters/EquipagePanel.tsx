@@ -6,9 +6,10 @@ import { manaMax, recalculerPersonnage } from "@/src/lib/rules/personnage";
 import { libelleMains, peutEquiper, validerEquipement } from "@/src/lib/rules/equipement";
 import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
 import { apprendreTalentComplet, compterCapacites, desapprendreTalentComplet, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
-import { ACTION_LABEL, infererAction, voiesDe } from "@/src/lib/data/capacites";
+import { actionDeCapacite, actionDeTalent, voiesDe } from "@/src/lib/data/capacites";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { ITEM_CATEGORIES, type ItemCategorie } from "@/src/lib/rules/world/types";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
 
 function normaliserRecherche(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
@@ -215,6 +216,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
             <div key={s.id} className="flex items-center gap-2 text-sm">
               <span className="flex-1">
                 {s.type === "offensif" ? "✦ " : "🛡 "}{s.nom}
+                <ActionBadge action={s.action} className="ml-1.5" />
                 <span className="text-zinc-500 text-xs">
                   {" "}· {s.type}{s.ecole ? ` ${s.ecole}` : ""}{s.voie ? ` · ${s.voie}${s.rang ? ` R${s.rang}` : ""}` : s.rang ? ` · R${s.rang}` : ""}
                   {s.degats ? ` · ${s.degats}` : ""}{s.soin ? ` · +${s.soin}` : ""}
@@ -255,7 +257,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
         <div className="space-y-1">
           {talents.map((t) => (
             <div key={t} className="flex items-center gap-2 text-sm">
-              <span className="flex-1">◈ {t}</span>
+              <span className="flex-1">◈ {t} <ActionBadge action={actionDeTalent(t, profil)} className="ml-1.5" /></span>
               {(() => {
                 const sort = sortDuTalent(t, SEED_SORTS);
                 const q = normaliserNomCapacite(t);
@@ -316,14 +318,13 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
                       const connu = talents.includes(c.nom)
                         || sorts.some((s) => normaliserNomCapacite(s.nom) === normaliserNomCapacite(c.nom));
                       const porte = peutApprendre(character, { nom: c.nom, voie: v.voie, rang: c.rang });
-                      const action = infererAction(c.resume);
                       return (
                         <div key={`${c.rang}-${c.nom}`} className="text-xs border-t border-zinc-800/60 pt-1.5">
                           <div className="flex justify-between gap-2 items-center">
                             <span>
                               <span className="font-mono text-amber-300 font-bold">R{c.rang}</span>
                               {" "}<span className="font-semibold">{c.sortId ? "✦ " : "◈ "}{c.nom}</span>
-                              {action && <span className="ml-1.5 text-zinc-500">{ACTION_LABEL[action]}</span>}
+                              <ActionBadge action={actionDeCapacite(c)} className="ml-1.5" />
                             </span>
                             {connu ? (
                               <span className="text-green-400 font-semibold shrink-0">✓</span>
