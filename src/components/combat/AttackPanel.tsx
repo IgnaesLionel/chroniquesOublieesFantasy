@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { ActionDRS } from "@/src/lib/rules/types";
 import { canAct, getModifier, attaqueInterdite } from "@/src/lib/rules/effects/effects";
-import { etatLimite, sortUtilisable, estAttaqueContact, estAttaqueArme, estAttaqueDistance, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, raisonSeuilPv, raisonExigeVivant, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { etatLimite, sortUtilisable, estAttaqueContact, estAttaqueArme, estAttaqueDistance, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, raisonSeuilPv, raisonExigeVivant, actionDeAttaque, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { composantesAttaque, probabiliteToucher, seuilDefense } from "@/src/lib/rules/combat/touche";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { labelFamilleArme } from "@/src/lib/rules/world/types";
@@ -15,9 +15,7 @@ import { FamilleBadge } from "@/src/components/ui/Famille";
 import { ActionBadge } from "@/src/components/ui/ActionBadge";
 import { ACTION_LABEL } from "@/src/lib/data/capacites";
 import { aideAction } from "@/src/lib/ui/actions";
-
-/** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
-const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
+import { ArmeSortSelect, type OptionArmeSort } from "@/src/components/combat/ArmeSortSelect";
 
 interface Props {
   participants: CombatParticipant[];
@@ -123,7 +121,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     tactique === "defense-partielle" ? "attaque"
       : tactique === "defense-totale" || tactique === "riposte" || tactique === "soutenir" ? "limitee"
         : null;
-  const actionBase: ActionDRS = selAttaqueTop?.action ?? selSortTop?.action ?? "attaque";
+  // Les armes sont toujours A ; seuls les sorts gardent leur action propre.
+  const actionBase: ActionDRS = selAttaqueTop ? actionDeAttaque(selAttaqueTop, selSortTop) : "attaque";
   const actionConcentration =
     concentration && !!selSortTop && (selSortTop.action ?? "attaque") === "attaque" && (selSortTop.cout?.montant ?? 0) > 0;
   const actionAffichee: ActionDRS =
@@ -407,40 +406,49 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           }
           return { cout, raisons, sort, attaque };
         };
+        // Toutes les armes sont A : actionDeAttaque neutralise un éventuel
+        // marqueur M/L hérité d'une donnée ancienne. Les sorts gardent le leur.
+        const optionsArmeSort: OptionArmeSort[] = attacker.attaques.map((a) => {
+          const { cout, raisons, sort } = info(a.id);
+          const details = [
+            `+${a.bonus}${modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""}`,
+            a.degats === "1d1-1" ? "effet" : a.degats,
+            cout > 0 ? `${cout} PM` : "",
+            sort ? (familleDuSort(sort) ?? "") : "",
+            sort?.coutPV ? `${sort.coutPV} PV` : "",
+            a.volDeVie ? "vol" : "",
+            a.seuilPv != null ? `≤ ${Math.round(a.seuilPv * 100)} % PV` : "",
+            a.exigeVivant ? "cible vivante" : "",
+            sort?.limiteCombat != null && !sort.limiteParCible ? `1×${sort.limiteCombat}/combat` : "",
+            sort?.limiteParCible ? "1/combat/cible" : "",
+            sort?.zone ? "zone" : "",
+            sort?.ciblesMax != null && sort.ciblesMax > 1 ? `×${sort.ciblesMax} cibles` : "",
+            sort?.ciblesLibres ? "cibles multiples" : "",
+            a.toucheAuto ? "auto" : "",
+            sort?.cibleEspeces?.length ? `💀 ${sort.cibleEspeces.join("/")}` : "",
+          ].filter(Boolean).join(" · ");
+          return {
+            id: a.id,
+            nom: a.nom,
+            action: actionDeAttaque(a, sort),
+            details,
+            disabled: raisons.length > 0,
+            raison: raisons.join(", "),
+          };
+        });
         return (
           <>
-          <label className="block text-sm">Arme / sort
+          <div className="block text-sm">
+            <label htmlFor="combat-attaque">Arme / sort</label>
             {mana && <span className="ml-2 font-mono text-xs text-violet-300">mana {mana.actuel}/{mana.max}</span>}
-            <select id="combat-attaque" name="attaque" value={attackId ?? attacker.attaques[0]?.id ?? ""} onChange={(e) => onAttack(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-              {attacker.attaques.map((a) => {
-                const { cout, raisons, sort } = info(a.id);
-                const jouable = raisons.length === 0;
-                const lettre = LETTRE_ACTION[a.action ?? sort?.action ?? "attaque"] ?? "A";
-                const tags = [
-                  lettre,
-                  a.degats === "1d1-1" ? "effet" : a.degats,
-                  cout > 0 ? `${cout} PM` : "",
-                  sort ? (familleDuSort(sort) ?? "") : "",
-                  sort?.coutPV ? `${sort.coutPV} PV` : "",
-                  a.volDeVie ? "vol" : "",
-                  a.seuilPv != null ? `≤ ${Math.round(a.seuilPv * 100)} % PV` : "",
-                  a.exigeVivant ? "cible vivante" : "",
-                  sort?.limiteCombat != null && !sort.limiteParCible ? `1×${sort.limiteCombat}/combat` : "",
-                  sort?.limiteParCible ? "1/combat/cible" : "",
-                  sort?.zone ? "zone" : "",
-                  sort?.ciblesMax != null && sort.ciblesMax > 1 ? `×${sort.ciblesMax} cibles` : "",
-                  sort?.ciblesLibres ? "cibles multiples" : "",
-                  a.toucheAuto ? "auto" : "",
-                  sort?.cibleEspeces?.length ? `💀 ${sort.cibleEspeces.join("/")}` : "",
-                ].filter(Boolean).join(" · ");
-                return (
-                  <option key={a.id} value={a.id} disabled={!jouable}>
-                    {a.nom} +{a.bonus}{modAttaque !== 0 ? ` (${modAttaque > 0 ? "+" : ""}${modAttaque} effets)` : ""} · {tags}{jouable ? "" : ` (${raisons.join(", ")})`}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
+            <ArmeSortSelect
+              id="combat-attaque"
+              label="Arme / sort"
+              value={attackId ?? attacker.attaques[0]?.id ?? ""}
+              options={optionsArmeSort}
+              onChange={onAttack}
+            />
+          </div>
           <div
             className="flex items-start gap-2 rounded border border-zinc-700 bg-zinc-950/60 px-2.5 py-2"
             title="Type d'action de l'attaque ou de la posture sélectionnée — le logiciel ne décrémente pas automatiquement l'action et le mouvement."

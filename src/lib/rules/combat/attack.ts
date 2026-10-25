@@ -29,7 +29,7 @@ import {
   facteurLienEmpathique,
   rangVoieCompagnon,
 } from "@/src/lib/rules/compagnon";
-import type { ActiveEffect, AttackDef, Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
+import type { ActionDRS, ActiveEffect, AttackDef, Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import { monsterInstances } from "@/src/lib/rules/combat/factory";
 import type {
   AttackResolution,
@@ -1502,6 +1502,20 @@ export function estAttaqueArme(attaque: { id: string }): boolean {
     !attaque.id.startsWith("renvoi") &&
     attaque.id !== "inv-attaque"
   );
+}
+
+/**
+ * Type d'action affiché pour une attaque.
+ * Toutes les armes (et attaques naturelles) sont des actions d'attaque (A),
+ * même si une donnée ancienne ou importée porte un autre marqueur. Seuls les
+ * sorts et attaques accordées peuvent conserver M/L/G.
+ */
+export function actionDeAttaque(
+  attaque: Pick<AttackDef, "id" | "action">,
+  sort?: Pick<Sort, "action">
+): ActionDRS {
+  if (estAttaqueArme(attaque)) return "attaque";
+  return attaque.action ?? sort?.action ?? "attaque";
 }
 
 /** Le porteur a-t-il du Sang mordant actif (sang acide du sorcier) ? */
