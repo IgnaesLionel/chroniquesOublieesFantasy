@@ -10,8 +10,9 @@ import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
 import { mjDejaValide } from "@/src/lib/ui/validations-mj";
 import { classeFamille, familleDuProfil, familleDuSort } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
-
-const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
+import { ACTION_LABEL, ACTION_LETTER } from "@/src/lib/data/capacites";
+import { aideAction } from "@/src/lib/ui/actions";
 
 interface Props {
   participants: CombatParticipant[];
@@ -49,6 +50,7 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
   const concPossible = !sort.concentrationInterdite && (sort.action ?? "attaque") === "attaque" && coutBase > 0;
   const concActive = concentration && concPossible;
   const coutEff = concActive ? Math.max(0, coutBase - 2) : coutBase;
+  const actionAffichee = concActive ? "limitee" : sort.action;
   const estMineure = normaliserNomCapacite(sort.nom) === "récupération mineure" && sort.voie === "Voie des soins";
   const porteur = { capacites: lanceur.capacites ?? [], sorts: (lanceur.sorts ?? []).map((s) => ({ nom: s.nom, voie: s.voie, rang: s.rang })) };
   const quotaMineure = estMineure ? quotaMineureParJour(porteur) : null;
@@ -86,7 +88,7 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
           {soutiens.map((s) => {
             const u = sortUtilisable(lanceur.niveau, s);
             const flags = [
-              LETTRE_ACTION[s.action ?? "attaque"] ?? "A",
+              s.action ? ACTION_LETTER[s.action] : "P",
               s.soin ? `+${s.soin}` : "",
               s.cout ? `${s.cout.montant} ${s.cout.ressource}` : "",
               s.coutPV ? `${s.coutPV} PV` : "",
@@ -103,6 +105,18 @@ export function SoutienPanel({ participants, lanceurId, onCast, onLogMJ }: Props
           })}
         </select>
       </label>
+      <div
+        className="flex items-start gap-2 rounded border border-zinc-700 bg-zinc-950/60 px-2.5 py-2"
+        title="Type d'action du sort de soutien sélectionné — le logiciel ne décrémente pas automatiquement l'action et le mouvement."
+      >
+        <ActionBadge action={actionAffichee} size="md" className="mt-0.5" />
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-zinc-200">
+            {actionAffichee ? ACTION_LABEL[actionAffichee] : "Passif / non action"}
+          </div>
+          <div className="text-[11px] text-zinc-500">{aideAction(actionAffichee)}</div>
+        </div>
+      </div>
       {estRituel && (
         <div className="text-xs text-amber-300/90 bg-amber-950 border border-amber-800 rounded px-2 py-1.5">
           ⚠ {sort.nom} : rituel hors combat (10 min, CHA patients au repos dans 5 m, 1/jour, concentration interdite) — à lancer hors combat.

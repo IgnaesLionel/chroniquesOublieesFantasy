@@ -14,11 +14,17 @@ const STYLE: Record<ActionDRS, string> = {
 
 const STYLE_PASSIF = "border-zinc-700 bg-zinc-800 text-zinc-400";
 
+const TAILLE = {
+  sm: "h-[1.15rem] min-w-[1.15rem] px-1 text-[10px]",
+  md: "h-6 min-w-6 px-1.5 text-xs",
+} as const;
+
 export function ActionBadge({
   action,
   className = "",
   titre,
   passif = true,
+  size = "sm",
 }: {
   action?: ActionDRS | null;
   className?: string;
@@ -26,6 +32,8 @@ export function ActionBadge({
   titre?: string;
   /** Afficher « P » quand aucune action n'est connue (capacité passive). */
   passif?: boolean;
+  /** `sm` dans les listes denses, `md` pour le type d'action sélectionné. */
+  size?: "sm" | "md";
 }) {
   if (!action && !passif) return null;
   const letter = action ? ACTION_LETTER[action] : "P";
@@ -35,7 +43,7 @@ export function ActionBadge({
       role="img"
       aria-label={label}
       title={titre ?? label}
-      className={`inline-flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded border px-1 align-middle font-mono text-[10px] font-bold leading-none ${action ? STYLE[action] : STYLE_PASSIF} ${className}`.trim()}
+      className={`inline-flex items-center justify-center rounded border align-middle font-mono font-bold leading-none ${TAILLE[size]} ${action ? STYLE[action] : STYLE_PASSIF} ${className}`.trim()}
     >
       {letter}
     </span>

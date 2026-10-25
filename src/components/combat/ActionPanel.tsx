@@ -8,6 +8,7 @@ import { talentsLancables } from "@/src/lib/data/capacites-usables";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
 import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
 import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
+import { ActionEconomie } from "@/src/components/combat/ActionEconomie";
 import { classeFamille, familleDuProfil } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
 
@@ -123,6 +124,7 @@ export function ActionPanel(props: Props) {
             </button>
           ))}
         </div>
+        <ActionEconomie />
         {capacitesCreatureActeur.length > 0 && (
           <div className="space-y-1">
             <div className="text-xs uppercase text-zinc-500 font-bold" title="Capacités du bestiaire — informatives, le MJ les applique">

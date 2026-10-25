@@ -23,6 +23,7 @@ import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
 import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 import { ActionPanel } from "@/src/components/combat/ActionPanel";
+import { ActionEconomie } from "@/src/components/combat/ActionEconomie";
 import { EncounterGenerator } from "@/src/components/encounters/EncounterGenerator";
 import { stagingDepuisRencontre } from "@/src/lib/rules/combat/depuis-rencontre";
 import type { SlotResolu } from "@/src/lib/encounters/types";
@@ -783,6 +784,7 @@ function CombatInner() {
           {active.effets.length > 0 && (
             <span className="text-violet-300">✦ {active.effets.map((e) => `${e.nom} (${e.toursRestants ?? "∞"})`).join(", ")}</span>
           )}
+          <ActionEconomie compact className="ml-auto" />
         </div>
       )}
 

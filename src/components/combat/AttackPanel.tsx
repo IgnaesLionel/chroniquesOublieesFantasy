@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
+import type { ActionDRS } from "@/src/lib/rules/types";
 import { canAct, getModifier, attaqueInterdite } from "@/src/lib/rules/effects/effects";
 import { etatLimite, sortUtilisable, estAttaqueContact, estAttaqueArme, estAttaqueDistance, estLoupCompagnon, trouverMaitreLoup, propositionTravailEquipe, raisonSeuilPv, raisonExigeVivant, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { composantesAttaque, probabiliteToucher, seuilDefense } from "@/src/lib/rules/combat/touche";
@@ -11,6 +12,9 @@ import { PopupTravailEquipe } from "@/src/components/combat/PopupTravailEquipe";
 import { mjFiltrerAValider } from "@/src/lib/ui/validations-mj";
 import { familleDuProfil, familleDuSort, classeFamille } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
+import { ActionBadge } from "@/src/components/ui/ActionBadge";
+import { ACTION_LABEL } from "@/src/lib/data/capacites";
+import { aideAction } from "@/src/lib/ui/actions";
 
 /** Lettre d'action COF : Attaque (A) + Mouvement (M) par tour, ou Limitée (L). */
 const LETTRE_ACTION: Record<string, string> = { attaque: "A", mouvement: "M", limitee: "L", gratuite: "G" };
@@ -109,6 +113,28 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
   const [concentration, setConcentration] = useState(false);
   const [tactique, setTactique] = useState<"normale" | "assuree" | "precise" | "violente" | "defense-partielle" | "defense-totale" | "riposte" | "soutenir">("normale");
+  /**
+   * Type d'action réellement sélectionné, affiché en grand au-dessus des
+   * options : l'arme/sort de base, ou la posture tactique en cours. La
+   * concentration, Double et Circulaire transforment l'attaque en action
+   * limitée (L). Ce n'est qu'un affichage : l'économie n'est pas décrémentée.
+   */
+  const actionPosture: ActionDRS | null =
+    tactique === "defense-partielle" ? "attaque"
+      : tactique === "defense-totale" || tactique === "riposte" || tactique === "soutenir" ? "limitee"
+        : null;
+  const actionBase: ActionDRS = selAttaqueTop?.action ?? selSortTop?.action ?? "attaque";
+  const actionConcentration =
+    concentration && !!selSortTop && (selSortTop.action ?? "attaque") === "attaque" && (selSortTop.cout?.montant ?? 0) > 0;
+  const actionAffichee: ActionDRS =
+    actionPosture
+    ?? ((double && proposeDouble) || (circulaire && proposeCirculaire) || actionConcentration ? "limitee" : actionBase);
+  const libelleActionAffichee =
+    tactique === "riposte" ? "Limitée (L) ou action (A)" : ACTION_LABEL[actionAffichee];
+  const aideActionAffichee =
+    tactique === "riposte"
+      ? "Posture de riposte : action limitée, ou action simple selon le choix du MJ."
+      : aideAction(actionAffichee);
   // Travail d'équipe (Rôdeur) : si l'attaquant est le loup et son maître a le
   // talent, une pop-up demande à chaque attaque si le loup est au contact
   // (positions non suivies par le moteur). « Oui » = dé bonus à cette attaque.
@@ -415,6 +441,16 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               })}
             </select>
           </label>
+          <div
+            className="flex items-start gap-2 rounded border border-zinc-700 bg-zinc-950/60 px-2.5 py-2"
+            title="Type d'action de l'attaque ou de la posture sélectionnée — le logiciel ne décrémente pas automatiquement l'action et le mouvement."
+          >
+            <ActionBadge action={actionAffichee} size="md" className="mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-zinc-200">{libelleActionAffichee}</div>
+              <div className="text-[11px] text-zinc-500">{aideActionAffichee}</div>
+            </div>
+          </div>
           {(() => {
             const fam = attacker.famillePredilection ?? null;
             if (!fam || !(selAttaque?.familles ?? []).includes(fam)) return null;
