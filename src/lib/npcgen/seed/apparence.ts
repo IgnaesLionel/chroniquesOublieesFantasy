@@ -1,0 +1,167 @@
+import { TABLE_IDS } from "@/src/lib/npcgen/types";
+import { fabrique } from "@/src/lib/npcgen/seed/helpers";
+
+const { E, many, entries } = fabrique();
+
+entries.push(
+  ...many(TABLE_IDS.carnations, [
+    "Peau claire et rosée",
+    "Peau pâle, presque cireuse",
+    "Peau légèrement hâlée",
+    "Peau mate et chaude",
+    "Peau brune et lumineuse",
+    "Peau très foncée",
+    "Peau marquée par le hâle et le vent",
+    "Peau constellée de taches de rousseur",
+  ]),
+  ...many(TABLE_IDS.cheveux, [
+    "Cheveux noirs coupés court",
+    "Longue chevelure brune tressée",
+    "Cheveux blonds en bataille",
+    "Cheveux roux bouclés",
+    "Cheveux gris coupés ras",
+    "Cheveux blancs attachés en chignon",
+    "Crâne rasé, barbe fournie",
+    "Cheveux châtains mi-longs, souvent gras",
+    "Tresses ornées de perles de bois",
+    "Cheveux filasses couleur paille",
+    "Boucles auburn serrées",
+    "Cheveux teints au henné",
+  ]),
+  ...many(TABLE_IDS.yeux, [
+    "Yeux gris clair",
+    "Yeux noirs et perçants",
+    "Yeux bleus délavés",
+    "Yeux verts comme l'huile",
+    "Yeux noisette chaleureux",
+    "Yeux ambrés de fauve",
+    "Un œil plus clair que l'autre",
+    "Regard fuyant, cils bas",
+    "Yeux cernés mais vifs",
+    "Iris presque violets",
+  ]),
+  ...many(TABLE_IDS.visages, [
+    "Visage anguleux aux pommettes hautes",
+    "Visage rond et avenant",
+    "Visage long et pensif",
+    "Visage carré, mâchoire forte",
+    "Traits fins et délicats",
+    "Nez aquilin et sourcils broussailleux",
+    "Joues creuses, regards enfoncés",
+    "Visage couturé de petites cicatrices",
+    "Front large, menton fuyant",
+    "Sourire en coin permanent",
+  ]),
+  ...many(TABLE_IDS.voix, [
+    "Voix grave et posée",
+    "Voix haut perchée",
+    "Voix rauque de fumeur",
+    "Voix douce, presque un murmure",
+    "Débit rapide et saccadé",
+    "Voix chantante et théâtrale",
+    "Parle lentement en pesant chaque mot",
+    "Voix éraillée par les cris",
+    "Timbre chaud et rassurant",
+    "Zézaie légèrement",
+  ]),
+  ...many(TABLE_IDS.particularitesPhysiques, [
+    "Boite légèrement de la jambe gauche",
+    "Main droite couturée de brûlures anciennes",
+    "Épaule toujours plus basse que l'autre",
+    "Doigts tachés d'encre",
+    "Ongles rongés jusqu'au sang",
+    "Dos voûté par les années",
+    "Tatouages de clan sur l'avant-bras",
+    "Brûlure de corde au poignet",
+    "Une dent en or",
+    "Nez cassé plusieurs fois",
+  ]),
+  ...many(TABLE_IDS.signesDistinctifs, [
+    "Médaille de bronze au cou",
+    "Anneau sigillaire à l'auriculaire",
+    "Écharpe rouge délavée",
+    "Cicatrice en croix sur la joue",
+    "Boucle d'oreille en os",
+    "Broche en forme de feuille",
+    "Sacoche de cuir marquée d'une rune",
+    "Foulard noué au poignet",
+    "Plume de corbeau au chapeau",
+    "Marque de naissance sur le front",
+  ]),
+  ...many(TABLE_IDS.maintien, [
+    "Se tient très droit, comme à la parade",
+    "Épaules rentrées, regard fuyant",
+    "Aisance naturelle, occupe l'espace",
+    "Toujours appuyé contre un mur ou un meuble",
+    "Gestes économes, immobilité inquiétante",
+    "Posture courtoise un peu trop appliquée",
+    "Se penche vers son interlocuteur",
+    "Mains croisées devant lui, en permanence",
+  ]),
+  ...many(TABLE_IDS.hygiene, [
+    "Propre et soigné",
+    "Vêtements propres mais élimés",
+    "Odeur de sueur et de cuir",
+    "Parfum discret et coûteux",
+    "Poussière de voyage sur les bottes",
+    "Cheveux et barbe négligés",
+    "Odeur de cendre froide",
+    "Mains propres, ongles noirs de terre",
+  ]),
+  ...many(TABLE_IDS.demarche, [
+    "Marche à grandes enjambées",
+    "Avance à petits pas pressés",
+    "Démarche chaloupée de marin",
+    "Glisse plus qu'il ne marche",
+    "S'appuie sur une canne",
+    "Se déplace sans bruit",
+    "Fait résonner ses talons",
+    "S'arrête souvent pour regarder autour de lui",
+  ]),
+  ...many(TABLE_IDS.gestes, [
+    "Se passe la main dans les cheveux",
+    "Tortille une bague",
+    "Tapote le pommeau de son arme",
+    "Cache un sourire derrière sa main",
+    "Soupire avant chaque phrase",
+    "Compte sur ses doigts",
+    "Lisse sa moustache",
+    "Se gratte la nuque quand il ment",
+    "Fixe un point derrière l'interlocuteur",
+    "Joue avec une pièce de monnaie",
+  ])
+);
+
+const vetements: [string, string[], string[], string[]?][] = [
+  ["Guenilles rapiécées et corde en guise de ceinture", ["precaire"], ["misère"]],
+  ["Tunique de laine élimée, tablier de cuir", ["precaire", "modeste"], ["travail"]],
+  ["Robe simple de toile, châle de laine", ["modeste"], ["quotidien"]],
+  ["Veste de cuir souple et bottes solides", ["modeste", "aise"], ["voyage"]],
+  ["Pourpoint bien coupé, collants et souliers cirés", ["aise"], ["ville"]],
+  ["Redingote de drap sombre, chaîne d'argent au gilet", ["riche", "puissant"], ["commerce", "argent", "ville"], ["Commerce", "Argent", "Noblesse"]],
+  ["Veste de marchand bien coupée, doigts tachés d'encre", ["aise", "riche"], ["commerce", "écriture", "ville"], ["Commerce", "Argent"]],
+  ["Manteau de drap fin bordé de fourrure", ["riche"], ["hiver", "noble"]],
+  ["Tenue de soie brodée, bijoux discrets", ["riche", "puissant"], ["cour"]],
+  ["Robe de cérémonie à broderies d'or", ["puissant"], ["cérémonie"], ["Noblesse"]],
+  ["Cotte de mailles sous une surcot sans manches", ["modeste", "aise"], ["guerre"], ["Militaire"]],
+  ["Armure de plaques entretenue avec soin", ["riche", "puissant"], ["guerre", "noble"], ["Militaire"]],
+  ["Robe de bure de moine, cordon noué", ["precaire", "modeste"], ["religion"], ["Religion"]],
+  ["Tablier de forge, chemise retroussée, gants épais", ["modeste"], ["artisanat"], ["Artisanat"]],
+  ["Manteau de voyage poussiéreux, capuche rabattue", ["modeste", "aise"], ["voyage"]],
+  ["Robe de magistrat noire à liseré d'argent", ["riche", "puissant"], ["justice"], ["Politique"]],
+];
+
+entries.push(
+  ...vetements.map(([valeur, niveaux, tags, categories]) =>
+    E(TABLE_IDS.vetements, valeur, {
+      tags,
+      conditions: {
+        niveauxSociaux: niveaux,
+        ...(categories ? { categoriesProfession: categories } : {}),
+      },
+      meta: { niveauxSociaux: niveaux },
+    })
+  )
+);
+
+export const ENTRIES_APPARENCE = entries;

@@ -13,7 +13,7 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
   { href: "/combat?vue=composition", t: "Combat", d: "Initiative, tours, effets", key: null },
   { href: "/scenarios", t: "Scénarios", d: "Scènes, choix, conditions", key: "scenarios" },
   { href: "/sessions", t: "Sessions", d: "Tables, groupes, campagnes", key: "sessions" },
-  { href: "/npcs", t: "PNJ", d: "Dialogues et secrets MJ", key: "npcs" },
+  { href: "/npcs", t: "PNJ", d: "Générateur, bibliothèque, secrets MJ", key: "npcSaved" },
   { href: "/tresors", t: "Trésors & Objets", d: "Butin, catalogue, objets magiques", key: "items" },
   { href: "/settings", t: "Sauvegarde", d: "Export / import JSON", key: null },
 ];

@@ -37,7 +37,14 @@ let compteurInstances = 0;
 export function useLocalCollection<T extends { id: string }>(
   key: string,
   seed: T[],
-  opts: { persist?: boolean; migrer?: (items: T[]) => T[]; libelle?: string; protegerPv?: boolean } = {}
+  opts: {
+    persist?: boolean;
+    migrer?: (items: T[]) => T[];
+    libelle?: string;
+    protegerPv?: boolean;
+    /** false : les graines ne sont écrites qu'à la première visite (pas de fusion à chaque lecture). */
+    fusionner?: boolean;
+  } = {}
 ) {
   const persist = opts.persist ?? true;
   const [items, setItemsRaw] = useState<T[]>(seed);
@@ -76,7 +83,7 @@ export function useLocalCollection<T extends { id: string }>(
         localStorageAdapter.save(key, valeur, { retourAuxGraines, protegerPv: opts.protegerPv })
       );
     const accepter = (stockes: T[]) => {
-      const prepares = preparerStock(stockes, seed, opts.migrer);
+      const prepares = preparerStock(stockes, seed, opts.migrer, opts.fusionner);
       setItemsRaw(prepares);
       loadedRef.current = true;
       setLoaded(true);
@@ -170,7 +177,7 @@ export function useLocalCollection<T extends { id: string }>(
       // porteurs d'information (bfcache/historique), pour ne pas noyer la chrono.
       if (cause) noterResync(key, cause);
       const stocke = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
-      if (stocke) setItemsRaw(preparerStock(stocke, seed, opts.migrer));
+      if (stocke) setItemsRaw(preparerStock(stocke, seed, opts.migrer, opts.fusionner));
     };
     const surStockage = (e: StorageEvent) => {
       if (e.key === key) {
@@ -232,8 +239,9 @@ export function fusionnerSeedsManquants<T extends { id: string }>(stockes: T[], 
 export function preparerStock<T extends { id: string }>(
   stockes: T[],
   graines: T[],
-  migrer?: (items: T[]) => T[]
+  migrer?: (items: T[]) => T[],
+  fusionner = true
 ): T[] {
-  const fusion = fusionnerSeedsManquants(stockes, graines);
+  const fusion = fusionner ? fusionnerSeedsManquants(stockes, graines) : stockes;
   return migrer ? migrer(fusion) : fusion;
 }

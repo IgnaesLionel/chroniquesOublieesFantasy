@@ -13,16 +13,34 @@ import {
 } from "@/src/lib/store/backup";
 import { effacerMiroirs } from "@/src/lib/store/miroir";
 import { useCharacters, useMonsters, useNpcs, useScenarios, useSessions, useSorts } from "@/src/lib/store/collections";
+import {
+  etatDonneesInitialesPnj,
+  restaurerDonneesInitialesPnj,
+  useNpcFactions,
+  useNpcPlacements,
+  useNpcProfiles,
+  useNpcReferenceEntries,
+  useNpcReferenceTables,
+  useNpcSaved,
+  useNpcStatBlocks,
+} from "@/src/lib/store/npcgen";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 
 const LABELS: Record<CollectionName, string> = {
   characters: "Personnages",
   monsters: "Monstres",
-  npcs: "PNJ",
+  npcs: "PNJ (exemples)",
   items: "Objets",
   scenarios: "Scénarios",
   sorts: "Sorts & Capacités",
   sessions: "Sessions",
+  npcTables: "PNJ — tables",
+  npcEntries: "PNJ — entrées",
+  npcSaved: "PNJ — bibliothèque",
+  npcStatBlocks: "PNJ — combats",
+  npcPlacements: "PNJ — placements",
+  npcFactions: "PNJ — factions",
+  npcProfiles: "PNJ — profils",
 };
 
 function storageBytes(): number {
@@ -39,6 +57,7 @@ export default function SettingsPage() {
   const [pending, setPending] = useState<BackupData | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [error, setError] = useState("");
+  const [messagePnj, setMessagePnj] = useState("");
   // Compteurs réels (persisté + mémoire) : le stockage local ne contient
   // que personnages, sessions et progression.
   const { items: characters } = useCharacters("reglages");
@@ -48,6 +67,13 @@ export default function SettingsPage() {
   const { items: scenarios } = useScenarios();
   const { items: sorts } = useSorts();
   const { items: sessions } = useSessions();
+  const { items: npcTables } = useNpcReferenceTables();
+  const { items: npcEntries } = useNpcReferenceEntries();
+  const { items: npcSaved } = useNpcSaved();
+  const { items: npcStatBlocks } = useNpcStatBlocks();
+  const { items: npcPlacements } = useNpcPlacements();
+  const { items: npcFactions } = useNpcFactions();
+  const { items: npcProfiles } = useNpcProfiles();
   const counts: Record<CollectionName, number> = {
     characters: characters.length,
     monsters: monsters.length,
@@ -56,6 +82,13 @@ export default function SettingsPage() {
     scenarios: scenarios.length,
     sorts: sorts.length,
     sessions: sessions.length,
+    npcTables: npcTables.length,
+    npcEntries: npcEntries.length,
+    npcSaved: npcSaved.length,
+    npcStatBlocks: npcStatBlocks.length,
+    npcPlacements: npcPlacements.length,
+    npcFactions: npcFactions.length,
+    npcProfiles: npcProfiles.length,
   };
 
   useEffect(() => {
@@ -83,8 +116,9 @@ export default function SettingsPage() {
     <div className="space-y-4 max-w-2xl">
       <h1 className="text-2xl font-bold">Paramètres — Sauvegarde</h1>
       <p className="text-sm text-zinc-400">
-        Persistés en local : personnages, sessions et progression des scénarios.
-        Monstres, PNJ, objets, sorts et scénarios viennent du code (mémoire seule, perdus au rechargement si modifiés).
+        Persistés en local : personnages, sessions, progression des scénarios, bibliothèque PNJ
+        et ses tables de référence. Les exemples de PNJ historiques restent en mémoire seule.
+        Monstres, objets, sorts et scénarios viennent du code (mémoire seule, perdus au rechargement si modifiés).
         Combat en cours et jets de dés non sauvegardés (volatils).
       </p>
 
@@ -100,6 +134,43 @@ export default function SettingsPage() {
       )}
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
+        <h2 className="font-bold text-sm uppercase text-zinc-400">Contenu initial du générateur PNJ</h2>
+        <p className="text-xs text-zinc-500">
+          La restauration ajoute uniquement les tables, entrées, factions et profils initiaux manquants.
+          Les données créées ou modifiées par le MJ ne sont jamais remplacées.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              const etat = etatDonneesInitialesPnj();
+              setMessagePnj(
+                etat.presente
+                  ? `${etat.entreesInitiales} entrées initiales encore présentes.`
+                  : "Initialisation non encore effectuée sur ce navigateur."
+              );
+            }}
+            className="px-4 py-2 rounded bg-zinc-800 text-sm"
+          >
+            Diagnostiquer
+          </button>
+          <button
+            onClick={() => {
+              if (!confirm("Ajouter les tables, entrées, factions et profils initiaux manquants ?")) return;
+              const ajouts = restaurerDonneesInitialesPnj();
+              setMessagePnj(
+                `${ajouts.tables} tables, ${ajouts.entrees} entrées, ${ajouts.factions} factions et ${ajouts.profils} profils ajoutés.`
+              );
+              setBytes(storageBytes());
+            }}
+            className="px-4 py-2 rounded bg-amber-500 text-black font-bold text-sm"
+          >
+            Restaurer les données initiales manquantes
+          </button>
+        </div>
+        {messagePnj && <p className="text-sm text-amber-200">{messagePnj}</p>}
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
         <h2 className="font-bold text-sm uppercase text-zinc-400">Export global</h2>
         <button
           onClick={() => exportJson(`assistant-mj-${new Date().toISOString().slice(0, 10)}.json`, buildBackup())}
@@ -111,7 +182,10 @@ export default function SettingsPage() {
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
         <h2 className="font-bold text-sm uppercase text-zinc-400">Import (validé)</h2>
-        <p className="text-xs text-zinc-500">Seuls les personnages et les sessions sont importés (le reste vient du code).</p>
+        <p className="text-xs text-zinc-500">
+          Chaque collection est validée. Un import remplace les collections persistées par leur contenu validé
+          (une collection absente du fichier est vidée) ; les données mémoire seule du code ne sont pas touchées.
+        </p>
         <input
           type="file" accept="application/json,.json"
           onChange={(e) => onFile(e.target.files?.[0])}
@@ -148,8 +222,9 @@ export default function SettingsPage() {
         <h2 className="font-bold text-sm uppercase text-red-400">Zone dangereuse</h2>
         <button
           onClick={() => {
-            if (!confirm("Tout effacer ? Les personnages et sessions reviendront aux graines au prochain refresh.")) return;
+            if (!confirm("Tout effacer ? Les graines et les exemples reviendront au prochain rechargement.")) return;
             (Object.values(STORAGE_KEYS) as string[]).forEach((k) => window.localStorage.removeItem(k));
+            window.localStorage.removeItem("cof.npcgen.initialized.v1");
             // Les miroirs (sessionStorage + IndexedDB) partent aussi : un reset
             // délibéré ne doit jamais être « ressuscité » par la réconciliation.
             effacerMiroirs();
