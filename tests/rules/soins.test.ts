@@ -14,10 +14,12 @@ import {
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { createCombat } from "@/src/lib/rules/combat/initiative";
 import {
+  applyDamage,
   castSoutien,
   declencherPhenix,
   lancerRetablissement,
   lancerSortHorsCombat,
+  resoudrePhenixEnAttente,
   utiliserCapacite,
 } from "@/src/lib/rules/combat/attack";
 
@@ -172,6 +174,29 @@ describe("voie des soins (LDB)", () => {
     expect(r.state.participants[1].pv).toBe(18);
     // 2e déclenchement : 1/jour épuisé.
     expect(() => declencherPhenix(r.state, a, fixedRng([0.5, 0.5]), [t])).toThrow(/0 PV|déjà utilisé/);
+  });
+
+  it("phénix : à 0 PV, le prêtre se relève et l'onde attend la sélection MJ des alliés à 20 m", () => {
+    const pretre = { ...pj("Prêtre"), pv: 1, capacites: ["Phénix"] };
+    const allie = { ...pj("Allié"), pv: 10 };
+    const ennemi = { ...pj("Ennemi"), camp: "monstre" as const, pv: 10 };
+    const s = createCombat([pretre, allie, ennemi]);
+    const [p, a, e] = s.participants.map((x) => x.instanceId);
+
+    // Dégâts : Phénix se déclenche, le prêtre est déjà relevé, l'onde attend.
+    const attente = applyDamage(s, p, 1, fixedRng([0.5, 0.5]));
+    expect(attente.participants.find((x) => x.instanceId === p)?.pv).toBe(16); // 8 x 2
+    expect(attente.participants.find((x) => x.instanceId === p)?.statut).toBe("actif");
+    expect(attente.participants.find((x) => x.instanceId === a)?.pv).toBe(10); // pas encore soigné
+    expect(attente.phenixEnAttente).toHaveLength(1);
+    expect(attente.phenixEnAttente?.[0].candidats).toEqual([a]); // jamais le prêtre ni l'ennemi
+
+    // Le MJ ne coche que l'allié ; un ennemi passé par erreur est ignoré.
+    const r = resoudrePhenixEnAttente(attente, p, [a, e]);
+    expect(r.state.phenixEnAttente).toHaveLength(0);
+    expect(r.state.participants.find((x) => x.instanceId === a)?.pv).toBe(18);
+    expect(r.state.participants.find((x) => x.instanceId === e)?.pv).toBe(10);
+    expect(r.soignes.map((x) => x.cibleNom)).toEqual(["Allié"]);
   });
 
   it("rétablissement : refusé en combat, rituel multi-patients hors combat (jet par patient)", () => {

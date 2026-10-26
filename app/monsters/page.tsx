@@ -6,6 +6,8 @@ import { useMonsters } from "@/src/lib/store/collections";
 import { exportJson } from "@/src/lib/store/repository";
 import type { MonsterTemplate } from "@/src/lib/rules/types";
 import { MonsterEditor } from "@/src/components/monsters/MonsterEditor";
+import { urlAffichable } from "@/src/lib/data/validation";
+import { Modal } from "@/src/components/ui/Modal";
 
 const EMPTY: MonsterTemplate = {
   id: "", kind: "monstre", nom: "", type: "Créature", niveau: 1,
@@ -163,8 +165,13 @@ export default function MonstersPage() {
       {filtres.length === 0 && <p className="text-sm text-zinc-500">Aucune créature avec ces filtres.</p>}
 
       {fiche && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setFicheId(null)}>
-          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-lg space-y-3 max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <Modal
+          ouvert
+          onFermer={() => setFicheId(null)}
+          ariaLabel={`Fiche de ${fiche.nom}`}
+          fermerSurFond
+          classePanneau="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-lg space-y-3 max-h-[90vh] overflow-auto"
+        >
             <div className="flex justify-between items-start">
               <div>
                 <div className="font-bold text-xl">{fiche.nom} <span className="text-sm font-mono text-zinc-400">NC {fiche.niveau}</span></div>
@@ -234,9 +241,8 @@ export default function MonstersPage() {
               </div>
             )}
             {fiche.description && <p className="text-xs text-zinc-500">{fiche.description}</p>}
-            {fiche.sourceUrl && <a href={fiche.sourceUrl} target="_blank" rel="noreferrer" className="text-xs text-zinc-500 underline">Source Notion</a>}
-          </div>
-        </div>
+            {urlAffichable(fiche.sourceUrl) && <a href={urlAffichable(fiche.sourceUrl)!} target="_blank" rel="noreferrer" className="text-xs text-zinc-500 underline">Source Notion</a>}
+        </Modal>
       )}
 
       <button onClick={() => setItems(SEED_MONSTERS)} className="text-sm text-zinc-500 underline">Réinitialiser le bestiaire</button>

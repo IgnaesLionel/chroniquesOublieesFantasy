@@ -17,7 +17,11 @@ export function VersementTresor({ resultat }: Props) {
   const [selection, setSelection] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("egales");
   const [montants, setMontants] = useState<Record<string, number>>({});
-  const [message, setMessage] = useState<string | null>(null);
+  // Message associé au trésor affiché : un nouveau tirage change `resultat`
+  // (nouvelle référence) et le message précédent disparaît de lui-même, sans
+  // effet de remise à zéro.
+  const [message, setMessage] = useState<{ texte: string; pour: ResultatTresor } | null>(null);
+  const messageVisible = message && message.pour === resultat ? message.texte : null;
   // Nouveaux personnages cochés d'office, décochés conservés, disparus retirés.
   const vus = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -29,10 +33,6 @@ export function VersementTresor({ resultat }: Props) {
       return [...prev.filter((id) => presents.has(id)), ...nouveaux];
     });
   }, [characters]);
-
-  useEffect(() => {
-    setMessage(null);
-  }, [resultat]);
 
   const selectionnes = characters.filter((c) => selection.includes(c.id));
   const { part: partEgale, reste: resteEgal } = partagerEgale(total, selectionnes.length);
@@ -63,7 +63,7 @@ export function VersementTresor({ resultat }: Props) {
       )
     );
     const resume = selectionnes.map((c) => `${c.nom} +${formaterPa(parts[c.id])}`).join(", ");
-    setMessage(`Versé — ${resume} (reste ${formaterPa(reste)} non distribué).`);
+    setMessage({ texte: `Versé — ${resume} (reste ${formaterPa(reste)} non distribué).`, pour: resultat });
   };
 
   return (
@@ -126,7 +126,7 @@ export function VersementTresor({ resultat }: Props) {
           </button>
         </div>
       )}
-      {message && <div className="text-xs text-green-300/90">{message}</div>}
+      {messageVisible && <div className="text-xs text-green-300/90">{messageVisible}</div>}
     </div>
   );
 }

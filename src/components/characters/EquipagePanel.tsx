@@ -8,6 +8,11 @@ import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
 import { apprendreTalentComplet, compterCapacites, desapprendreTalentComplet, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
 import { actionDeCapacite, actionDeTalent, voiesDe } from "@/src/lib/data/capacites";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
+import {
+  chargesInitialesObjet,
+  chargesRestantesObjet,
+  natureObjetCombat,
+} from "@/src/lib/rules/combat/objets";
 import { ITEM_CATEGORIES, type ItemCategorie } from "@/src/lib/rules/world/types";
 import { ActionBadge } from "@/src/components/ui/ActionBadge";
 
@@ -49,8 +54,24 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
     if (!addId) return;
     const exists = inv.find((e) => e.itemId === addId);
     const item = resolveItem(addId);
+    const charges =
+      item && natureObjetCombat(item) === "baguette"
+        ? chargesInitialesObjet(item) ?? undefined
+        : undefined;
     if (exists) {
-      appliquerInventaire(inv.map((e) => (e.itemId === addId ? { ...e, quantite: e.quantite + 1 } : e)));
+      appliquerInventaire(
+        inv.map((e) =>
+          e.itemId === addId
+            ? {
+                ...e,
+                quantite: e.quantite + 1,
+                ...(charges != null && item
+                  ? { charges: (chargesRestantesObjet(e, item) ?? 0) + charges }
+                  : {}),
+              }
+            : e
+        )
+      );
       setAddId("");
       return;
     }
@@ -63,7 +84,18 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
         setEquipMsg(`Ajouté non équipé : ${test.raisons.join(" · ")}`);
       }
     }
-    onUpdate(recalculerPersonnage({ ...character, inventaire: [...inv, { itemId: addId, quantite: 1, equipe }] }, stock));
+    onUpdate(
+      recalculerPersonnage(
+        {
+          ...character,
+          inventaire: [
+            ...inv,
+            { itemId: addId, quantite: 1, equipe, ...(charges != null ? { charges } : {}) },
+          ],
+        },
+        stock
+      )
+    );
     setAddId("");
   };
 
@@ -121,7 +153,7 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
           );
         })()}
         {equipMsg && <p className="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/50 rounded px-2 py-1 mb-1">{equipMsg}</p>}
-        {inv.length === 0 && <p className="text-xs text-zinc-500">Vide — ajoutez depuis le stock d'objets.</p>}
+        {inv.length === 0 && <p className="text-xs text-zinc-500">Vide — ajoutez depuis le stock d&apos;objets.</p>}
         <div className="space-y-1">
           {inv.map((e) => {
             const item = resolveItem(e.itemId);

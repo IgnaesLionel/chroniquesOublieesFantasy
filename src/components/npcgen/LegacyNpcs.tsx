@@ -29,8 +29,8 @@ export function LegacyNpcs() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-400">
-        Cet onglet conserve les exemples historiques en mémoire seule (perdus au rechargement si modifiés).
-        La bibliothèque PNJ persistante et le générateur se trouvent dans les autres onglets.
+        Cet onglet conserve les exemples historiques ; leurs modifications sont désormais persistées
+        localement comme le reste du contenu. La bibliothèque PNJ et le générateur se trouvent dans les autres onglets.
       </div>
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">PNJ exemples ({items.length})</h1>

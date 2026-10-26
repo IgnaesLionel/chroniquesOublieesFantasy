@@ -88,6 +88,80 @@ const LIGNES_ARMURES = PROPRIETES_ARMURES.plages
 
 const SORTES_RESISTANCE_MAISON: string[] = ["resistance-feu", "resistance-froid", "resistance-electricite", "resistance-acide"];
 
+const TESTS_CARACTERISTIQUES = [
+  { carac: "AGI", exemples: "acrobaties, crochetage, discrétion, escalade…" },
+  { carac: "FOR", exemples: "briser, intimidation, soulever…" },
+  { carac: "CON", exemples: "course longue, natation, résistance…" },
+  { carac: "PER", exemples: "sens, intuition, empathie, pister, recherche d’indices…" },
+  { carac: "INT", exemples: "connaissances, logique, médecine…" },
+  { carac: "CHA", exemples: "art, baratin, séduction…" },
+  { carac: "VOL", exemples: "se dépasser, résister à la peur ou à la tentation…" },
+] as const;
+
+const TESTS_OPPOSES = [
+  { situation: "Bras de fer", test: "FOR contre FOR" },
+  { situation: "Convaincre", test: "CHA contre VOL" },
+  { situation: "Course à pied", test: "AGI contre AGI (Sprint), puis CON contre CON (Course d’endurance)" },
+  { situation: "Intimider", test: "CHA ou FOR contre VOL" },
+  { situation: "Jouer aux cartes", test: "INT contre INT" },
+  { situation: "Ligoter un prisonnier", test: "AGI contre AGI" },
+  { situation: "Mentir / bluffer", test: "CHA contre INT" },
+  { situation: "Passer inaperçu", test: "AGI contre PER" },
+] as const;
+
+const ETATS_PREJUDICIABLES = [
+  {
+    nom: "Aveuglé",
+    effet: "−5 en Init., en attaque et en DEF ; −10 en attaque à distance. Les attaques magiques nécessitant de voir la cible sont impossibles.",
+    moteur: "−5 attaque/DEF et −10 à distance appliqués ; Init. et sorts nécessitant la vue : MJ.",
+  },
+  {
+    nom: "Affaibli",
+    effet: "Dé malus à tous les tests.",
+    moteur: "Jets d’attaque ; autres tests : MJ.",
+  },
+  {
+    nom: "Essoufflé",
+    effet: "Déplacement limité à 5 m par action de mouvement.",
+    moteur: "Limite enregistrée ; déplacement géré par le MJ.",
+  },
+  {
+    nom: "Étourdi",
+    effet: "Aucune action possible et −5 en DEF.",
+    moteur: "Appliqué.",
+  },
+  {
+    nom: "Immobilisé",
+    effet: "Pas de déplacement et dé malus aux tests d’attaque.",
+    moteur: "Dé malus aux attaques appliqué ; déplacement géré par le MJ.",
+  },
+  {
+    nom: "Invalide",
+    effet: "Déplacement limité à 5 m par action de mouvement.",
+    moteur: "Limite enregistrée ; déplacement géré par le MJ.",
+  },
+  {
+    nom: "Paralysé",
+    effet: "Aucune action possible ; en cas d’attaque, touché automatiquement et subit un critique.",
+    moteur: "Appliqué.",
+  },
+  {
+    nom: "Ralenti",
+    effet: "Une seule action par round (action d’attaque ou de mouvement).",
+    moteur: "Action unique signalée ; économie d’actions gérée par le MJ.",
+  },
+  {
+    nom: "Renversé",
+    effet: "−5 en attaque et en DEF ; se relever nécessite une action d’attaque.",
+    moteur: "−5 attaque/DEF appliqué ; relèvement géré par le MJ.",
+  },
+  {
+    nom: "Surpris",
+    effet: "Pas d’action et −5 en DEF au premier round de combat.",
+    moteur: "Appliqué si l’état est posé avant l’initiative.",
+  },
+] as const;
+
 const SOMMAIRE: { id: string; t: string }[] = [
   { id: "aconfirmer", t: "⚠ Points à confirmer" },
   { id: "personnage", t: "Personnage (caracs, INIT, DEF, PV, Chance, DR, attaques, mana)" },
@@ -103,6 +177,11 @@ const SOMMAIRE: { id: string; t: string }[] = [
   { id: "des", t: "Dés (évolutifs, caracs)" },
   { id: "actions", t: "Actions (A+M ou L) et coûts des sorts" },
   { id: "combat", t: "Combat" },
+  { id: "tests-caracteristiques", t: "Tests de caractéristique" },
+  { id: "tests-cooperation", t: "Tests en coopération" },
+  { id: "tests-opposes", t: "Tests opposés d’attaque" },
+  { id: "embuscade", t: "Tendre une embuscade" },
+  { id: "approche-discrete", t: "Tenter une approche discrète" },
   { id: "effets", t: "Effets (buffs, debuffs, dots)" },
   { id: "proprietes-armes", t: "Armes magiques (propriétés exactes)" },
   { id: "proprietes-armures", t: "Armures magiques (propriétés exactes)" },
@@ -271,16 +350,64 @@ export default function ReglesPage() {
       <Section id="consommables" titre="Potions et parchemins (usage)">
         <ul className="list-disc pl-5 space-y-1">
           <li><b>Potion</b> : boire une potion est une action de mouvement (M), utilisable par tout le monde.<Src de="Règle LDB" /></li>
-          <li><b>Parchemin</b> : usage limité (L), consommable unique (le sort est effacé après usage).<Src de="Règle LDB" /></li>
-          <li>Un parchemin est <b>illisible</b> pour un lanceur d&apos;une autre famille de profil (ex. un Magicien ne lit pas un parchemin de Prêtre).<Src de="Règle LDB" /></li>
-          <li><b>Sans test</b> si le sort est issu du profil du PJ et d&apos;un rang qu&apos;il maîtrise (au moins un sort connu de même rang ou supérieur), même sans connaître ce sort précis.<Src de="Règle LDB" /></li>
-          <li>Rang supérieur au maîtrisé : test d&apos;attaque magique, difficulté 5 × rang du sort (ex. maîtrise rang 1 + parchemin rang 4 → difficulté 20).<Src de="Règle LDB" /></li>
-          <li>Autre profil mais <b>même famille</b> (ex. moine ou druide + sort de prêtre) : difficulté +5 (ex. sort de prêtre rang 3 → 15 + 5 = 20).<Src de="Règle LDB" /></li>
-          <li><b>Échec</b> : le sort n&apos;est pas lancé ; échec d&apos;au moins 10 points → le sort est effacé et le parchemin devient inutilisable.<Src de="Règle LDB" /></li>
-          <li><b>Baguette</b> : lanceurs de sorts uniquement (bardes, druides et prêtres inclus), de niveau au moins égal au rang du sort. Activer une baguette = action d&apos;attaque, un sort par charge (2d20 charges au départ).<Src de="Règle LDB" /></li>
-          <li>Niveau de magie d&apos;une baguette : moitié du rang (arrondi inf.) sous 30 charges, rang du sort à 30 charges et plus.<Src de="Règle LDB" /></li>
+          <li><b>Parchemin</b> : utiliser un parchemin est une <b>action limitée (L)</b>. Le parchemin est consommé quand le sort est lancé ; sur un échec de moins de 10 points, il est conservé.<Src de="Règle LDB" /></li>
+          <li>
+            Chaque type de magie (<b>profane</b> ou <b>mystique</b>) utilise des symboles ésotériques particuliers :
+            un parchemin est <b>illisible</b> pour un lanceur d’une autre famille de profil (ex. un magicien ne lit pas
+            un parchemin de prêtre).
+            <Src de="Règle LDB" />
+          </li>
         </ul>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase">
+              <tr>
+                <th className="text-left px-2 py-1">Situation</th>
+                <th className="text-left px-2 py-1">Test</th>
+                <th className="text-left px-2 py-1">Difficulté</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1">Sort du profil, rang maîtrisé</td>
+                <td className="px-2 py-1">Aucun</td>
+                <td className="px-2 py-1">—</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1">Sort du profil, rang supérieur</td>
+                <td className="px-2 py-1">Attaque magique</td>
+                <td className="px-2 py-1 font-mono">5 × rang</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1">Autre profil, même famille</td>
+                <td className="px-2 py-1">Attaque magique</td>
+                <td className="px-2 py-1 font-mono">5 × rang + 5</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1">Autre famille (profane/mystique)</td>
+                <td className="px-2 py-1">Impossible</td>
+                <td className="px-2 py-1">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">
+          « Rang maîtrisé » : le PJ connaît au moins un sort de ce rang ou d’un rang supérieur. Le sans-test ne vaut
+          que pour un sort issu de son profil ; un parchemin d’un autre profil de la même famille exige donc un test,
+          même si le rang est maîtrisé.
+          <Src de="Règle LDB" />
+        </p>
         <Formule>Difficulté = 5 × rang du sort (+5 si autre profil de même famille)<Src de="Règle LDB" /></Formule>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>
+            <b>Exemples</b> : rang 1 maîtrisé + parchemin de rang 4 → difficulté 20. Druide ou moine + parchemin de
+            prêtre rang 3 → difficulté 15 + 5 = 20.
+            <Src de="Règle LDB" />
+          </li>
+          <li><b>Échec</b> : le sort n’est pas lancé ; si l’échec est d’au moins 10 points, le sort est effacé et le parchemin devient inutilisable.<Src de="Règle LDB" /></li>
+          <li><b>Baguette</b> : lanceurs de sorts uniquement (bardes, druides et prêtres inclus), de niveau au moins égal au rang du sort. Activer une baguette = action d’attaque, un sort par charge (2d20 charges au départ).<Src de="Règle LDB" /></li>
+          <li>Niveau de magie d’une baguette : moitié du rang (arrondi inf.) sous 30 charges, rang du sort à 30 charges et plus.<Src de="Règle LDB" /></li>
+        </ul>
       </Section>
 
       <Section id="defense-magique" titre="Objets magiques défensifs (cumul)">
@@ -316,14 +443,68 @@ export default function ReglesPage() {
       </Section>
 
       <Section id="actions" titre="Actions (A+M ou L) et coûts des sorts">
-        <Formule>Par tour : 1 action (A) + 1 mouvement (M), OU 1 action limitée (L) = tour complet. (G) = gratuit — géré en réel, pas suivi par l&apos;app.<Src de="Règle LDB" /></Formule>
+        <Formule>
+          Par tour : 1 action limitée (L) OU 1 action de mouvement (M) + 1 action d’attaque (A), dans l’ordre choisi,
+          OU 2 actions de mouvement (M) — plus les actions gratuites (G).
+          <Src de="Règle LDB" />
+        </Formule>
+        <p>
+          Chaque capacité indique entre parenthèses le type d’action nécessaire à son utilisation, en particulier
+          pour les sorts (signalés par le symbole *).
+          <Src de="Règle LDB" />
+        </p>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase">
+              <tr>
+                <th className="text-left px-2 py-1">Action</th>
+                <th className="text-left px-2 py-1">Ce qu’elle permet</th>
+                <th className="text-left px-2 py-1">Exemples</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-mono font-semibold">L</td>
+                <td className="px-2 py-1">
+                  Action limitée : capacité limitée [L] ou action complexe. Normalement, elle occupe tout le round,
+                  à l’exception d’une action gratuite. Certaines capacités donnent des actions supplémentaires.
+                </td>
+                <td className="px-2 py-1">Prendre et boire une potion, équiper un bouclier.</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-mono font-semibold">A</td>
+                <td className="px-2 py-1">Action d’attaque : attaque avec une arme tenue en main ou action peu rapide.</td>
+                <td className="px-2 py-1">Ramasser une arme au sol, se relever.</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-mono font-semibold">M</td>
+                <td className="px-2 py-1">
+                  Action de mouvement : se déplacer de 10 m ou action rapide. Si le personnage ne fait que cela,
+                  il peut effectuer deux actions de mouvement à son tour.
+                </td>
+                <td className="px-2 py-1">Dégainer ou rengainer une arme, ouvrir une porte.</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-mono font-semibold">G</td>
+                <td className="px-2 py-1">
+                  Action gratuite : action très rapide, réalisable en plus des actions normales, même une action limitée.
+                  Certaines capacités permettent une attaque ou un déplacement gratuit.
+                </td>
+                <td className="px-2 py-1">Dire quelques mots, lâcher une arme au sol.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">
+          L’économie d’actions reste gérée en réel par le MJ ; le moteur ne l’impose pas.
+        </p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Sorts : coût PM = rang, payé avant le jet. Certains sacrifient aussi des PV en dés (Pacte démoniaque, Invocation, Rituel : 1d4°), payés au lancer.<Src de="Règle LDB" /></li>
           <li>Vol de vie (Baiser du vampire, Succube) : le lanceur récupère autant de PV que de DM infligés.<Src de="Règle LDB" /></li>
           <li>Limites : 1/combat (Ensevelissement), 1/combat par cible (Malédiction, Briser), 1/jour ≈ 1 combat (Armée). Par cible = au touché, sinon au lancer.<Src de="Règle LDB" /></li>
           <li>Rituel de sang : sans test (touche auto). Briser les cœurs : moitié des dégâts si raté.<Src de="Règle LDB" /></li>
           <li>Invocations : démon (PV niveau×5, DEF 18, épée 2d4°+5) et zombie (PV 10+niveau, DEF 10, contact 1d4°+2), au camp du lanceur, en fin d&apos;ordre.<Src de="Règle LDB" /></li>
-          <li>Voie du bouclier (bouclier manié requis partout, 🛡 affiché en combat) : Protéger (G) = mod. DEF du bouclier à un allié au contact contre la prochaine attaque (1/round, consommée au premier jet visant l’allié, pas si surpris) ; Parer (M, posture) = prochaine attaque réussie au contact ou à distance bloquée sur test opposé d’attaque au contact auto (niv + FOR/AGI + arme + mods) ; Défense passive +1 DEF (+2 au rang 5) et −rang aux DM de zone et souffles sauf surpris ; Absorber = remplace une parade préparée contre un sort (test contact vs attaque magique, seul le guerrier protégé en zone ; un sort de zone n'est jamais renvoyable) ; Renvoi (G) = sort ciblé absorbé renvoyé immédiatement à son lanceur, sans coût, dans le même tour. Énorme/colossale : moitié DM (MJ).<Src de="Règle LDB" /></li>
+          <li>Voie du bouclier (bouclier manié requis partout, 🛡 affiché en combat) : Protéger (G) = mod. DEF du bouclier à un allié au contact contre la prochaine attaque (1/round, consommée au premier jet visant l’allié, pas si surpris) ; Parer (M, posture) = prochaine attaque réussie au contact ou à distance bloquée sur test opposé d’attaque au contact auto (niv + FOR/AGI + arme + mods) ; Défense passive +1 DEF (+2 au rang 5) et −rang aux DM de zone et souffles sauf surpris ; Absorber = remplace une parade préparée contre un sort (test contact vs attaque magique, seul le guerrier protégé en zone ; un sort de zone n&apos;est jamais renvoyable) ; Renvoi (G) = sort ciblé absorbé renvoyé immédiatement à son lanceur, sans coût, dans le même tour. Énorme/colossale : moitié DM (MJ).<Src de="Règle LDB" /></li>
           <li>Riposte (G) : un raté au contact est signalé (1/round) — chip ⚔ sur la ligne du porteur, à lancer immédiatement (contact au MJ). Système de signaux ⚔ : Piqûre de rappel (auto quand un autre est attaqué), Teigneux (bouton ⚔+ posé par le MJ, Rempart : AGI+2/manche), Enchaînement (auto à la chute d&apos;un adversaire au contact). Voie du combat : Double (case, 2 résolutions à −2) et Circulaire (case, 1 résolution à −2 par ennemi pré-coché au contact) automatiques. Coups spéciaux (panneau Attaque) : Puissante (dé malus +2d4°, L +3d4°), Parfaite (dé bonus +1d4°, prédilection MJ), mod. ±N ; prédilection +1 et spécialisation +N DM automatiques depuis la fiche.<Src de="Règle LDB" /></li>
           <li>Talents → panneau : Attaque puissante = Puissante, Charge/Charge fantastique/Attaque bondissante = Parfaite à cocher ; Tir de barrage/grenaille, Tourbillon, Frappe du justicier, As de la gâchette = +DM ou division manuelle ; le panneau Capacités affiche la mécanique exacte (coûts PV et soins automatiques : Prouesse, Tour de force, Siphon, Feindre la mort ; Phénix auto à 0 PV, Vigueur auto/test).<Src de="Supposition" /></li>
           <li>Science du critique : 19-20 avec prédilection — auto (fiche : famille de prédilection + talent, bouton secours MJ pour arme non posée). Prédilection (+1 attaque) et Spécialisation (+N DM, max 6, fiche) également auto sur les armes de la famille.<Src de="Règle LDB" /></li>
@@ -333,7 +514,7 @@ export default function ReglesPage() {
           <li>Test opposé : vrai test opposé pour les sorts prévus (Pied dans la tombe, Ensevelissement : d20 + magie vs d20 + magie, attaquant gagne les égalités) ; pour le reste, l&apos;assistant approxime par 1d20 + bonus ≥ DEF ; sauvegarde CON 10 du Pied lancée auto (carac inconnue = estimation +0 explicite, ex. monstres) ; durées en INT et cas MJ au jugement.<Src de="Règle LDB" /></li>
           <li>Voie du sang (sorcier) : Armure d&apos;os +3 DEF auto (+1 par rang 4, retirés au désapprentissage) ; Exsangue +2 DEF auto (+3 si rang 5 en Voie du sang, −1 si torse mundane sans Armure d&apos;os — agir à 0 PV : MJ, 1 DM = inconscience) ; Siphon : +NC PV via le panneau Capacités (montant MJ, variante 1 PM manuelle) ; Sang mordant : riposte auto 1d4° d&apos;acide au contact (sorts et distance : MJ) ; Pacte ténébreux : CON +1 auto (PV, DR — tests CON : MJ), coût +2d4° DM via Capacités (bonus +DM manuel).<Src de="Supposition" /></li>
           <li>Voie de l&apos;outre-tombe (sorcier) : Pied = test opposé magique, vivants seuls ; Ensevelissement = test opposé magique, taille moyenne ou moins, inciblable, sortie FOR/AGI 15 en limitée (aides +2, max +10), décès au tour suivant à 0 PV ; Animation = zombie du bestiaire (1 +1 par rang 5 sorcier, cadavre MJ, poussière à 0 PV) ; Armée = 2d4°/round pendant NIVEAU rounds, sans hit initial, 1/jour (≈ 1/combat).<Src de="Règle LDB" /></li>
-          <li>Voie des soins (prêtre) : mineure (A, contact/soi) = 1d4°+CHA, 1/jour par rang soins +1 par rang 3 hors soins (quota suivi, MJ : repos) ; Vigueur (L, contact, sans PM) = guérit poison/maladie (auto ou test magique MJ si surnaturel, rang+2 vs maladies/poisons) ; majeure (L, 20 m/soi) = 3d4°+CHA +1d4° par rang 5 prêtre ; Phénix = auto 1/jour à 0 PV (jet unique 2d4°+CHA aux alliés 20 m, double au prêtre, réactivé) ; Rétablissement = rituel hors combat 1/jour, 10 min, CHA patients au repos dans 5 m, chacun comme une majeure (jet par patient, concentration interdite). Règle de table : 1 soin magique / cible / combat (outrepassable MJ). Brûlure interdite pour les soins.<Src de="Règle LDB" /></li>
+          <li>Voie des soins (prêtre) : mineure (A, contact/soi) = 1d4°+CHA, 1/jour par rang soins +1 par rang 3 hors soins (quota suivi, MJ : repos) ; Vigueur (L, contact, sans PM) = guérit poison/maladie (auto ou test magique MJ si surnaturel, rang+2 vs maladies/poisons) ; majeure (L, 20 m/soi) = 3d4°+CHA +1d4° par rang 5 prêtre ; Phénix = auto 1/jour à 0 PV (jet unique 2d4°+CHA, double au prêtre réactivé, pop-up MJ pour cocher les alliés à 20 m) ; Rétablissement = rituel hors combat 1/jour, 10 min, CHA patients au repos dans 5 m, chacun comme une majeure (jet par patient, concentration interdite). Règle de table : 1 soin magique / cible / combat (outrepassable MJ). Brûlure interdite pour les soins.<Src de="Règle LDB" /></li>
         </ul>
       </Section>
 
@@ -363,21 +544,203 @@ export default function ReglesPage() {
         </ul>
       </Section>
 
+      <Section id="tests-caracteristiques" titre="Tests de caractéristique">
+        <p>
+          Les compétences sont rattachées à une caractéristique. Le test correspondant se fait avec la
+          caractéristique indiquée.
+          <Src de="Règle LDB" />
+        </p>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase">
+              <tr>
+                <th className="text-left px-2 py-1">Caractéristique</th>
+                <th className="text-left px-2 py-1">Exemples de compétences</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TESTS_CARACTERISTIQUES.map((t) => (
+                <tr key={t.carac} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-mono font-semibold">{t.carac}</td>
+                  <td className="px-2 py-1">{t.exemples}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Le moteur n’automatise pas encore ces tests de compétence génériques : ils restent au jugement du MJ.
+        </p>
+      </Section>
+
+      <Section id="tests-cooperation" titre="Tests en coopération">
+        <p>
+          Dans certaines situations, un personnage peut en aider un autre pour réussir une action.
+          Chaque PJ qui aide effectue un test de difficulté 10 avec la même caractéristique que celle
+          utilisée par l’auteur de l’action principale. En cas de réussite, il donne à son partenaire
+          un bonus de <b>+2</b> (<b>+4</b> s’il fait une réussite critique).
+          <Src de="Règle LDB" />
+        </p>
+        <p>
+          Exceptionnellement, pour certains tests de FOR, le MJ pourra accorder un bonus de <b>+5</b>
+          au lieu de +2. Par exemple, déplacer un gros rocher est beaucoup plus facile à deux que tout seul.
+          <Src de="Règle LDB" />
+        </p>
+        <Formule>Aide : test diff. 10 (même carac) → +2, ou +4 sur réussite critique ; FOR exceptionnel → +5</Formule>
+        <p className="text-xs text-zinc-500">
+          Le moteur n’applique pas encore automatiquement ce bonus d’aide : il reste au jugement du MJ.
+        </p>
+      </Section>
+
+      <Section id="tests-opposes" titre="Tests opposés d’attaque">
+        <p>
+          Certains sorts ou quelques capacités spéciales demandent parfois des tests d’attaque opposés.
+          Dans ce cas, le résultat de l’attaque n’est pas comparé à la DEF de la cible, mais au résultat
+          du test réalisé par la cible. Le texte descriptif de la capacité concernée précise le test à réaliser.
+          <Src de="Règle LDB" />
+        </p>
+        <Formule>Test opposé = résultat de l’attaque vs résultat du test de la cible (pas la DEF)</Formule>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase">
+              <tr>
+                <th className="text-left px-2 py-1">Situation</th>
+                <th className="text-left px-2 py-1">Test opposé</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TESTS_OPPOSES.map((t) => (
+                <tr key={t.situation} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-semibold">{t.situation}</td>
+                  <td className="px-2 py-1 font-mono">{t.test}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Le moteur ne résout pas encore ces tests opposés génériques : ils restent au jugement du MJ.
+          Les tests opposés prévus par certains sorts (Pied dans la tombe, Ensevelissement) sont déjà traités en combat.
+        </p>
+      </Section>
+
+      <Section id="embuscade" titre="Tendre une embuscade">
+        <p>
+          Les cibles de l’embuscade doivent effectuer un test de <b>PER (Vigilance)</b> difficulté
+          <b>[10 + AGI des assaillants embusqués]</b> (pas de pénalité d’armure). Chaque protagoniste qui
+          rate son test de PER est <b>surpris</b> lors du premier round de combat (pas d’action possible et
+          <b>−5 en DEF</b> au premier tour de combat).
+          <Src de="Règle LDB" />
+        </p>
+        <p>
+          La difficulté correspond à une embuscade tendue en forêt à une dizaine de mètres de distance.
+          Le MJ peut modifier cette difficulté en fonction de la distance et de l’environnement, et les
+          créatures qui bénéficient d’un bonus de discrétion l’ajoutent à la difficulté.
+          <Src de="Règle LDB" />
+        </p>
+        <p>
+          Dans le cas où les embusqués possèdent des bonus d’AGI ou de discrétion différents, comparez le
+          résultat du test de PER à chaque seuil de difficulté pour déterminer qui est surpris par rapport à qui.
+          <Src de="Règle LDB" />
+        </p>
+        <Formule>Difficulté = 10 + AGI de l’assaillant (+ bonus de discrétion) · échec = Surpris (1er round)</Formule>
+        <p>
+          Exemple : trois gobelins tombent dans une embuscade tendue par deux PJ. La difficulté est de
+          <b>10</b> contre le nain (AGI +0), mais de <b>18</b> contre la rôdeuse (AGI +3 et bonus de discrétion +5).
+        </p>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase">
+              <tr>
+                <th className="text-left px-2 py-1">Gobelin</th>
+                <th className="text-left px-2 py-1">Test PER</th>
+                <th className="text-left px-2 py-1">Nain (diff. 10)</th>
+                <th className="text-left px-2 py-1">Rôdeuse (diff. 18)</th>
+                <th className="text-left px-2 py-1">Résultat</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-semibold">Gobelin 1</td>
+                <td className="px-2 py-1 font-mono">9</td>
+                <td className="px-2 py-1 text-red-300">Raté</td>
+                <td className="px-2 py-1 text-red-300">Raté</td>
+                <td className="px-2 py-1">Surpris par les deux</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-semibold">Gobelin 2</td>
+                <td className="px-2 py-1 font-mono">12</td>
+                <td className="px-2 py-1 text-green-300">Réussi</td>
+                <td className="px-2 py-1 text-red-300">Raté</td>
+                <td className="px-2 py-1">Surpris seulement par la rôdeuse</td>
+              </tr>
+              <tr className="border-t border-zinc-800">
+                <td className="px-2 py-1 font-semibold">Gobelin 3</td>
+                <td className="px-2 py-1 font-mono">18</td>
+                <td className="px-2 py-1 text-green-300">Réussi</td>
+                <td className="px-2 py-1 text-green-300">Réussi</td>
+                <td className="px-2 py-1">Pas surpris</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Au premier round de combat, le gobelin 1 ne peut attaquer personne et subit <b>−5 en DEF</b>.
+          Le gobelin 2 ne peut pas attaquer la rôdeuse (et subit <b>−5 en DEF</b> contre ses attaques), mais il peut
+          attaquer le nain normalement à sa propre initiative. Le gobelin 3 ne souffre d’aucune pénalité.
+        </p>
+        <p className="text-xs text-zinc-500">
+          Le moteur applique l’état Surpris (pas d’action, −5 DEF) s’il est posé avant l’initiative, mais il ne
+          calcule pas encore automatiquement la difficulté ni la surprise par assaillant : ce calcul reste au MJ.
+        </p>
+      </Section>
+
+      <Section id="approche-discrete" titre="Tenter une approche discrète">
+        <p>
+          Dans la situation où l’attaquant essaie de s’approcher discrètement du défenseur pour lui porter une
+          attaque par surprise, le MJ peut demander un test d’<b>AGI (Discrétion)</b> opposé à un test de
+          <b>PER (Vigilance)</b>. Par exemple, pour déterminer si un voleur réussit à s’approcher de sa cible
+          afin de lui infliger une attaque sournoise. En cas de réussite, le défenseur débute le combat <b>surpris</b>.
+          <Src de="Règle LDB" />
+        </p>
+        <Formule>AGI (Discrétion) opposé à PER (Vigilance) · réussite = défenseur Surpris au début du combat</Formule>
+        <p className="text-xs text-zinc-500">
+          Le moteur ne résout pas encore ce test opposé automatiquement ; l’état Surpris peut être posé avant l’initiative.
+        </p>
+      </Section>
+
       <Section id="etats-prejudiciables" titre="États préjudiciables">
-        <p className="text-xs text-zinc-500">Un état préjudiciable est un ensemble de pénalités standard infligées à un personnage (environnement, situation subie, capacité ou règle spécifique — mentionné en italique dans ce cas). Le moteur applique les jets d&apos;attaque, la DEF, les dés bonus/malus, le touché auto + critique du paralysé et le −10 à distance de l&apos;aveuglé ; la mention (MJ) = au jugement du MJ.<Src de="Règle LDB" /></p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li><b>Aveuglé</b> : −5 en Init., en attaque et en DEF, −10 en attaque à distance. Les attaques magiques nécessitant de voir la cible sont impossibles (MJ).<Src de="Règle LDB" /></li>
-          <li><b>Affaibli</b> : dé malus à tous les tests (moteur : jets d&apos;attaque ; autres tests : MJ).<Src de="Règle LDB" /></li>
-          <li><b>Essoufflé</b> : déplacement limité à 5 m par action de mouvement (MJ).<Src de="Règle LDB" /></li>
-          <li><b>Étourdi</b> : aucune action possible et −5 en DEF.<Src de="Règle LDB" /></li>
-          <li><b>Immobilisé</b> : pas de déplacement (MJ) et dé malus aux tests d&apos;attaque — il peut toujours agir.<Src de="Règle LDB" /></li>
-          <li><b>Invalide</b> : déplacement limité à 5 m par action de mouvement (MJ).<Src de="Règle LDB" /></li>
-          <li><b>Paralysé</b> : aucune action possible ; en cas d&apos;attaque, touché automatiquement et subit un critique.<Src de="Règle LDB" /></li>
-          <li><b>Ralenti</b> : une seule action par round, d&apos;attaque ou de mouvement (MJ).<Src de="Règle LDB" /></li>
-          <li><b>Renversé</b> : −5 en attaque et en DEF ; se relever nécessite une action d&apos;attaque (MJ).<Src de="Règle LDB" /></li>
-          <li><b>Surpris</b> : pas d&apos;action et −5 en DEF au premier round de combat.<Src de="Règle LDB" /></li>
-          <li><b>Rendement décroissant</b> : contre une capacité pénible systématiquement répétée, le MJ peut assigner un bonus cumulatif de +5 au test de la cible pour y résister durant le combat.<Src de="Règle LDB" /></li>
-        </ul>
+        <p className="text-xs text-zinc-500">
+          Un état préjudiciable est un ensemble de pénalités standard infligées à un personnage (environnement,
+          situation subie, capacité ou règle spécifique — mentionné en italique dans ce cas). La colonne
+          « Moteur » indique ce que l’assistant applique réellement ; « MJ » = au jugement du MJ.
+          <Src de="Règle LDB" />
+        </p>
+        <div className="rounded border border-zinc-800 overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-zinc-950 text-zinc-400 uppercase">
+              <tr>
+                <th className="text-left px-2 py-1">État</th>
+                <th className="text-left px-2 py-1">Effet</th>
+                <th className="text-left px-2 py-1">Moteur</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ETATS_PREJUDICIABLES.map((e) => (
+                <tr key={e.nom} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 font-semibold">{e.nom}</td>
+                  <td className="px-2 py-1">{e.effet}</td>
+                  <td className="px-2 py-1 text-amber-200/90">{e.moteur}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-zinc-500">
+          <b>Rendement décroissant</b> : contre une capacité pénible systématiquement répétée, le MJ peut
+          assigner un bonus cumulatif de +5 au test de la cible pour y résister durant le combat.
+          <Src de="Règle LDB" />
+        </p>
       </Section>
 
       <Section id="effets" titre="Effets (buffs, debuffs, dots)">

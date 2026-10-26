@@ -20,10 +20,21 @@ export function fusionnerCatalogue(seeds: Item[], maison: Item[]): Item[] {
   return [...byId.values()];
 }
 
-// Catalogue d'objets : seeds en dur + créations du MJ (mémoire seule,
-// perdues au rechargement — comme les autres données de jeu).
+// Graine vide stable : l'identité du tableau compte pour le mutateur de
+// collection (détection du retour aux graines) et ne doit pas changer à
+// chaque rendu.
+const AUCUN_OBJET_MAISON: Item[] = [];
+
+// Catalogue d'objets : graines en dur (SEED_ITEMS) + objets créés ou modifiés
+// par le MJ, persistés dans STORAGE_KEYS.items. Un objet maison portant l'id
+// d'une graine la remplace (voir fusionnerCatalogue) : les modifications de
+// fiches d'objets survivent donc au rechargement.
 export function useCatalogueObjets() {
-  const { items: maison, setItems: setMaison } = useLocalCollection<Item>(STORAGE_KEYS.items, [], { persist: false });
+  const { items: maison, setItems: setMaison } = useLocalCollection<Item>(
+    STORAGE_KEYS.items,
+    AUCUN_OBJET_MAISON,
+    { libelle: "objets" }
+  );
   const catalogue = useMemo(() => fusionnerCatalogue(SEED_ITEMS, maison), [maison]);
   const idsMaison = useMemo(() => new Set(maison.map((o) => o.id)), [maison]);
   return { catalogue, maison, setMaison, idsMaison };

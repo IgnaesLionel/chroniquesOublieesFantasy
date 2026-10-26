@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
-import type { MonsterTemplate, Sort } from "@/src/lib/rules/types";
+import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
+import type { Item } from "@/src/lib/rules/world/types";
 import { canAct } from "@/src/lib/rules/effects/effects";
 import {
   actionDeAttaque,
@@ -23,7 +24,15 @@ import { actionDeTalent, infererAction } from "@/src/lib/data/capacites";
 import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
 import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
+import { ObjetPanel } from "@/src/components/combat/ObjetPanel";
 import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
+import {
+  ACTION_OBJET,
+  LIBELLE_OBJET,
+  chargesRestantesObjet,
+  natureObjetCombat,
+  resumeObjetCombat,
+} from "@/src/lib/rules/combat/objets";
 import { ActionEconomie } from "@/src/components/combat/ActionEconomie";
 import {
   ActionPalette,
@@ -77,6 +86,12 @@ interface Props {
   profils?: MonsterTemplate[];
   /** Renvoi immédiat d'un sort absorbé (résultat de l'attaque en cours). */
   onRenvoiImmediat?: () => void;
+  /** Fiches liées (inventaires) : potions, parchemins et baguettes proposés en actions. */
+  characters?: Character[];
+  /** Catalogue partagé pour résoudre les objets d'inventaire. */
+  catalogue?: Item[];
+  /** Utilise un objet d'inventaire (consommation, soin éventuel, journal). */
+  onUtiliserObjet?: (lanceurId: string, itemId: string, cibleId: string) => void;
 }
 
 /**
@@ -281,6 +296,35 @@ export function ActionPanel(props: Props) {
         raison: [...new Set(raisons)].join(", "),
       });
     }
+
+    // ── Objets utilisables : potions, parchemins, baguettes ───────────────
+    const fiche = (props.characters ?? []).find((c) => c.id === acteur.templateId);
+    for (const entree of fiche?.inventaire ?? []) {
+      const item = (props.catalogue ?? []).find((o) => o.id === entree.itemId);
+      const nature = item ? natureObjetCombat(item) : null;
+      if (!item || !nature) continue;
+      const raisons: string[] = [];
+      if (bloque) raisons.push("ne peut pas agir");
+      if (entree.quantite <= 0) raisons.push("plus en stock");
+      const charges = nature === "baguette" ? chargesRestantesObjet(entree, item) : null;
+      if (nature === "baguette" && charges === 0) raisons.push("baguette épuisée");
+      const details = [
+        resumeObjetCombat(item, nature, nature === "baguette" ? charges : undefined),
+        `×${entree.quantite}`,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      entrees.push({
+        type: "objet",
+        id: item.id,
+        nom: item.nom,
+        action: ACTION_OBJET[nature],
+        sousTitre: LIBELLE_OBJET[nature],
+        details,
+        disponible: raisons.length === 0,
+        raison: [...new Set(raisons)].join(", "),
+      });
+    }
   }
 
   const contientDisponible = (s: SelectionActionCombat) =>
@@ -407,6 +451,16 @@ export function ActionPanel(props: Props) {
                   profils={props.profils}
                   onUtiliser={props.onUtiliserCapacite}
                   onLogMJ={props.onLogMJ}
+                />
+              )}
+              {selectionEffective.type === "objet" && (
+                <ObjetPanel
+                  participants={props.participants}
+                  lanceurId={props.attackerId}
+                  itemId={selectionEffective.id}
+                  characters={props.characters ?? []}
+                  catalogue={props.catalogue ?? []}
+                  onUtiliser={props.onUtiliserObjet}
                 />
               )}
             </>

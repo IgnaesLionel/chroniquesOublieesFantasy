@@ -4,6 +4,7 @@ import { actionDeCapacite, actionDeTalent, voiesDe } from "@/src/lib/data/capaci
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { VOIE_MAGE, adopterVoieMage, traitsInitiaux, voiePeupleDe } from "@/src/lib/data/peuples";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
+import { Modal } from "@/src/components/ui/Modal";
 import type { Character } from "@/src/lib/rules/types";
 import {
   FAMILLES,
@@ -163,8 +164,12 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-      <div className={`bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto fam-rail ${classeFamille(famille)}`}>
+    <Modal
+      ouvert
+      onFermer={onAnnuler}
+      ariaLabel="Nouveau personnage"
+      classePanneau={`bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-4 max-h-[90vh] overflow-y-auto fam-rail ${classeFamille(famille)}`}
+    >
         <div className="flex justify-between items-start">
           <div>
             <h2 className="font-bold text-lg">Nouveau personnage <FamilleBadge famille={famille} /></h2>
@@ -356,7 +361,6 @@ export function CreateurPersonnage({ onCreer, onAnnuler }: Props) {
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

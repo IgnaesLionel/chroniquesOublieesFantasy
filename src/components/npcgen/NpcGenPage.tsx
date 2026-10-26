@@ -55,7 +55,11 @@ export function NpcGenPage() {
       if (resultat.retires > 0) {
         messages.push(`${resultat.retires} ancienne(s) option(s) de sexe retirée(s) de la table.`);
       }
-      setInitialisation(messages.join(" "));
+      const texte = messages.join(" ");
+      // Initialisation = synchronisation avec le stockage ; le message qui en
+      // rend compte est publié hors du corps de l'effet.
+      const minuteur = window.setTimeout(() => setInitialisation(texte), 0);
+      return () => window.clearTimeout(minuteur);
     }
   }, []);
 

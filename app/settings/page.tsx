@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import {
   STORAGE_KEYS,
   applyBackup,
@@ -12,6 +12,7 @@ import {
   type ImportReport,
 } from "@/src/lib/store/backup";
 import { effacerMiroirs } from "@/src/lib/store/miroir";
+import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 import { useCharacters, useMonsters, useNpcs, useScenarios, useSessions, useSorts } from "@/src/lib/store/collections";
 import {
   etatDonneesInitialesPnj,
@@ -25,12 +26,13 @@ import {
   useNpcStatBlocks,
 } from "@/src/lib/store/npcgen";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
+import { CLE_PARTIES } from "@/src/lib/store/usePlaySession";
 
 const LABELS: Record<CollectionName, string> = {
   characters: "Personnages",
   monsters: "Monstres",
   npcs: "PNJ (exemples)",
-  items: "Objets",
+  items: "Objets maison / modifiés",
   scenarios: "Scénarios",
   sorts: "Sorts & Capacités",
   sessions: "Sessions",
@@ -43,6 +45,8 @@ const LABELS: Record<CollectionName, string> = {
   npcProfiles: "PNJ — profils",
 };
 
+const SOUSCRIRE_RIEN = () => () => {};
+
 function storageBytes(): number {
   let bytes = 0;
   (Object.values(STORAGE_KEYS) as string[]).forEach((k) => {
@@ -52,18 +56,19 @@ function storageBytes(): number {
 }
 
 export default function SettingsPage() {
-  // Rendu initial identique serveur/client, chargement après montage.
-  const [bytes, setBytes] = useState<number | null>(null);
+  // Rendu initial identique serveur/client (null), puis taille réelle calculée
+  // côté client sans effet ni setState : pas de mismatch d'hydratation.
+  const bytes = useSyncExternalStore(SOUSCRIRE_RIEN, storageBytes, () => null);
   const [pending, setPending] = useState<BackupData | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [error, setError] = useState("");
   const [messagePnj, setMessagePnj] = useState("");
-  // Compteurs réels (persisté + mémoire) : le stockage local ne contient
-  // que personnages, sessions et progression.
-  const { items: characters } = useCharacters("reglages");
+  const [importerPersonnages, setImporterPersonnages] = useState(false);
+  // Compteurs réels : toutes les collections sont persistées localement.
+  const { items: characters, setItems: setCharacters } = useCharacters("reglages");
   const { items: monsters } = useMonsters();
   const { items: npcs } = useNpcs();
-  const { catalogue } = useCatalogueObjets();
+  const { maison } = useCatalogueObjets();
   const { items: scenarios } = useScenarios();
   const { items: sorts } = useSorts();
   const { items: sessions } = useSessions();
@@ -78,7 +83,7 @@ export default function SettingsPage() {
     characters: characters.length,
     monsters: monsters.length,
     npcs: npcs.length,
-    items: catalogue.length,
+    items: maison.length,
     scenarios: scenarios.length,
     sorts: sorts.length,
     sessions: sessions.length,
@@ -90,12 +95,6 @@ export default function SettingsPage() {
     npcFactions: npcFactions.length,
     npcProfiles: npcProfiles.length,
   };
-
-  useEffect(() => {
-    setBytes(storageBytes());
-  }, []);
-
-  const refresh = () => setBytes(storageBytes());
 
   const onFile = async (f: File | undefined) => {
     setError("");
@@ -116,10 +115,11 @@ export default function SettingsPage() {
     <div className="space-y-4 max-w-2xl">
       <h1 className="text-2xl font-bold">Paramètres — Sauvegarde</h1>
       <p className="text-sm text-zinc-400">
-        Persistés en local : personnages, sessions, progression des scénarios, bibliothèque PNJ
-        et ses tables de référence. Les exemples de PNJ historiques restent en mémoire seule.
-        Monstres, objets, sorts et scénarios viennent du code (mémoire seule, perdus au rechargement si modifiés).
-        Combat en cours et jets de dés non sauvegardés (volatils).
+        Tout le contenu est persisté dans ce navigateur : personnages, monstres, PNJ, objets,
+        sorts, scénarios, sessions, progression des scénarios et bibliothèque PNJ.
+        Seuls le combat en cours et les jets de dés restent volatils.
+        Les personnages et leur progression restent sur cet ordinateur : la sauvegarde JSON
+        sert à retrouver le contenu sur un autre poste, où les fiches de départ repartent au niveau 1.
       </p>
 
       {bytes !== null && (
@@ -160,7 +160,6 @@ export default function SettingsPage() {
               setMessagePnj(
                 `${ajouts.tables} tables, ${ajouts.entrees} entrées, ${ajouts.factions} factions et ${ajouts.profils} profils ajoutés.`
               );
-              setBytes(storageBytes());
             }}
             className="px-4 py-2 rounded bg-amber-500 text-black font-bold text-sm"
           >
@@ -183,14 +182,29 @@ export default function SettingsPage() {
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
         <h2 className="font-bold text-sm uppercase text-zinc-400">Import (validé)</h2>
         <p className="text-xs text-zinc-500">
-          Chaque collection est validée. Un import remplace les collections persistées par leur contenu validé
-          (une collection absente du fichier est vidée) ; les données mémoire seule du code ne sont pas touchées.
+          Chaque collection est validée. Seules les collections présentes dans le fichier sont remplacées :
+          un export partiel ne vide plus le reste du contenu local. Les personnages et leur progression
+          ne sont pas touchés, sauf si vous cochez la case ci-dessous.
         </p>
         <input
           type="file" accept="application/json,.json"
           onChange={(e) => onFile(e.target.files?.[0])}
           className="text-sm text-zinc-300"
         />
+        <label className="flex items-start gap-2 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            checked={importerPersonnages}
+            onChange={(e) => setImporterPersonnages(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Importer aussi les personnages et leur progression
+            <span className="block text-xs text-zinc-500">
+              Décochez pour conserver les fiches de cet ordinateur (nouveau poste : personnages de départ au niveau 1).
+            </span>
+          </span>
+        </label>
         {error && <p className="text-sm text-red-400">{error}</p>}
         {report && (
           <div className="text-sm space-y-1 rounded bg-zinc-950 border border-zinc-800 p-3">
@@ -209,7 +223,10 @@ export default function SettingsPage() {
           <div className="flex gap-2">
             <button onClick={() => { setPending(null); setReport(null); }} className="px-4 py-2 rounded bg-zinc-800 text-sm">Annuler</button>
             <button
-              onClick={() => { applyBackup(pending); window.location.reload(); }}
+              onClick={() => {
+                applyBackup(pending, { importerPersonnages });
+                window.location.reload();
+              }}
               className="px-4 py-2 rounded bg-red-700 font-bold text-sm"
             >
               Remplacer les données et recharger
@@ -218,13 +235,36 @@ export default function SettingsPage() {
         )}
       </div>
 
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 space-y-2">
+        <h2 className="font-bold text-sm uppercase text-zinc-400">Personnages de départ</h2>
+        <p className="text-xs text-zinc-500">
+          Les quatre fiches fournies avec le logiciel peuvent être remises à leur état de niveau 1.
+          Les personnages que vous avez créés ne sont pas modifiés.
+        </p>
+        <button
+          onClick={() => {
+            if (!confirm("Remettre les quatre personnages de départ au niveau 1 ? Leur progression locale sera perdue.")) return;
+            setCharacters((prev) => {
+              const graines = new Map(SEED_CHARACTERS.map((c) => [c.id, c]));
+              const existants = prev.map((c) => graines.get(c.id) ?? c);
+              const manquants = SEED_CHARACTERS.filter((g) => !prev.some((c) => c.id === g.id));
+              return [...existants, ...manquants];
+            });
+          }}
+          className="px-4 py-2 rounded bg-zinc-800 text-sm"
+        >
+          Réinitialiser les personnages de départ (niveau 1)
+        </button>
+      </div>
+
       <div className="rounded-lg border border-red-900 bg-red-950/30 p-4 space-y-2">
         <h2 className="font-bold text-sm uppercase text-red-400">Zone dangereuse</h2>
         <button
           onClick={() => {
-            if (!confirm("Tout effacer ? Les graines et les exemples reviendront au prochain rechargement.")) return;
+            if (!confirm("Tout effacer ? Les graines et le contenu de départ reviendront au prochain rechargement.")) return;
             (Object.values(STORAGE_KEYS) as string[]).forEach((k) => window.localStorage.removeItem(k));
             window.localStorage.removeItem("cof.npcgen.initialized.v1");
+            window.localStorage.removeItem(CLE_PARTIES);
             // Les miroirs (sessionStorage + IndexedDB) partent aussi : un reset
             // délibéré ne doit jamais être « ressuscité » par la réconciliation.
             effacerMiroirs();
@@ -232,9 +272,8 @@ export default function SettingsPage() {
           }}
           className="px-4 py-2 rounded bg-zinc-800 text-sm hover:bg-red-900"
         >
-          Tout effacer (personnages/sessions → graines)
+          Tout effacer (retour au contenu d&apos;origine)
         </button>
-        <button onClick={refresh} className="ml-2 px-4 py-2 rounded bg-zinc-800 text-sm">Actualiser l'affichage</button>
       </div>
     </div>
   );

@@ -12,9 +12,10 @@ import type { Session } from "@/src/lib/rules/session/types";
 
 // Hooks typés par collection : l'UI ne connaît plus les clés localStorage.
 // Demain, ces hooks brancheront SQLite/Postgres sans changer les pages.
-// Persisté (campagne) : personnages, sessions (+ progression via usePlaySession).
-// Mémoire seule (données de jeu depuis le code) : monstres, PNJ, sorts,
-// scénarios, objets maison (perdus au rechargement).
+// Toutes les collections sont persistées localement : personnages, monstres,
+// PNJ, sorts, scénarios, objets maison, sessions (+ progression de partie).
+// Les graines du code ne servent qu'à amorcer une clé vide ; une fois le
+// stockage rempli, les ajouts et modifications du MJ sont conservés.
 export function useCharacters(qui?: string) {
   // migrer : les fiches graines renommées (id stable) suivent leur nouveau nom
   // dans les sauvegardes locales, sans perdre niveau, PV, talents ni équipement
@@ -31,19 +32,19 @@ export function useCharacters(qui?: string) {
 }
 
 export function useMonsters() {
-  return useLocalCollection<MonsterTemplate>(STORAGE_KEYS.monsters, SEED_MONSTERS, { persist: false });
+  return useLocalCollection<MonsterTemplate>(STORAGE_KEYS.monsters, SEED_MONSTERS, { libelle: "bestiaire" });
 }
 
 export function useNpcs() {
-  return useLocalCollection<Npc>(STORAGE_KEYS.npcs, SEED_NPCS, { persist: false });
+  return useLocalCollection<Npc>(STORAGE_KEYS.npcs, SEED_NPCS, { libelle: "pnj" });
 }
 
 export function useScenarios() {
-  return useLocalCollection<Scenario>(STORAGE_KEYS.scenarios, SEED_SCENARIOS, { persist: false });
+  return useLocalCollection<Scenario>(STORAGE_KEYS.scenarios, SEED_SCENARIOS, { libelle: "scenarios" });
 }
 
 export function useSorts() {
-  return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS, { persist: false });
+  return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS, { libelle: "sorts" });
 }
 
 export function useSessions() {

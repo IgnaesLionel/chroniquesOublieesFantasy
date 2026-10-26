@@ -10,6 +10,7 @@ import { PROFILS_PAR_FAMILLE } from "@/src/lib/rules/personnage";
 import { classeFamille, familleDuProfil, familleDuSort } from "@/src/lib/ui/famille";
 import { FamilleBadge } from "@/src/components/ui/Famille";
 import { ActionBadge } from "@/src/components/ui/ActionBadge";
+import { Modal } from "@/src/components/ui/Modal";
 import { ajouterCapacite, apprendreSort, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { apprendreTalentComplet, peutApprendre } from "@/src/lib/rules/creation";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
@@ -387,8 +388,12 @@ export default function SortsPage() {
       )}
 
       {editing && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-lg space-y-2.5 max-h-[90vh] overflow-auto">
+        <Modal
+          ouvert
+          onFermer={() => setEditing(null)}
+          ariaLabel={editing.id ? `Éditer ${editing.nom}` : "Nouveau sort ou capacité"}
+          classePanneau="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-lg space-y-2.5 max-h-[90vh] overflow-auto"
+        >
             <h2 className="font-bold">{editing.id ? `Éditer ${editing.nom}` : "Nouveau sort / capacité"}</h2>
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">Nom*<input value={editing.nom} onChange={(e) => setEditing({ ...editing, nom: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>
@@ -465,8 +470,7 @@ export default function SortsPage() {
               <button onClick={() => setEditing(null)} className="px-4 py-2 rounded bg-zinc-800">Annuler</button>
               <button onClick={save} className="px-4 py-2 rounded bg-amber-400 text-black font-semibold">Enregistrer</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

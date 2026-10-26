@@ -16,6 +16,7 @@ import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
 import { BoursePanel } from "@/src/components/characters/BoursePanel";
 import { CreateurPersonnage } from "@/src/components/characters/CreateurPersonnage";
 import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
+import { Modal } from "@/src/components/ui/Modal";
 import {
   FAMILLES,
   PROFILS_PAR_FAMILLE,
@@ -46,6 +47,9 @@ import {
 
 const CARACS = ["AGI", "CON", "FOR", "PER", "CHA", "INT", "VOL"] as const;
 const PEUPLES = ["Humain", "Demi-Elfe", "Elfe haut", "Nain"];
+// Le témoin de diagnostic (lecture directe du stockage + chronologie) est un
+// outil de mise au point : inutile en production, où il coûtait un rendu.
+const EST_DEVELOPPEMENT = process.env.NODE_ENV !== "production";
 
 export default function CharactersPage() {
   const { items: raw, setItems } = useCharacters("personnages");
@@ -68,6 +72,7 @@ export default function CharactersPage() {
     { stockage: string; memoire: string; chrono: string; hote: string; actifs: string } | null
   >(null);
   useEffect(() => {
+    if (!EST_DEVELOPPEMENT) return;
     const resume = (liste: Character[]) => liste.map((c) => `${c.nom} ${c.pv}/${c.pvMax}`).join(" · ") || "vide";
     let stockage = "clé absente / illisible";
     try {
@@ -116,7 +121,7 @@ export default function CharactersPage() {
         ? p
         : { stockage, memoire, chrono, hote, actifs: ecrans }
     );
-  });
+  }, [items]);
 
   const patch = (id: string, fn: (c: Character) => Character) =>
     setItems((prev) => prev.map((c) => (c.id === id ? fn(normaliserPersonnage(c as unknown as Record<string, unknown>)) : c)));
@@ -640,17 +645,23 @@ export default function CharactersPage() {
         Niveau : PV +gain+CON (rétroactif), attaques +1 (max niv. 10), +2 pts à dépenser, mana via nouveaux sorts, dé évolutif d4→d6 (6)→d8 (9)→…
       </p>
 
-      {/* Témoin diagnostic (logique définie plus haut dans le fichier) : lignes à recopier au dev. */}
-      <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
-        🔎 Stockage : {diag?.stockage ?? "…"}<br />
-        🖥 Affiché : {diag?.memoire ?? "…"}<br />
-        🧩 Écrans tiennent la clé : {diag?.actifs ?? "…"}<br />
-        ✍ écriture · 📥 lecture · 🔔 autre onglet · 📌 anomalie · Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
-      </p>
+      {/* Témoin diagnostic (développement uniquement). */}
+      {EST_DEVELOPPEMENT && (
+        <p className="text-[11px] leading-4 text-zinc-500 border border-dashed border-zinc-800 rounded px-2 py-1">
+          🔎 Stockage : {diag?.stockage ?? "…"}<br />
+          🖥 Affiché : {diag?.memoire ?? "…"}<br />
+          🧩 Écrans tiennent la clé : {diag?.actifs ?? "…"}<br />
+          ✍ écriture · 📥 lecture · 🔔 autre onglet · 📌 anomalie · Chrono : <span className="whitespace-pre-line">{diag?.chrono ?? "…"}</span> — {diag?.hote ?? ""}
+        </p>
+      )}
 
       {editing && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className={`bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto fam-rail ${classeFamille(editing.famille)}`}>
+        <Modal
+          ouvert
+          onFermer={() => setEditing(null)}
+          ariaLabel={`Éditer ${editing.nom}`}
+          classePanneau={`bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto fam-rail ${classeFamille(editing.famille)}`}
+        >
             <h2 className="font-bold">Éditer {editing.nom} <FamilleBadge famille={editing.famille} /></h2>
             <div className="grid sm:grid-cols-2 gap-2">
               <label className="block text-sm">Nom<input value={editing.nom} onChange={(e) => setEditing({ ...editing, nom: e.target.value })} className="mt-1 w-full bg-zinc-800 rounded px-2 py-1.5" /></label>
@@ -806,8 +817,7 @@ export default function CharactersPage() {
                 <button onClick={saveEdit} className="px-4 py-2 rounded bg-amber-400 text-black font-semibold">Enregistrer</button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {creation && (

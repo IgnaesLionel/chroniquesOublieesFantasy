@@ -394,7 +394,7 @@ function BlocCombat({
   if (!statBlock) {
     return (
       <div className="space-y-2 text-sm">
-        <p className="text-zinc-400">Aucun profil de combat. Le PNJ est narratif ; aucun bloc n'est nécessaire.</p>
+        <p className="text-zinc-400">Aucun profil de combat. Le PNJ est narratif ; aucun bloc n&apos;est nécessaire.</p>
         <div className="flex flex-wrap gap-2 items-end">
           {onGenererEstimation && (
             <button type="button" onClick={onGenererEstimation} className="px-3 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-xs">

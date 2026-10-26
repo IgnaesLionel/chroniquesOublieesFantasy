@@ -92,6 +92,11 @@ export interface InventaireEntree {
   itemId: string;
   quantite: number;
   equipe: boolean;
+  /**
+   * Charges restantes d'une baguette magique. Absent : non initialisé (le
+   * moteur reprend les charges de départ inscrites sur l'objet).
+   */
+  charges?: number;
 }
 
 export type SortType = "offensif" | "defensif" | "utilitaire";

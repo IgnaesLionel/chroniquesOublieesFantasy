@@ -88,17 +88,38 @@ export function peutEquiper(
   );
 }
 
-/** Ajoute un objet à un inventaire (non équipé, quantités fusionnées). Pur, sans mutation. */
+/**
+ * Ajoute un objet à un inventaire (non équipé, quantités fusionnées).
+ * `charges` initialise le compteur d'une baguette ; lors d'une fusion, les
+ * charges s'additionnent (deux baguettes identiques = deux réserves).
+ */
 export function ajouterAInventaire(
   inventaire: InventaireEntree[] = [],
   itemId: string,
-  quantite = 1
+  quantite = 1,
+  charges?: number
 ): InventaireEntree[] {
   const qte = Math.max(1, Math.floor(quantite));
+  const chargesAjoutees = charges == null ? null : Math.max(0, Math.floor(charges));
   const inv = [...inventaire];
   const i = inv.findIndex((e) => e.itemId === itemId);
-  if (i >= 0) inv[i] = { ...inv[i], quantite: inv[i].quantite + qte };
-  else inv.push({ itemId, quantite: qte, equipe: false });
+  if (i >= 0) {
+    const existant = inv[i];
+    inv[i] = {
+      ...existant,
+      quantite: existant.quantite + qte,
+      ...(chargesAjoutees != null
+        ? { charges: (existant.charges ?? 0) + chargesAjoutees }
+        : {}),
+    };
+  } else {
+    inv.push({
+      itemId,
+      quantite: qte,
+      equipe: false,
+      ...(chargesAjoutees != null ? { charges: chargesAjoutees } : {}),
+    });
+  }
   return inv;
 }
 

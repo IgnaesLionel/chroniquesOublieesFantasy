@@ -12,9 +12,15 @@ import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
 import { appliquerAurasDebutCombat } from "@/src/lib/rules/combat/auras";
 import { AURAS_DEBUT_COMBAT } from "@/src/lib/data/auras-combat";
-import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, animerCadavre, animerCadavreProfil, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resoudrePhenixEnAttente, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, animerCadavre, animerCadavreProfil, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/rules/combat/staging";
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
+import {
+  chargesRestantesObjet,
+  lireParchemin,
+  natureObjetCombat,
+  soinPotion,
+} from "@/src/lib/rules/combat/objets";
 import { maxZombiesControles, normaliserNomCapacite, normaliserPersonnage } from "@/src/lib/rules/personnage";
 import { createEffect } from "@/src/lib/rules/effects/effects";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
@@ -24,6 +30,7 @@ import { CombatLog } from "@/src/components/combat/CombatLog";
 import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 import { ActionPanel } from "@/src/components/combat/ActionPanel";
 import { ActionEconomie } from "@/src/components/combat/ActionEconomie";
+import { PopupPhenix } from "@/src/components/combat/PopupPhenix";
 import { EncounterGenerator } from "@/src/components/encounters/EncounterGenerator";
 import { stagingDepuisRencontre } from "@/src/lib/rules/combat/depuis-rencontre";
 import type { SlotResolu } from "@/src/lib/encounters/types";
@@ -95,6 +102,8 @@ function CombatInner() {
   const [infoConversion, setInfoConversion] = useState<string | null>(null);
 
   const active = combat ? getActive(combat) : null;
+  /** Onde de Phénix en attente : une pop-up par prêtre déclencheur. */
+  const phenixEnAttente = combat?.phenixEnAttente?.[0] ?? null;
 
   const pjNeufs = (c: Character): CombatParticipant[] => construirePJCombat(c, catalogue);
   /** Reconstruit les PJ depuis leurs fiches (staging et demarrage). */
@@ -547,6 +556,93 @@ function CombatInner() {
     appliquerFiche(instanceId, cible.nom, updated);
     setCombat((x) => (x ? { ...x, log: [...x.log, { id: `eq-${Date.now()}`, at: new Date().toISOString(), manche: x.manche, message: `${cible.nom} ${entree.equipe ? "rengaine" : "sort"} ${item.nom} (${entree.equipe ? "déséquipée" : "équipée"}).` }] } : x));
   };
+  /**
+   * Utilise une potion, un parchemin ou une baguette depuis l'inventaire.
+   * Potion : soin automatique si son texte contient une formule de dés.
+   * Parchemin : test de profil/rang/famille automatique ; consommé seulement si
+   * le sort est lancé ou si l'échec atteint 10 points.
+   * Baguette : action d'attaque, une charge est décrémentée par activation.
+   */
+  const utiliserObjet = (instanceId: string, itemId: string, cibleId: string) => {
+    if (!combat) return;
+    const acteur = combat.participants.find((p) => p.instanceId === instanceId);
+    const fiche = characters.find((c) => c.id === acteur?.templateId);
+    const entree = (fiche?.inventaire ?? []).find((e) => e.itemId === itemId);
+    const item = catalogue.find((o) => o.id === itemId);
+    const nature = item ? natureObjetCombat(item) : null;
+    const cible = combat.participants.find((p) => p.instanceId === cibleId);
+    if (!acteur || !fiche || !entree || entree.quantite <= 0 || !item || !nature || !cible) return;
+    if (nature === "potion" ? cible.statut === "mort" : cible.statut !== "actif") return;
+
+    const chargesAvant =
+      nature === "baguette" ? chargesRestantesObjet(entree, item) : null;
+    if (nature === "baguette" && chargesAvant === 0) return;
+
+    let state = combat;
+    let message = "";
+    let consommer = nature === "potion";
+    let chargesApres: number | null = null;
+    if (nature === "potion") {
+      const aSoiMeme = acteur.instanceId === cible.instanceId;
+      message = `${acteur.nom} ${aSoiMeme ? "boit" : `fait boire à ${cible.nom}`} ${item.nom}`;
+      const soin = soinPotion(item, fiche.niveau, fiche.caracteristiques ?? {});
+      if (soin && soin.total > 0) {
+        const pvAvant = cible.pv;
+        state = applyHeal(state, cible.instanceId, soin.total);
+        const pvApres = state.participants.find((p) => p.instanceId === cible.instanceId)?.pv ?? pvAvant;
+        message += ` : ${soin.expression} -> [${soin.details.join(", ")}] = ${soin.total} PV (${pvAvant} -> ${pvApres} PV)`;
+      } else {
+        message += " (effet au MJ)";
+      }
+    } else if (nature === "parchemin") {
+      const lecture = lireParchemin(item, {
+        profil: (fiche.profil ?? "").trim() || fiche.classe,
+        famille: fiche.famille,
+        sorts: fiche.sorts ?? [],
+        niveau: fiche.niveau,
+        bonusMagique: acteur.bonusMagique,
+        caracs: acteur.caracs ?? fiche.caracteristiques ?? {},
+      });
+      message = `${acteur.nom} lit ${item.nom} (action limitée). ${lecture.message}`;
+      consommer = lecture.consomme;
+    } else {
+      chargesApres = chargesAvant != null ? Math.max(0, chargesAvant - 1) : null;
+      message = `${acteur.nom} active ${item.nom} (action d'attaque)`;
+      if (chargesAvant != null && chargesApres != null) {
+        message += ` : ${chargesAvant} -> ${chargesApres} charge${chargesApres > 1 ? "s" : ""}`;
+      } else {
+        message += " (charges non suivies : à gérer par le MJ)";
+      }
+    }
+
+    state = {
+      ...state,
+      log: [
+        ...state.log,
+        { id: `obj-${Date.now()}`, at: new Date().toISOString(), manche: state.manche, message },
+      ],
+    };
+    setCombat(state);
+    setLast(null);
+
+    if (consommer) {
+      const inventaire = fiche.inventaire
+        .map((e) => (e.itemId === itemId ? { ...e, quantite: e.quantite - 1 } : e))
+        .filter((e) => e.quantite > 0);
+      setCharacters((prev) =>
+        prev.map((c) => (c.id === fiche.id ? { ...c, inventaire } : c))
+      );
+    } else if (nature === "baguette" && chargesApres != null) {
+      const chargesFinales: number = chargesApres;
+      const inventaire = fiche.inventaire.map((e) =>
+        e.itemId === itemId ? { ...e, charges: chargesFinales } : e
+      );
+      setCharacters((prev) =>
+        prev.map((c) => (c.id === fiche.id ? { ...c, inventaire } : c))
+      );
+    }
+  };
+
   const selectedParticipant = combat?.participants.find((p) => p.instanceId === attackerId) ?? null;
 
   const opponentsOf = useMemo(() => {
@@ -963,6 +1059,9 @@ function CombatInner() {
               setCombat((c) => (c ? addParticipantEffect(c, cibleId, createEffect(cle, { dureeTours: duree, source: "Tactique" })) : c))
             }
             profils={monstres}
+            characters={characters}
+            catalogue={catalogue}
+            onUtiliserObjet={utiliserObjet}
           />
           <EquipementPanel
             participants={combat.participants}
@@ -1001,6 +1100,18 @@ function CombatInner() {
           )}
         </div>
       </div>
+      {phenixEnAttente && (
+        <PopupPhenix
+          key={phenixEnAttente.pretreId}
+          attente={phenixEnAttente}
+          participants={combat.participants}
+          onValider={(cibleIds) =>
+            setCombat((c) =>
+              c ? resoudrePhenixEnAttente(c, phenixEnAttente.pretreId, cibleIds).state : c
+            )
+          }
+        />
+      )}
     </div>
   );
 }

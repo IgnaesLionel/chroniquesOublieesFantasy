@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { STORAGE_KEYS, type CollectionName } from "@/src/lib/store/backup";
+import { useCharacters, useMonsters, useScenarios, useSessions, useSorts } from "@/src/lib/store/collections";
+import { useNpcSaved } from "@/src/lib/store/npcgen";
+import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 
-const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[] = [
+const CARDS: { href: string; t: string; d: string; key: string | null }[] = [
   { href: "/characters", t: "Personnages", d: "PV, défense, attaques", key: "characters" },
   { href: "/classes", t: "Classes", d: "Profils, voies, équipement", key: null },
   { href: "/sorts", t: "Sorts & Capacités", d: "Grimoire, voies, talents", key: "sorts" },
@@ -19,21 +20,26 @@ const CARDS: { href: string; t: string; d: string; key: CollectionName | null }[
 ];
 
 export default function Dashboard() {
-  // Premier rendu identique côté serveur et client (null), puis chargement
-  // depuis localStorage après montage pour éviter un mismatch d'hydratation.
-  const [counts, setCounts] = useState<Record<string, number> | null>(null);
-
-  useEffect(() => {
-    const c: Record<string, number> = {};
-    (Object.keys(STORAGE_KEYS) as CollectionName[]).forEach((k) => {
-      try {
-        c[k] = (JSON.parse(window.localStorage.getItem(STORAGE_KEYS[k]) ?? "[]") as unknown[]).length;
-      } catch {
-        c[k] = 0;
-      }
-    });
-    setCounts(c);
-  }, []);
+  // Les compteurs passent par les mêmes hooks que les écrans : les graines
+  // comptent dès le premier rendu et toute création/suppression est reflétée
+  // immédiatement (plus de lecture directe du localStorage, qui affichait 0
+  // pour les collections non encore initialisées).
+  const { items: characters } = useCharacters("tableau-de-bord");
+  const { items: sorts } = useSorts();
+  const { items: monsters } = useMonsters();
+  const { items: scenarios } = useScenarios();
+  const { items: sessions } = useSessions();
+  const { items: npcSaved } = useNpcSaved();
+  const { catalogue } = useCatalogueObjets();
+  const counts: Record<string, number> = {
+    characters: characters.length,
+    sorts: sorts.length,
+    monsters: monsters.length,
+    scenarios: scenarios.length,
+    sessions: sessions.length,
+    npcSaved: npcSaved.length,
+    items: catalogue.length,
+  };
 
   return (
     <div className="space-y-6">
@@ -51,7 +57,7 @@ export default function Dashboard() {
           <Link key={c.href} href={c.href} className="panel p-4 block transition-all hover:-translate-y-0.5 hover:border-gold-600 hover:shadow-[0_10px_30px_rgb(201_162_39/0.12)]">
             <div className="font-display font-bold text-gold-200 tracking-wide">
               {c.t}
-              {c.key && counts !== null && <span className="chip-seal ml-2">{counts[c.key] ?? 0}</span>}
+              {c.key && <span className="chip-seal ml-2">{counts[c.key] ?? 0}</span>}
             </div>
             <div className="text-sm text-zinc-400 mt-1 italic">{c.d}</div>
           </Link>

@@ -5,6 +5,7 @@ import { CAPACITES_PARTAGEES } from "@/src/lib/data/capacites-partagees";
 import { SOUS_CATEGORIES_SUGGEREES } from "@/src/lib/rules/categories";
 import { monsterSchema } from "@/src/lib/data/validation";
 import { parseDiceExpression } from "@/src/lib/rules/dice/roller";
+import { Modal } from "@/src/components/ui/Modal";
 
 interface Props {
   draft: MonsterTemplate;
@@ -78,8 +79,13 @@ export function MonsterEditor({ draft, onChange, onSave, onCancel }: Props) {
   const input = "mt-1 w-full bg-zinc-800 rounded px-2 py-1.5";
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={onCancel}>
-      <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[92vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+    <Modal
+      ouvert
+      onFermer={onCancel}
+      ariaLabel={draft.id ? `Éditer ${draft.nom}` : "Nouveau monstre"}
+      fermerSurFond
+      classePanneau="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[92vh] overflow-auto"
+    >
         <h2 className="font-bold text-lg">{draft.id ? `Éditer ${draft.nom}` : "Nouveau monstre"}</h2>
 
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -195,7 +201,6 @@ export function MonsterEditor({ draft, onChange, onSave, onCancel }: Props) {
           <button onClick={onCancel} className="px-4 py-2 rounded bg-zinc-800">Annuler</button>
           <button onClick={save} className="px-4 py-2 rounded bg-amber-400 text-black font-semibold">Enregistrer</button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

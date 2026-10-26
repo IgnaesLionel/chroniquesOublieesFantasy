@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useCharacters } from "@/src/lib/store/collections";
 import { ajouterAInventaire } from "@/src/lib/rules/equipement";
+import { chargesInitialesObjet, natureObjetCombat } from "@/src/lib/rules/combat/objets";
 import type { Item } from "@/src/lib/rules/world/types";
 
 interface Props {
@@ -17,10 +18,20 @@ export function DonObjet({ item }: Props) {
   const donner = () => {
     const cible = characters.find((c) => c.id === beneficiaireId);
     if (!cible) return;
+    const charges =
+      natureObjetCombat(item) === "baguette" ? chargesInitialesObjet(item) ?? undefined : undefined;
     setCharacters((prev) =>
       prev.map((c) =>
         c.id === beneficiaireId
-          ? { ...c, inventaire: ajouterAInventaire(c.inventaire ?? [], item.id, item.quantite) }
+          ? {
+              ...c,
+              inventaire: ajouterAInventaire(
+                c.inventaire ?? [],
+                item.id,
+                item.quantite,
+                charges
+              ),
+            }
           : c
       )
     );

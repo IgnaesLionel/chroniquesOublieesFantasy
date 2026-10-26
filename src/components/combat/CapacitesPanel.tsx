@@ -332,7 +332,8 @@ export function CapacitesPanel({
       )}
       {estPhenix && (
         <div className="text-xs text-zinc-400 bg-zinc-800/60 border border-zinc-800 rounded px-2 py-1.5">
-          Phénix auto 1/jour : se déclenche à 0 PV (jet unique, alliés 20 m, prêtre au double).
+          Phénix auto 1/jour : se déclenche à 0 PV (jet unique, prêtre au double). Une pop-up
+          permet de cocher les alliés à 20 m.
           {phenixUtilise >= 1 ? " — déjà utilisé aujourd'hui." : " — disponible."} Le bouton reste en secours MJ (1 cible).
         </div>
       )}

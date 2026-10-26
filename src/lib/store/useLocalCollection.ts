@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   avecInstance,
   libelleCle,
@@ -10,7 +10,6 @@ import {
   retirerInstanceActive,
 } from "@/src/lib/store/repository";
 import { demarrerReconciliation } from "@/src/lib/store/miroir";
-import { codeInterne } from "@/src/lib/store/surveillance";
 import { STORAGE_KEYS } from "@/src/lib/store/backup";
 import { SEED_CHARACTERS } from "@/src/lib/data/seeds";
 
@@ -25,198 +24,209 @@ let reconciliationDemarree = false;
 // (PV plein vie) par-dessus une sauvegarde qui allait être restaurée.
 const FENETRE_RECONCILIATION = 250;
 
-// Numérotation des instances du hook : la chronologie doit nommer l'écran
-// (« characters#3 combat ») car plusieurs composants tiennent la même clé.
+/** Options d'une collection (communes à toutes ses instances). */
+export interface OptionsCollection<T> {
+  migrer?: (items: T[]) => T[];
+  libelle?: string;
+  protegerPv?: boolean;
+  /** false : les graines ne sont écrites qu'à la première visite (pas de fusion à chaque lecture). */
+  fusionner?: boolean;
+}
+
+interface Entree<T> {
+  key: string;
+  seed: T[];
+  options: OptionsCollection<T>;
+  items: T[];
+  loaded: boolean;
+  demarrage: boolean;
+  ecouteursInstalles: boolean;
+  libelleChargement: string;
+  abonnes: Set<() => void>;
+}
+
+// Store par collection : toutes les instances d'une même clé partagent le même
+// tableau. Avant, chaque composant (jusqu'à 15 pour les personnages) tenait son
+// propre état et relisait le stockage : deux écrans pouvaient afficher des
+// données différentes et les écritures s'écrasaient.
+const entrees = new Map<string, Entree<unknown>>();
 let compteurInstances = 0;
 
-// Collection avec seed initial.
-// persist (défaut true) : lue/écrite en localStorage.
-// persist: false : mémoire seule, toujours depuis les graines du code
-// (aucune lecture/écriture locale ; la clé périmée est nettoyée au montage).
-// Retourne [items, setItems] ; toute écriture persistée est sauvegardée.
+function obtenirEntree<T extends { id: string }>(
+  key: string,
+  seed: T[],
+  options: OptionsCollection<T>
+): Entree<T> {
+  const existante = entrees.get(key) as Entree<T> | undefined;
+  if (existante) return existante;
+  const creee: Entree<T> = {
+    key,
+    seed,
+    options,
+    items: seed,
+    loaded: false,
+    demarrage: false,
+    ecouteursInstalles: false,
+    libelleChargement: `${libelleCle(key)}${options.libelle ? ` ${options.libelle}` : ""}`,
+    abonnes: new Set(),
+  };
+  entrees.set(key, creee as Entree<unknown>);
+  return creee;
+}
+
+function notifier(entree: { abonnes: Set<() => void> }): void {
+  entree.abonnes.forEach((cb) => cb());
+}
+
+/** Publie un nouvel état partagé (mutation confinée au store, hors composant). */
+function definirItems<T>(entree: Entree<T>, items: T[]): void {
+  entree.items = items;
+  notifier(entree);
+}
+
+function persister<T>(entree: Entree<T>, valeur: T[], libelle: string, retourAuxGraines = false): void {
+  try {
+    avecInstance(libelle, () =>
+      localStorageAdapter.save(entree.key, valeur, {
+        retourAuxGraines,
+        protegerPv: entree.options.protegerPv,
+      })
+    );
+  } catch {
+    // Stockage indisponible : l'état mémoire reste la source de vérité.
+  }
+}
+
+function installerEcouteurs<T extends { id: string }>(entree: Entree<T>): void {
+  if (entree.ecouteursInstalles) return;
+  entree.ecouteursInstalles = true;
+  const relire = (cause?: string, lire = true) => {
+    if (cause) noterResync(entree.key, cause);
+    if (!lire) return;
+    const stocke = avecInstance(entree.libelleChargement, () => localStorageAdapter.load<T[]>(entree.key));
+    if (!stocke) return;
+    const prepares = preparerStock(stocke, entree.seed, entree.options.migrer, entree.options.fusionner);
+    if (prepares === entree.items) return;
+    entree.items = prepares;
+    notifier(entree);
+  };
+  // Un autre onglet peut modifier le stockage (événement storage), et un
+  // retour arrière / changement d'onglet peut restaurer une page montée avant
+  // (visibilité, focus). Toute écriture étant persistée aussitôt, relire
+  // converge vers des données à jour sans rien écraser d'utile.
+  window.addEventListener("storage", (e) => {
+    if (e.key !== entree.key) return;
+    noterEvenementStockage(entree.key, e.newValue);
+    relire();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") relire();
+  });
+  // pageshow : sortie de bfcache ; popstate : traversées d'historique dans le
+  // même document. Sans eux, un écran restauré affiche d'anciennes valeurs.
+  window.addEventListener("pageshow", () => relire("pageshow"));
+  window.addEventListener("popstate", () => relire("popstate"));
+  window.addEventListener("focus", () => relire());
+}
+
+function demarrer<T extends { id: string }>(entree: Entree<T>): void {
+  if (entree.demarrage) return;
+  entree.demarrage = true;
+  if (!reconciliationDemarree) {
+    reconciliationDemarree = true;
+    demarrerReconciliation({ [STORAGE_KEYS.characters]: SEED_CHARACTERS });
+  }
+  installerEcouteurs(entree);
+
+  const accepter = (stockes: T[]) => {
+    const prepares = preparerStock(stockes, entree.seed, entree.options.migrer, entree.options.fusionner);
+    entree.items = prepares;
+    entree.loaded = true;
+    notifier(entree);
+    // N'écrire QUE si la préparation a réellement changé quelque chose.
+    if (prepares !== stockes) persister(entree, prepares, entree.libelleChargement);
+  };
+
+  const chargement = avecInstance(entree.libelleChargement, () =>
+    localStorageAdapter.load<T[]>(entree.key)
+  );
+  if (chargement) {
+    accepter(chargement);
+    return;
+  }
+  // Clé vide : première visite — ou effacement si récent que la réconciliation
+  // (asynchrone) n'a pas encore rejoué la sauvegarde. On attend la fin de la
+  // fenêtre avant d'écrire les graines par-dessus une sauvegarde en cours de
+  // restauration.
+  window.setTimeout(() => {
+    const relecture = avecInstance(entree.libelleChargement, () =>
+      localStorageAdapter.load<T[]>(entree.key)
+    );
+    if (relecture) {
+      accepter(relecture);
+      return;
+    }
+    entree.loaded = true;
+    notifier(entree);
+    persister(entree, entree.seed, entree.libelleChargement, true);
+  }, FENETRE_RECONCILIATION);
+}
+
+/**
+ * Collection avec graines initiales, partagée par tous les composants qui
+ * utilisent la même clé. Persistée en localStorage : un ajout ou une
+ * modification du MJ survit au rechargement.
+ */
 export function useLocalCollection<T extends { id: string }>(
   key: string,
   seed: T[],
-  opts: {
-    persist?: boolean;
-    migrer?: (items: T[]) => T[];
-    libelle?: string;
-    protegerPv?: boolean;
-    /** false : les graines ne sont écrites qu'à la première visite (pas de fusion à chaque lecture). */
-    fusionner?: boolean;
-  } = {}
+  opts: OptionsCollection<T> = {}
 ) {
-  const persist = opts.persist ?? true;
-  const [items, setItemsRaw] = useState<T[]>(seed);
-  const [loaded, setLoaded] = useState(false);
-  const loadedRef = useRef(false);
-  const numero = useRef(0);
-  if (numero.current === 0) numero.current = ++compteurInstances;
-  const libelle = `${libelleCle(key)}#${numero.current}${opts.libelle ? ` ${opts.libelle}` : ""}`;
+  // Entrée créée une seule fois ; toutes les instances de la clé la partagent.
+  const entree = obtenirEntree<T>(key, seed, opts);
+  const [numero] = useState(() => ++compteurInstances);
+  const libelle = `${libelleCle(key)}#${numero}${opts.libelle ? ` ${opts.libelle}` : ""}`;
 
-  // Instances vivantes : visibles dans la chrono pour repérer un montage
-  // tardif (modale, panneau) qui tiendrait la même clé que l'écran principal.
+  // Instances vivantes : visibles dans la chronologie de diagnostic pour
+  // repérer un montage tardif (modale, panneau) qui tient la même clé.
   useEffect(() => {
     marquerInstanceActive(libelle);
     return () => retirerInstanceActive(libelle);
   }, [libelle]);
 
+  const abonner = useCallback(
+    (cb: () => void) => {
+      entree.abonnes.add(cb);
+      return () => {
+        entree.abonnes.delete(cb);
+      };
+    },
+    [entree]
+  );
+  const lire = useCallback(() => entree.items, [entree]);
+  const lireServeur = useCallback(() => entree.seed, [entree]);
+
+  // Chargement après montage (le premier rendu reste identique serveur/client).
   useEffect(() => {
-    if (!persist) {
-      try {
-        // Nettoyage de la clé mémoire seule : notre propre écriture, pas une
-        // mutation étrangère (d'où codeInterne).
-        codeInterne(() => window.localStorage.removeItem(key));
-      } catch {
-        // Stockage indisponible : rien à nettoyer.
-      }
-      loadedRef.current = true;
-      setLoaded(true);
-      return;
-    }
-    if (!reconciliationDemarree) {
-      reconciliationDemarree = true;
-      demarrerReconciliation({ [STORAGE_KEYS.characters]: SEED_CHARACTERS });
-    }
-    const persister = (valeur: T[], retourAuxGraines = false) =>
-      avecInstance(libelle, () =>
-        localStorageAdapter.save(key, valeur, { retourAuxGraines, protegerPv: opts.protegerPv })
-      );
-    const accepter = (stockes: T[]) => {
-      const prepares = preparerStock(stockes, seed, opts.migrer, opts.fusionner);
-      setItemsRaw(prepares);
-      loadedRef.current = true;
-      setLoaded(true);
-      // N'écrire QUE si la préparation a réellement changé quelque chose
-      // (graines manquantes ajoutées, migration de fiche). Réécrire à
-      // l'identique ce qui vient d'être lu était inutile — et c'était la
-      // porte ouverte au bug « fiche écrasée par un autre onglet » : les
-      // écrans restent montés (état conservé pendant la navigation), et un
-      // écran périmé réécrivait son ancien tampon juste après avoir relu le
-      // stockage frais. Seul le mutateur `setItems` écrit désormais un état
-      // modifié ; le chargement ne fait que lire.
-      if (prepares !== stockes) persister(prepares);
-    };
-    const chargement = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
-    // Stock existant : on ajoute les graines manquantes (nouveau contenu
-    // livré par une mise à jour, ex : scénario ajouté après coup) sans
-    // toucher aux données de l’utilisateur, puis on applique la migration
-    // éventuelle (ex : renommage de fiches graines).
-    if (chargement) {
-      accepter(chargement);
-      return;
-    }
-    // Clé vide : première visite — ou effacement si récent que la
-    // réconciliation (IndexedDB, asynchrone) n'a pas encore rejoué la
-    // sauvegarde. On attend la fin de la fenêtre avant d'accepter les graines,
-    // et surtout avant de les ÉCRIRE : une écriture de graines à cet instant
-    // remplacerait une sauvegarde sur le point d'être restaurée.
-    const minuteur = window.setTimeout(() => {
-      const relecture = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
-      if (relecture) {
-        accepter(relecture);
-        return;
-      }
-      loadedRef.current = true;
-      setLoaded(true);
-      // Première visite (stock vide après la fenêtre de réconciliation) :
-      // les graines doivent être persistées pour la prochaine ouverture.
-      persister(seed, true);
-    }, FENETRE_RECONCILIATION);
-    return () => window.clearTimeout(minuteur);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, persist]);
+    demarrer(entree);
+  }, [entree]);
 
-  // Plus d'écriture automatique à chaque changement de `items` : `setItems`
-  // persiste déjà de façon synchrone (voir ci-dessous), et le chargement
-  // n'écrit que si les graines/migrations ont réellement modifié le stock.
-  // L'ancien effet réécrivait le tampon d'un écran resté monté après une
-  // relecture — un écran périmé écrasait alors la fiche qu'un autre venait de
-  // sauvegarder (ex. « Tout sauvegarder » puis passage sur Combat).
+  const items = useSyncExternalStore(abonner, lire, lireServeur);
 
-  // Écriture synchrone : chaque mise à jour est persistée aussitôt, pas
-  // seulement après ré-affichage. Sans ça, quitter la page (ex. Combat →
-  // Personnages juste après "Terminer") avant que l'effet ne s'exécute
-  // perdait la mise à jour : la page suivante rechargeait l'ancien stock.
-  // La sauvegarde a lieu dans le mutateur (idempotente) pour survivre
-  // à un démontage immédiat.
   const setItems = useCallback(
     (update: React.SetStateAction<T[]>) => {
-      if (!persist || !loadedRef.current) {
-        setItemsRaw(update);
-        return;
-      }
-      setItemsRaw((prev) => {
-        const next = typeof update === "function" ? (update as (p: T[]) => T[])(prev) : update;
-        try {
-          avecInstance(libelle, () =>
-            localStorageAdapter.save(key, next, { retourAuxGraines: next === seed })
-          );
-        } catch {
-          // Stockage indisponible : l'état mémoire reste la source de vérité.
-        }
-        return next;
-      });
+      const next =
+        typeof update === "function" ? (update as (p: T[]) => T[])(entree.items) : update;
+      if (next === entree.items) return;
+      definirItems(entree, next);
+      // Avant le chargement, on met à jour la mémoire sans écraser le stock :
+      // le chargement en cours reste la référence.
+      if (entree.loaded) persister(entree, next, libelle, next === entree.seed);
     },
-    [key, persist, libelle]
+    [entree, libelle]
   );
 
-  // Resynchronisation : un autre onglet peut modifier le stockage (événement
-  // storage), et un retour arrière / changement d'onglet peut restaurer une
-  // page montée avant (visibilité, focus). Toute écriture étant persistée
-  // aussitôt, relire converge vers des données à jour sans rien écraser
-  // d'utile (les brouillons d'édition vivent dans des états séparés).
-  // Relire NE DOIT PAS écrire : c'est un chargement, pas une modification.
-  // Une relecture suivie d'une écriture du tampon local est exactement ce qui
-  // permettait à un écran périmé de recouvrir une sauvegarde fraîche.
-  useEffect(() => {
-    if (!persist) return;
-    const relire = (cause?: string) => {
-      // Repère dans la chronologie : cette lecture vient d'une resynchronisation
-      // (et non du montage) ; `cause` notée seulement pour les cas rares et
-      // porteurs d'information (bfcache/historique), pour ne pas noyer la chrono.
-      if (cause) noterResync(key, cause);
-      const stocke = avecInstance(libelle, () => localStorageAdapter.load<T[]>(key));
-      if (stocke) setItemsRaw(preparerStock(stocke, seed, opts.migrer, opts.fusionner));
-    };
-    const surStockage = (e: StorageEvent) => {
-      if (e.key === key) {
-        // Un autre onglet vient d'écrire (ou de supprimer) : trace du contenu
-        // reçu — c'est la seule écriture qu'ici on ne verrait jamais autrement.
-        noterEvenementStockage(key, e.newValue);
-        relire();
-      }
-    };
-    const surVisibilite = () => {
-      if (document.visibilityState === "visible") relire();
-    };
-    // Restoration bfcache (←/→ ou retour après une navigation « document ») :
-    // le gel du document ne redéclenche ni visibilitychange ni focus selon les
-    // navigateurs (cas typique iPad/Safari) — pageshow est LE signal fiable de
-    // sortie de bfcache, et popstate couvre les traversées d'historique dans le
-    // même document (App Router). Sans eux, un écran restauré affiche d'anciens
-    // PV jusqu'au prochain rechargement complet.
-    const surPageshow = () => relire("pageshow");
-    const surPopstate = () => relire("popstate");
-    const surFocus = () => relire();
-    window.addEventListener("storage", surStockage);
-    document.addEventListener("visibilitychange", surVisibilite);
-    window.addEventListener("focus", surFocus);
-    window.addEventListener("pageshow", surPageshow);
-    window.addEventListener("popstate", surPopstate);
-    return () => {
-      window.removeEventListener("storage", surStockage);
-      document.removeEventListener("visibilitychange", surVisibilite);
-      window.removeEventListener("focus", surFocus);
-      window.removeEventListener("pageshow", surPageshow);
-      window.removeEventListener("popstate", surPopstate);
-    };
-    // seed / migrer : constantes de module côté appelants (mêmes valeurs à
-    // chaque rendu) ; les relire ne doit pas réabonner les écouteurs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, persist]);
-
-  return { items, setItems, loaded };
+  return { items, setItems };
 }
 
 /**

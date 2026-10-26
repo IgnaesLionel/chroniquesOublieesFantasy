@@ -11,9 +11,11 @@ describe("port des armures", () => {
   it("échelle DEF 0 à 7", () => {
     expect(ECHELLE_ARMURES.map((e) => e.def)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
     expect(nomArmureLimite(5)).toBe("Cotte de mailles");
-    // Les seeds couvrent toute l'échelle en torses équipables.
+    // Les seeds couvrent toute l'échelle en torses équipables (plusieurs
+    // variantes peuvent partager le même palier, ex. cuir renforcé / broigne).
     const torses = SEED_ITEMS.filter((o) => o.categorie === "armure" && o.emplacement !== "bouclier");
-    expect(torses.map((o) => o.bonusDefense ?? 0).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    const paliers = [...new Set(torses.map((o) => o.bonusDefense ?? 0))].sort((a, b) => a - b);
+    expect(paliers).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
 
   it("limites de base + extensions de talents", () => {

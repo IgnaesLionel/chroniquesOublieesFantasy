@@ -47,6 +47,7 @@ const inventaireSchema = z.object({
   itemId: z.string(),
   quantite: z.number().int().min(1),
   equipe: z.boolean(),
+  charges: z.number().int().min(0).optional(),
 });
 
 export const sortSchema = z.object({
@@ -171,6 +172,26 @@ export function migrerStatsLegacy(input: unknown): unknown {
   };
 }
 
+/**
+ * URL d'affichage sûre : http(s), mailto ou chemin relatif uniquement.
+ * Refuse `javascript:`, `data:`, `vbscript:`… — une fiche importée ne doit pas
+ * pouvoir injecter un lien exécutable dans l'interface.
+ */
+export function urlAffichable(url: string | undefined | null): string | null {
+  if (!url) return null;
+  const valeur = url.trim();
+  if (!valeur) return null;
+  if (/^(\/|\.\/|\.\.\/|#)/.test(valeur)) return valeur;
+  return /^(https?:|mailto:)/i.test(valeur) ? valeur : null;
+}
+
+export const urlSureSchema = z
+  .string()
+  .max(2048)
+  .refine((v) => v.trim() === "" || urlAffichable(v) !== null, {
+    message: "URL non autorisée (http, https, mailto ou chemin relatif attendu).",
+  });
+
 export const monsterSchema = z.object({
   id: z.string(),
   kind: z.literal("monstre"),
@@ -198,7 +219,7 @@ export const monsterSchema = z.object({
   rd: z.number().optional(),
   deplacement: z.number().nullable().optional(),
   initiativeFiche: z.number().optional(),
-  sourceUrl: z.string().optional(),
+  sourceUrl: urlSureSchema.optional(),
   drsSlug: z.string().regex(/^[a-z0-9-]+$/).optional(),
   v1: z.boolean().optional(),
   notes: z.string().optional(),
@@ -209,7 +230,7 @@ export const npcSchema = z.object({
   id: z.string(),
   nom: z.string().min(1),
   role: z.string().optional(),
-  portraitUrl: z.string().optional(),
+  portraitUrl: urlSureSchema.optional(),
   description: z.string().optional(),
   personnalite: z.string().optional(),
   statistiques: z.string().optional(),

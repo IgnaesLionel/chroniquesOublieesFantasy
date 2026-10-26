@@ -1,6 +1,8 @@
 import type { Item, Npc } from "@/src/lib/rules/world/types";
 
 // PNJ et objets d'exemple liés au scénario du Val Brumeux. NON officiels.
+// Valeurs monétaires en pièces d'argent (pa), comme le générateur de trésors :
+// 100 pa = 10 po = 1 pp.
 export const SEED_NPCS: Npc[] = [
   {
     id: "npc-tobin", nom: "Tobin", role: "Tavernier", exemple: true,
@@ -60,14 +62,15 @@ export const SEED_ITEMS: Item[] = [
   {
     id: "item-potion", nom: "Potion de soin", categorie: "potion", quantite: 3, exemple: true,
     description: "Fiole de liquide rouge.",
-    effet: "Rend des PV (exemple : +2d4, à valider COF V2).",
-    valeur: 25,
+    effet: "Rend des PV (1d4°).",
+    valeur: 10,
   },
   {
     id: "item-torche", nom: "Torche", categorie: "outil", quantite: 5, exemple: true,
     description: "Bâton enduit de résine.",
     effet: "Éclaire 10 m pendant 1 h (exemple).",
-    poids: 0.5, valeur: 1,
+    // 1 pa les 3 torches, donc 1/3 pa l'unité.
+    poids: 0.5, valeur: 1 / 3,
   },
   {
     id: "item-tresor", nom: "Coffret du chef", categorie: "quete", quantite: 1, exemple: true,
@@ -85,28 +88,35 @@ export const SEED_ITEMS: Item[] = [
     description: "Épée d'infanterie bien équilibrée (1 main).",
     estArme: true, bonusAttaque: 6, degats: "1d8+3",
     familles: ["epees"], mains: 1,
-    valeur: 30,
+    valeur: 6,
   },
   {
     id: "item-arc", nom: "Arc long", categorie: "arme", quantite: 1, exemple: true,
     description: "Grand arc en if (2 mains).",
     estArme: true, bonusAttaque: 5, degats: "1d8+2",
     familles: ["arcs"], mains: 2,
-    valeur: 25,
+    valeur: 8,
   },
   {
     id: "item-masse", nom: "Masse", categorie: "arme", quantite: 1, exemple: true,
     description: "Masse de guerre à tête ronde (1 main).",
     estArme: true, bonusAttaque: 4, degats: "1d6+2",
     familles: ["masses"], mains: 1,
-    valeur: 12,
+    valeur: 4,
+  },
+  {
+    id: "item-marteau", nom: "Marteau (1d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Marteau de guerre (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
+    familles: ["masses"], mains: 1,
+    valeur: 4,
   },
   {
     id: "item-baton", nom: "Bâton de marche", categorie: "arme", quantite: 1, exemple: true,
     description: "Solide bâton de chêne (2 mains).",
     estArme: true, bonusAttaque: 3, degats: "1d6+1",
     familles: ["batons"], mains: 2,
-    valeur: 2,
+    valeur: 0,
   },
   {
     id: "item-dague-poison", nom: "Dague empoisonnée", categorie: "arme", quantite: 1, exemple: true,
@@ -123,6 +133,7 @@ export const SEED_ITEMS: Item[] = [
     description: "Dague — fiche Mage/Sorcier (Contact, 1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d4",
     familles: ["dagues"], mains: 1,
+    valeur: 3,
   },
   {
     id: "item-grimoire", nom: "Grimoire (1d4)", categorie: "arme", quantite: 1, exemple: false,
@@ -141,18 +152,21 @@ export const SEED_ITEMS: Item[] = [
     description: "Arc court — fiche Rôdeur (Distance, 2 mains).",
     estArme: true, bonusAttaque: 4, degats: "1d6",
     familles: ["arcs"], mains: 2,
+    valeur: 4,
   },
   {
     id: "item-baton-ferre", nom: "Bâton ferré (1d6)", categorie: "arme", quantite: 1, exemple: false,
     description: "Bâton ferré — fiche Prêtre (Contact, 2 mains, DM +FOR).",
     estArme: true, bonusAttaque: 1, degats: "1d6",
     familles: ["batons"], mains: 2,
+    valeur: 2,
   },
   {
     id: "item-hache-1main", nom: "Hache à une main (1d8)", categorie: "arme", quantite: 1, exemple: false,
     description: "Hache à une main — fiche Guerrier (Contact, DM +FOR).",
     estArme: true, bonusAttaque: 3, degats: "1d8+2",
     familles: ["haches"], mains: 1,
+    valeur: 6,
   },
   // Équipement de départ du Guerrier (dégâts bruts des fiches, bonus = attaque de base au niv 1).
   {
@@ -160,24 +174,28 @@ export const SEED_ITEMS: Item[] = [
     description: "Épée longue — fiche Guerrier (Contact, 1 main, DM +FOR).",
     estArme: true, bonusAttaque: 3, degats: "1d8",
     familles: ["epees"], mains: 1,
+    valeur: 6,
   },
   {
     id: "item-epee-2mains-2d6", nom: "Épée à deux mains (2d6)", categorie: "arme", quantite: 1, exemple: false,
     description: "Épée à deux mains — fiche Guerrier (Contact, 2 mains, DM +FOR).",
     estArme: true, bonusAttaque: 3, degats: "2d6",
     familles: ["epees"], mains: 2,
+    valeur: 10,
   },
   {
     id: "item-hache-2mains-2d6", nom: "Hache à deux mains (2d6)", categorie: "arme", quantite: 1, exemple: false,
     description: "Hache à deux mains — fiche Guerrier (Contact, 2 mains, DM +FOR).",
     estArme: true, bonusAttaque: 3, degats: "2d6",
     familles: ["haches"], mains: 2,
+    valeur: 10,
   },
   {
     id: "item-grand-bouclier", nom: "Grand bouclier (+2 DEF)", categorie: "armure", quantite: 1, exemple: false,
     description: "Grand bouclier — fiche Guerrier (1 main).",
     effet: "DEF +2 automatique si équipé.",
     bonusDefense: 2, mains: 1, emplacement: "bouclier",
+    valeur: 4,
   },
   {
     id: "item-vetements-tissu", nom: "Vêtements en tissu (+0)", categorie: "armure", quantite: 1, exemple: false,
@@ -190,42 +208,63 @@ export const SEED_ITEMS: Item[] = [
     description: "Armure ; interdit aux profils limités aux vêtements.",
     effet: "DEF +1 automatique si équipé.",
     bonusDefense: 1, mains: 0, emplacement: "torse",
+    valeur: 2,
+  },
+  {
+    id: "item-fourrures", nom: "Fourrures (+1 DEF)", categorie: "armure", quantite: 1, exemple: true,
+    description: "Fourrures épaisses faisant office d'armure légère.",
+    effet: "DEF +1 automatique si équipées.",
+    bonusDefense: 1, mains: 0, emplacement: "torse",
+    valeur: 2,
   },
   {
     id: "item-cuir", nom: "Cuir (+2 DEF)", categorie: "armure", quantite: 1, exemple: false,
     description: "Armure de cuir simple.",
     effet: "DEF +2 automatique si équipé.",
     bonusDefense: 2, mains: 0, emplacement: "torse",
+    valeur: 4,
   },
   {
     id: "item-cuir-renforce", nom: "Cuir renforcé (+3 DEF)", categorie: "armure", quantite: 1, exemple: false,
     description: "Armure de cuir renforcé.",
     effet: "DEF +3 automatique si équipé.",
     bonusDefense: 3, mains: 0, emplacement: "torse",
+    valeur: 8,
+  },
+  {
+    id: "item-broigne", nom: "Broigne (+3 DEF)", categorie: "armure", quantite: 1, exemple: true,
+    description: "Broigne (cuir renforcé de mailles).",
+    effet: "DEF +3 automatique si équipée.",
+    bonusDefense: 3, mains: 0, emplacement: "torse",
+    valeur: 8,
   },
   {
     id: "item-chemise-mailles", nom: "Chemise de mailles (+4)", categorie: "armure", quantite: 1, exemple: false,
     description: "Chemise de mailles — fiche Guerrier (Armure intermédiaire).",
     effet: "DEF +4 automatique si équipée.",
     bonusDefense: 4, mains: 0, emplacement: "torse",
+    valeur: 15,
   },
   {
     id: "item-cotte-mailles", nom: "Cotte de mailles (+5 DEF)", categorie: "armure", quantite: 1, exemple: false,
     description: "Armure intermédiaire.",
     effet: "DEF +5 automatique si équipée.",
     bonusDefense: 5, mains: 0, emplacement: "torse",
+    valeur: 25,
   },
   {
     id: "item-armure-plaque", nom: "Armure de plaque (+6 DEF)", categorie: "armure", quantite: 1, exemple: false,
     description: "Armure de plaque.",
     effet: "DEF +6 automatique si équipée.",
     bonusDefense: 6, mains: 0, emplacement: "torse",
+    valeur: 60,
   },
   {
     id: "item-plaque-complete", nom: "Plaque complète (+7 DEF)", categorie: "armure", quantite: 1, exemple: false,
     description: "Armure de plaque complète.",
     effet: "DEF +7 automatique si équipée.",
     bonusDefense: 7, mains: 0, emplacement: "torse",
+    valeur: 200,
   },
   // Armes du module COF2 (dégâts du module, bonus neutre style fiche, familles conservées).
   {
@@ -233,54 +272,77 @@ export const SEED_ITEMS: Item[] = [
     description: "Lame d'estoc fine (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
     familles: ["estoc"], mains: 1,
+    valeur: 6,
   },
   {
     id: "item-hachette", nom: "Hachette de lancer (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Petite hache à lancer (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
     familles: ["haches", "jet"], mains: 1,
+    valeur: 2,
   },
   {
     id: "item-fleau", nom: "Fléau (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Fléau d'armes (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
     familles: ["masses"], mains: 1,
+    valeur: 5,
   },
   {
     id: "item-fleau-2mains", nom: "Fléau à deux mains (1d10)", categorie: "arme", quantite: 1, exemple: true,
     description: "Grand fléau de guerre (2 mains).",
     estArme: true, bonusAttaque: 0, degats: "1d10+FOR",
     familles: ["masses"], mains: 2,
+    valeur: 8,
   },
   {
     id: "item-lance", nom: "Lance (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Lance polyvalente (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
     familles: ["lances"], mains: 1,
+    valeur: 4,
+  },
+  {
+    id: "item-lance-cavalerie", nom: "Lance de cavalerie (2d6)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Lance de cavalerie, utilisable à cheval avec élan (1 main).",
+    estArme: true, bonusAttaque: 0, degats: "2d6+FOR",
+    familles: ["lances"], mains: 1,
+    valeur: 8,
   },
   {
     id: "item-epieu", nom: "Épieu (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Épieu de chasse (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
     familles: ["lances"], mains: 1,
+    valeur: 4,
+  },
+  {
+    id: "item-pique", nom: "Pique (1d10)", categorie: "arme", quantite: 1, exemple: true,
+    description: "Longue pique d'infanterie (2 mains).",
+    estArme: true, bonusAttaque: 0, degats: "1d10+FOR",
+    familles: ["lances"], mains: 2,
+    valeur: 5,
   },
   {
     id: "item-javelot", nom: "Javelot (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Javelot à lancer (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6",
     familles: ["lances", "jet"], mains: 1,
+    valeur: 1,
   },
   {
     id: "item-fronde", nom: "Fronde (1d4)", categorie: "arme", quantite: 1, exemple: true,
     description: "Fronde à billes (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d4",
     familles: ["jet"], mains: 1,
+    valeur: 0,
   },
   {
     id: "item-lance-pierre", nom: "Lance-pierre (1d3)", categorie: "arme", quantite: 1, exemple: true,
     description: "Lance-pierre artisanal (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d3",
     familles: ["jet"], mains: 1,
+    valeur: 0.1,
   },
   {
     id: "item-mousquet", nom: "Mousquet (2d6)", categorie: "arme", quantite: 1, exemple: true,
@@ -299,24 +361,28 @@ export const SEED_ITEMS: Item[] = [
     description: "Arbalète légère (2 mains).",
     estArme: true, bonusAttaque: 0, degats: "2d4",
     familles: ["arbaletes"], mains: 2,
+    valeur: 10,
   },
   {
     id: "item-arbalete-lourde", nom: "Arbalète lourde (2d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Arbalète lourde (2 mains).",
     estArme: true, bonusAttaque: 0, degats: "2d6",
     familles: ["arbaletes"], mains: 2,
+    valeur: 15,
   },
   {
     id: "item-arbalete-poing", nom: "Arbalète de poing (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Petite arbalète de poing (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6",
     familles: ["arbaletes"], mains: 1,
+    valeur: 8,
   },
   {
     id: "item-epee-courte", nom: "Épée courte (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Épée courte polyvalente (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d6+FOR",
     familles: ["epees"], mains: 1,
+    valeur: 5,
   },
   {
     id: "item-cimeterre", nom: "Cimeterre (1d8)", categorie: "arme", quantite: 1, exemple: true,
@@ -329,30 +395,35 @@ export const SEED_ITEMS: Item[] = [
     description: "Vivelame à deux mains.",
     estArme: true, bonusAttaque: 0, degats: "1d10+FOR",
     familles: ["epees"], mains: 2,
+    valeur: 15,
   },
   {
     id: "item-epee-batarde", nom: "Épée bâtarde (1d12)", categorie: "arme", quantite: 1, exemple: true,
     description: "Épée bâtarde versatile (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d12+FOR",
     familles: ["epees"], mains: 1,
+    valeur: 9,
   },
   {
     id: "item-stylet", nom: "Stylet (1d6)", categorie: "arme", quantite: 1, exemple: true,
     description: "Stylet effilé (1 main, DM +AGI).",
     estArme: true, bonusAttaque: 0, degats: "1d6+AGI",
     familles: ["dagues"], mains: 1,
+    valeur: 1,
   },
   {
     id: "item-couteaux-lancer", nom: "Couteaux de lancer (1d4)", categorie: "arme", quantite: 3, exemple: true,
     description: "Couteaux équilibrés pour le lancer (1 main, DM +AGI).",
     estArme: true, bonusAttaque: 0, degats: "1d4+AGI",
     familles: ["dagues", "jet"], mains: 1,
+    valeur: 3,
   },
   {
     id: "item-gourdin", nom: "Gourdin (1d4)", categorie: "arme", quantite: 1, exemple: true,
     description: "Solide gourdin (1 main).",
     estArme: true, bonusAttaque: 0, degats: "1d4+FOR",
     familles: ["gourdins"], mains: 1,
+    valeur: 1,
   },
   // Bouclier manquant du module.
   {
@@ -360,28 +431,60 @@ export const SEED_ITEMS: Item[] = [
     description: "Petit bouclier (1 main).",
     effet: "DEF +1 automatique si équipé.",
     bonusDefense: 1, mains: 1, emplacement: "bouclier",
+    valeur: 2,
   },
   // Équipement d'aventure du module (mécanique uniquement, sans texte du livre).
   {
-    id: "item-corde", nom: "Corde (10 m)", categorie: "outil", quantite: 1, exemple: true,
-    description: "Corde solide de 10 m.",
+    id: "item-corde", nom: "Corde (15 m)", categorie: "outil", quantite: 1, exemple: true,
+    description: "Corde solide de 15 m.",
+    valeur: 2,
+  },
+  {
+    id: "item-briquet", nom: "Briquet à silex", categorie: "outil", quantite: 1, exemple: true,
+    description: "Briquet à silex pour allumer un feu.",
+    valeur: 1,
+  },
+  {
+    id: "item-carquois", nom: "Carquois de 20 flèches", categorie: "divers", quantite: 1, exemple: true,
+    description: "Carquois contenant 20 flèches.",
+    valeur: 3,
+  },
+  {
+    id: "item-couverture", nom: "Couverture", categorie: "divers", quantite: 1, exemple: true,
+    description: "Couverture de voyage.",
+    valeur: 1,
+  },
+  {
+    id: "item-torches-lot", nom: "Torches (x3)", categorie: "outil", quantite: 1, exemple: true,
+    description: "Lot de 3 torches.",
+    effet: "Chaque torche éclaire 10 m pendant 1 h.",
+    valeur: 1,
   },
   {
     id: "item-outils-crochetage", nom: "Outils de crochetage", categorie: "outil", quantite: 1, exemple: true,
     description: "Rossignols et sondes pour crocheter serrures (MJ : test PER/AGI).",
+    valeur: 5,
+  },
+  {
+    id: "item-materiel-ecriture", nom: "Matériel d'écriture", categorie: "outil", quantite: 1, exemple: true,
+    description: "Plume, encre et papier pour écrire.",
+    valeur: 5,
   },
   {
     id: "item-grappin", nom: "Grappin", categorie: "outil", quantite: 1, exemple: true,
     description: "Grappin d'escalade, s'utilise avec une corde.",
+    valeur: 2,
   },
   {
     id: "item-lanterne", nom: "Lanterne à huile", categorie: "outil", quantite: 1, exemple: true,
     description: "Lanterne à huile.",
     effet: "Éclaire 10 m (consomme de l'huile, MJ).",
+    valeur: 3,
   },
   {
     id: "item-huile", nom: "Huile pour lanterne", categorie: "outil", quantite: 1, exemple: true,
     description: "Fiole d'huile pour lanterne.",
+    valeur: 1,
   },
   {
     id: "item-grimoire-vierge", nom: "Grimoire vierge", categorie: "outil", quantite: 1, exemple: true,
@@ -393,8 +496,75 @@ export const SEED_ITEMS: Item[] = [
   },
   {
     id: "item-ration", nom: "Ration de voyage", categorie: "divers", quantite: 1, exemple: true,
-    description: "Nourriture de voyage.",
-    effet: "Un jour de nourriture (MJ).",
+    description: "Nourriture de voyage pour une semaine.",
+    effet: "Une semaine de nourriture (MJ).",
+    valeur: 4,
+  },
+  {
+    id: "item-sac-a-dos", nom: "Sac à dos", categorie: "divers", quantite: 1, exemple: true,
+    description: "Sac à dos d'aventurier.",
+    valeur: 1,
+  },
+  // Auberge (prix en pa ; 1 pc = 0,1 pa).
+  {
+    id: "item-cidre-lait", nom: "Cidre ou lait (verre)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Un verre de cidre ou de lait.",
+    valeur: 0.1,
+  },
+  {
+    id: "item-cervoise-biere", nom: "Cervoise ou bière (pinte)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Une pinte de cervoise ou de bière.",
+    valeur: 0.2,
+  },
+  {
+    id: "item-hydromel-vin", nom: "Hydromel ou vin (verre)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Un verre d'hydromel ou de vin.",
+    valeur: 0.5,
+  },
+  {
+    id: "item-grand-cru", nom: "Grand cru (bouteille)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Bouteille de grand cru. Prix selon la qualité : 5 à 50 pa.",
+    valeur: 5,
+  },
+  {
+    id: "item-soupe-pain", nom: "Soupe et pain", categorie: "divers", quantite: 1, exemple: true,
+    description: "Bol de soupe accompagné de pain.",
+    valeur: 0.1,
+  },
+  {
+    id: "item-repas-viande", nom: "Repas avec viande", categorie: "divers", quantite: 1, exemple: true,
+    description: "Repas simple avec viande.",
+    valeur: 1,
+  },
+  {
+    id: "item-bon-repas", nom: "Bon repas", categorie: "divers", quantite: 1, exemple: true,
+    description: "Repas de qualité.",
+    valeur: 5,
+  },
+  {
+    id: "item-banquet", nom: "Banquet", categorie: "divers", quantite: 1, exemple: true,
+    description: "Banquet. Prix selon le faste : 10 à 20 pa.",
+    valeur: 10,
+  },
+  {
+    id: "item-nuit-dortoir", nom: "Nuit (dortoir)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Une nuit en dortoir.",
+    valeur: 0.5,
+  },
+  {
+    id: "item-nuit-chambre-4", nom: "Nuit (chambre de 4)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Une nuit en chambre partagée de 4.",
+    valeur: 1,
+  },
+  {
+    id: "item-nuit-chambre-individuelle", nom: "Nuit (chambre individuelle)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Une nuit en chambre individuelle. Prix selon le confort : 2 à 5 pa.",
+    valeur: 2,
+  },
+  {
+    id: "item-nuit-suite", nom: "Nuit (suite)", categorie: "divers", quantite: 1, exemple: true,
+    description: "Une nuit en suite. Prix selon le luxe : 10 à 20 pa.",
+    valeur: 10,
   },
   {
     id: "item-charge-explosive", nom: "Charge explosive", categorie: "outil", quantite: 1, exemple: true,

@@ -6,6 +6,7 @@ import { CreateurObjet } from "@/src/components/tresors/CreateurObjet";
 import { DonObjet } from "@/src/components/tresors/DonObjet";
 import { ARME_FAMILLES, DEGAT_LABEL, ITEM_CATEGORIES, labelFamilleArme, type ArmeFamille, type DegatType, type Item, type ItemCategorie } from "@/src/lib/rules/world/types";
 import { libelleMains } from "@/src/lib/rules/equipement";
+import { Modal } from "@/src/components/ui/Modal";
 
 const CAT_LABEL: Record<ItemCategorie, string> = {
   arme: "Armes", armure: "Armures", potion: "Potions", quete: "Quête", outil: "Outils", argent: "Argent", divers: "Divers",
@@ -145,8 +146,12 @@ export function CatalogueObjets() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+        <Modal
+          ouvert
+          onFermer={() => setEditing(null)}
+          ariaLabel={`Éditer ${editing.nom}`}
+          classePanneau="bg-zinc-900 border border-zinc-700 rounded-lg p-5 w-full max-w-2xl space-y-3 max-h-[90vh] overflow-y-auto"
+        >
             <h2 className="font-bold">Éditer {editing.nom}</h2>
             <CreateurObjet
               key={editing.id}
@@ -157,8 +162,7 @@ export function CatalogueObjets() {
               }}
               onAnnuler={() => setEditing(null)}
             />
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

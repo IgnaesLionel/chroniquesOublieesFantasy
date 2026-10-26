@@ -61,6 +61,17 @@ describe("propriétés prédéfinies du créateur", () => {
     expect(fusion).toEqual([{ itemId: "item-epee", quantite: 3, equipe: false }]);
   });
 
+  it("don : initialise et cumule les charges d'une baguette", () => {
+    const baguette = ajouterAInventaire([], "item-baguette-feu", 1, 12);
+    expect(baguette).toEqual([
+      { itemId: "item-baguette-feu", quantite: 1, equipe: false, charges: 12 },
+    ]);
+    const seconde = ajouterAInventaire(baguette, "item-baguette-feu", 1, 7);
+    expect(seconde).toEqual([
+      { itemId: "item-baguette-feu", quantite: 2, equipe: false, charges: 19 },
+    ]);
+  });
+
   it("recherche catalogue : nom insensible casse/accents, combinée aux filtres", () => {
     const tout = { recherche: "", categorie: "toutes", famille: "toutes" } as const;
     expect(filtrerCatalogue(SEED_ITEMS, tout)).toHaveLength(SEED_ITEMS.length);

@@ -167,6 +167,25 @@ export interface CombatLogEntry {
   message: string;
 }
 
+/**
+ * Onde de Phénix en attente de la sélection du MJ : le prêtre est déjà relevé
+ * (soin double), les alliés à 20 m restent à cocher dans la pop-up. Les
+ * positions ne sont pas suivies par le moteur (choix MJ).
+ */
+export interface PhenixEnAttente {
+  pretreId: string;
+  pretreNom: string;
+  /** PV rendus à chaque allié sélectionné. */
+  montant: number;
+  /** PV rendus au prêtre (double), déjà appliqués. */
+  montantPretre: number;
+  /** Dés du jet unique (2d4°). */
+  details: number[];
+  /** Alliés vivants ou KO au déclenchement, cibles possibles de l'onde. */
+  candidats: string[];
+  manche: number;
+}
+
 export interface CombatState {
   id: string;
   participants: CombatParticipant[];
@@ -176,6 +195,8 @@ export interface CombatState {
   log: CombatLogEntry[];
   termine: boolean;
   gagnant: Camp | "egalite" | null;
+  /** Ondes de Phénix à résoudre par le MJ (une pop-up par prêtre). */
+  phenixEnAttente?: PhenixEnAttente[];
 }
 
 export interface CritOptions {

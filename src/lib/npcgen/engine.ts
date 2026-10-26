@@ -1018,7 +1018,7 @@ export function regenererChamp(
   if (valeur === undefined) {
     return { ...resultat, npc, warnings: [...resultat.warnings, `Champ « ${chemin} » inconnu : fiche inchangée.`] };
   }
-  let suivant = ecrireChamp(npc, chemin, structuredClone(valeur));
+  const suivant = ecrireChamp(npc, chemin, structuredClone(valeur));
   suivant.champs[chemin] = {
     ...(resultat.npc.champs[chemin] ?? { mode: "table" }),
     verrouille: npc.champs[chemin]?.verrouille ?? false,

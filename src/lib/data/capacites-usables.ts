@@ -118,7 +118,7 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: null,
     cibles: "allies",
     soin: "2d4°+CHA",
-    note: "Automatique 1/jour (moteur : déclenché à 0 PV, jet unique, alliés 20 m au montant, prêtre au double). Le bouton reste en secours MJ (1 cible).",
+    note: "Automatique 1/jour (moteur : déclenché à 0 PV, jet unique, prêtre au double). Pop-up MJ pour cocher les alliés à 20 m. Le bouton reste en secours MJ (1 cible).",
   },
   {
     talent: "Attaque puissante",

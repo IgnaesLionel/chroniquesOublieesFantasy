@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useCharacters } from "@/src/lib/store/collections";
 import { useCatalogueObjets } from "@/src/lib/store/useCatalogueObjets";
 import { ajouterAInventaire } from "@/src/lib/rules/equipement";
+import { chargesInitialesObjet, natureObjetCombat } from "@/src/lib/rules/combat/objets";
 import { objetTresorVersItem, type ObjetMagiqueTire } from "@/src/lib/rules/objetsMagiques";
 
 interface Props {
@@ -25,10 +26,15 @@ export function AttributionObjet({ objet }: Props) {
       `custom-${Date.now().toString(36)}`
     );
     setMaison((prev) => [...prev, item]);
+    const charges =
+      natureObjetCombat(item) === "baguette" ? chargesInitialesObjet(item) ?? undefined : undefined;
     setCharacters((prev) =>
       prev.map((c) => {
         if (c.id !== beneficiaireId) return c;
-        return { ...c, inventaire: ajouterAInventaire(c.inventaire ?? [], item.id, item.quantite) };
+        return {
+          ...c,
+          inventaire: ajouterAInventaire(c.inventaire ?? [], item.id, item.quantite, charges),
+        };
       })
     );
     setMessage(`${item.nom} → ${cible.nom} (inventaire, non équipé ; ajustable dans le catalogue).`);

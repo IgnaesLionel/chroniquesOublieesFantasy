@@ -38,6 +38,7 @@ import type {
   CombatOptions,
   CombatParticipant,
   CombatState,
+  PhenixEnAttente,
   SortAbsorbe,
   TypeAttaqueGratuite,
 } from "@/src/lib/rules/combat/types";
@@ -2809,21 +2810,11 @@ export function phenixDisponible(
   return !dejaUtiliseAujourdhui(CLE_PHENIX, pretre.usagesJournaliers);
 }
 
-export function declencherPhenix(
-  state: CombatState,
-  pretreId: string,
-  rng: Rng = Math.random,
-  cibleIds?: string[]
-): { state: CombatState; resolution: PhenixResolution } {
-  const pretre = state.participants.find((p) => p.instanceId === pretreId);
-  if (!pretre) throw new Error("Prêtre introuvable.");
-  if (!pretre.capacites.some((t) => cleSort(t) === CLE_PHENIX)) {
-    throw new Error(`${pretre.nom} ne connaît pas Phénix.`);
-  }
-  if (pretre.pv > 0) throw new Error(`${pretre.nom} n'est pas à 0 PV (Phénix : déclencheur à 0 PV).`);
-  if (dejaUtiliseAujourdhui(CLE_PHENIX, pretre.usagesJournaliers)) {
-    throw new Error(`${pretre.nom} : Phénix déjà utilisé aujourd'hui (1/jour).`);
-  }
+/** Jet unique de l'onde : 2d4° + CHA. */
+function jetPhenix(
+  pretre: CombatParticipant,
+  rng: Rng
+): { cha: number; details: number[]; montant: number; montantPretre: number } {
   const cha = chaEffectif(pretre);
   const niv = niveauEffectif(pretre);
   const faces = (() => {
@@ -2836,51 +2827,145 @@ export function declencherPhenix(
   })();
   const details = [Math.floor(rng() * faces) + 1, Math.floor(rng() * faces) + 1];
   const montant = details[0] + details[1] + cha;
-  const montantPretre = montant * 2;
-  const cibles =
-    cibleIds ??
-    state.participants
-      .filter((p) => p.camp === pretre.camp && p.instanceId !== pretreId)
-      .map((p) => p.instanceId);
+  return { cha, details, montant, montantPretre: montant * 2 };
+}
+
+/**
+ * Déclenchement immédiat : le prêtre se relève (soin double) et la dépense
+ * journalière est consommée. L'onde sur les alliés reste en attente dans
+ * `state.phenixEnAttente` : la pop-up du MJ coche ceux qui sont à 20 m.
+ */
+export function preparerPhenix(
+  state: CombatState,
+  pretreId: string,
+  rng: Rng = Math.random
+): { state: CombatState; attente: PhenixEnAttente; resolution: PhenixResolution } {
+  const pretre = state.participants.find((p) => p.instanceId === pretreId);
+  if (!pretre) throw new Error("Prêtre introuvable.");
+  if (!pretre.capacites.some((t) => cleSort(t) === CLE_PHENIX)) {
+    throw new Error(`${pretre.nom} ne connaît pas Phénix.`);
+  }
+  if (pretre.pv > 0) throw new Error(`${pretre.nom} n'est pas à 0 PV (Phénix : déclencheur à 0 PV).`);
+  if (dejaUtiliseAujourdhui(CLE_PHENIX, pretre.usagesJournaliers)) {
+    throw new Error(`${pretre.nom} : Phénix déjà utilisé aujourd'hui (1/jour).`);
+  }
+  const jet = jetPhenix(pretre, rng);
+  const pvAvant = pretre.pv;
+  const pvApres = Math.min(pretre.pvMax, pvAvant + jet.montantPretre);
+  const participants = state.participants.map((p) =>
+    p.instanceId === pretreId
+      ? {
+          ...p,
+          pv: pvApres,
+          statut: pvApres > 0 ? ("actif" as const) : p.statut,
+          usagesJournaliers: incrementerJournalier(p.usagesJournaliers, CLE_PHENIX),
+          soinMagiqueRecu: true,
+        }
+      : p
+  );
+  const attente: PhenixEnAttente = {
+    pretreId,
+    pretreNom: pretre.nom,
+    montant: jet.montant,
+    montantPretre: jet.montantPretre,
+    details: jet.details,
+    candidats: participants
+      .filter((p) => p.camp === pretre.camp && p.instanceId !== pretreId && p.statut !== "mort")
+      .map((p) => p.instanceId),
+    manche: state.manche,
+  };
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const log = [
+    ...state.log,
+    {
+      id: id("phenix"),
+      at: stamp(),
+      manche: state.manche,
+      message: `Phénix : ${pretre.nom} se relève à 0 PV (1/jour) — jet 2d4°+CHA(${jet.cha}) [${jet.details.join(", ")}] = ${jet.montant} PV aux alliés à 20 m, ${jet.montantPretre} PV au prêtre (double)${attente.candidats.length > 0 ? ". Sélection MJ des alliés à portée." : "."}`,
+    },
+  ];
+  return {
+    state: checkEnd({
+      ...state,
+      participants,
+      log,
+      phenixEnAttente: [...(state.phenixEnAttente ?? []), attente],
+    }),
+    attente,
+    resolution: {
+      lanceurNom: pretre.nom,
+      montant: jet.montant,
+      montantPretre: jet.montantPretre,
+      details: jet.details,
+      soignes: [{ cibleNom: pretre.nom, pvAvant, pvApres, pretre: true }],
+    },
+  };
+}
+
+/**
+ * Applique l'onde de Phénix aux alliés cochés par le MJ. Seuls les candidats
+ * enregistrés au déclenchement (alliés vivants/KO) sont acceptés : jamais un
+ * ennemi ni un mort. Retire l'attente et journalise les soins.
+ */
+export function resoudrePhenixEnAttente(
+  state: CombatState,
+  pretreId: string,
+  cibleIds: string[]
+): { state: CombatState; soignes: PhenixResolution["soignes"] } {
+  const attente = state.phenixEnAttente?.find((a) => a.pretreId === pretreId);
+  if (!attente) throw new Error("Phénix : aucune onde en attente.");
+  const autorises = new Set(attente.candidats);
+  const ids = [...new Set(cibleIds)].filter((id) => autorises.has(id));
   const soignes: PhenixResolution["soignes"] = [];
   const participants = state.participants.map((p) => {
-    if (p.instanceId === pretreId) {
-      const pvAvant = p.pv;
-      const pvApres = Math.min(p.pvMax, pvAvant + montantPretre);
-      soignes.push({ cibleNom: p.nom, pvAvant, pvApres, pretre: true });
-      return {
-        ...p,
-        pv: pvApres,
-        statut: pvApres > 0 ? ("actif" as const) : p.statut,
-        usagesJournaliers: incrementerJournalier(p.usagesJournaliers, CLE_PHENIX),
-        soinMagiqueRecu: true,
-      };
-    }
-    if (cibles.includes(p.instanceId)) {
-      const pvAvant = p.pv;
-      const pvApres = Math.min(p.pvMax, pvAvant + montant);
-      soignes.push({ cibleNom: p.nom, pvAvant, pvApres, pretre: false });
-      return {
-        ...p,
-        pv: pvApres,
-        statut: pvApres > 0 ? ("actif" as const) : p.statut,
-        soinMagiqueRecu: true,
-      };
-    }
-    return p;
+    if (!ids.includes(p.instanceId) || p.statut === "mort") return p;
+    const pvAvant = p.pv;
+    const pvApres = Math.min(p.pvMax, pvAvant + attente.montant);
+    soignes.push({ cibleNom: p.nom, pvAvant, pvApres, pretre: false });
+    return {
+      ...p,
+      pv: pvApres,
+      statut: pvApres > 0 ? ("actif" as const) : p.statut,
+      soinMagiqueRecu: true,
+    };
   });
   const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const log = [...state.log];
-  log.push({
-    id: id("phenix"), at: stamp(), manche: state.manche,
-    message: `Phénix : ${pretre.nom} se relève à 0 PV (1/jour) — onde 2d4°+CHA(${cha}) [${details.join(", ")}] = ${montant} aux alliés (${cibles.length}), ${montantPretre} au prêtre (double)`,
-  });
-  for (const s of soignes) {
-    log.push({ id: id("phsoin"), at: stamp(), manche: state.manche, message: `${s.cibleNom} : ${s.pvAvant} -> ${s.pvApres} PV${s.pretre ? " (double)" : ""}` });
-  }
+  const detailsSoins = soignes.map((s) => `${s.cibleNom} ${s.pvAvant} -> ${s.pvApres} PV`);
+  const log = [
+    ...state.log,
+    {
+      id: id("phonde"),
+      at: stamp(),
+      manche: state.manche,
+      message: `Phénix : onde de ${attente.montant} PV — ${soignes.length > 0 ? `${soignes.length} allié(s) soigné(s) : ${detailsSoins.join(" · ")}` : "aucun allié à portée."}`,
+    },
+  ];
   return {
-    state: checkEnd({ ...state, participants, log }),
-    resolution: { lanceurNom: pretre.nom, montant, montantPretre, details, soignes },
+    state: checkEnd({
+      ...state,
+      participants,
+      log,
+      phenixEnAttente: (state.phenixEnAttente ?? []).filter((a) => a.pretreId !== pretreId),
+    }),
+    soignes,
+  };
+}
+
+/** Version tout-en-un (tests, appels MJ explicites) : onde résolue aussitôt. */
+export function declencherPhenix(
+  state: CombatState,
+  pretreId: string,
+  rng: Rng = Math.random,
+  cibleIds?: string[]
+): { state: CombatState; resolution: PhenixResolution } {
+  const prep = preparerPhenix(state, pretreId, rng);
+  const onde = resoudrePhenixEnAttente(prep.state, pretreId, cibleIds ?? prep.attente.candidats);
+  return {
+    state: onde.state,
+    resolution: {
+      ...prep.resolution,
+      soignes: [...prep.resolution.soignes, ...onde.soignes],
+    },
   };
 }
 
@@ -2888,7 +2973,9 @@ export function declencherPhenix(
  * Balaye le combat après des dégâts : tout prêtre à 0 PV avec Phénix
  * disponible se relève aussitôt (même s'il n'a pas encore agi ce round).
  * À appeler après chaque application de dégâts (resolveAttack, zones...).
- * MJ : `cibleIdsParPretre` = alliés dans 20 m (défaut = tout le camp).
+ * Sans sélection MJ (`cibleIdsParPretre` absent), une onde est mise en attente
+ * et la pop-up de combat demande les alliés à 20 m. Avec sélection, l'onde
+ * est appliquée immédiatement (tests / appels explicites).
  */
 export function appliquerPhenixAutomatique(
   state: CombatState,
@@ -2902,7 +2989,15 @@ export function appliquerPhenixAutomatique(
     if (!frais.capacites.some((t) => cleSort(t) === CLE_PHENIX)) continue;
     if (dejaUtiliseAujourdhui(CLE_PHENIX, frais.usagesJournaliers)) continue;
     try {
-      s = declencherPhenix(s, frais.instanceId, rng, cibleIdsParPretre?.[frais.instanceId]).state;
+      const ids = cibleIdsParPretre?.[frais.instanceId];
+      if (ids !== undefined) {
+        s = declencherPhenix(s, frais.instanceId, rng, ids).state;
+      } else {
+        const prep = preparerPhenix(s, frais.instanceId, rng);
+        s = prep.attente.candidats.length > 0
+          ? prep.state
+          : resoudrePhenixEnAttente(prep.state, frais.instanceId, []).state;
+      }
     } catch {
       // Quota/état incohérent : ne bloque pas la résolution des dégâts.
     }

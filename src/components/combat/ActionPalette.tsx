@@ -4,7 +4,7 @@ import type { ActionDRS } from "@/src/lib/rules/types";
 import { ACTION_DESCRIPTION } from "@/src/lib/data/capacites";
 import { ActionBadge } from "@/src/components/ui/ActionBadge";
 
-export type TypeActionCombat = "attaque" | "soutien" | "capacite";
+export type TypeActionCombat = "attaque" | "soutien" | "capacite" | "objet";
 
 export interface SelectionActionCombat {
   type: TypeActionCombat;
@@ -29,6 +29,7 @@ const GROUPES: { type: TypeActionCombat; titre: string; icone: string; teinte: s
   { type: "attaque", titre: "Attaques", icone: "⚔️", teinte: "text-red-300" },
   { type: "soutien", titre: "Soutien", icone: "🛡️", teinte: "text-emerald-300" },
   { type: "capacite", titre: "Capacités", icone: "✨", teinte: "text-amber-300" },
+  { type: "objet", titre: "Objets", icone: "🎒", teinte: "text-sky-300" },
 ];
 
 const FILTRES: { id: "tous" | TypeActionCombat; label: string }[] = [
@@ -36,6 +37,7 @@ const FILTRES: { id: "tous" | TypeActionCombat; label: string }[] = [
   { id: "attaque", label: "Attaques" },
   { id: "soutien", label: "Soutien" },
   { id: "capacite", label: "Capacités" },
+  { id: "objet", label: "Objets" },
 ];
 
 function sansAccents(valeur: string): string {
@@ -61,7 +63,7 @@ export function ActionPalette({ entrees, selection, onSelection }: Props) {
   const [recherche, setRecherche] = useState("");
 
   const compte = useMemo(() => {
-    const parType: Record<TypeActionCombat, number> = { attaque: 0, soutien: 0, capacite: 0 };
+    const parType: Record<TypeActionCombat, number> = { attaque: 0, soutien: 0, capacite: 0, objet: 0 };
     for (const e of entrees) parType[e.type] += 1;
     return parType;
   }, [entrees]);
