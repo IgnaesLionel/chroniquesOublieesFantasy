@@ -13,6 +13,7 @@
 import { getModifier } from "@/src/lib/rules/effects/effects";
 import type { AttackDef } from "@/src/lib/rules/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
+import { bonusAttaqueTalents } from "@/src/lib/rules/personnage";
 
 /** Situation du jet construite par l'interface (options tactiques, talents). */
 export interface SituationAttaque {
@@ -41,8 +42,9 @@ export interface ComposantesAttaque {
 
 /** Décompose le bonus d'attaque effectif, comme `resolveAttack`. */
 export function composantesAttaque(
-  attaquant: Pick<CombatParticipant, "effets" | "famillePredilection">,
-  attaque: Pick<AttackDef, "bonus" | "familles">,
+  attaquant: Pick<CombatParticipant, "effets" | "famillePredilection"> &
+    Partial<Pick<CombatParticipant, "capacites" | "sorts" | "profil" | "caracs" | "niveau">>,
+  attaque: Pick<AttackDef, "bonus" | "familles"> & { nom?: string },
   situation: SituationAttaque = {}
 ): ComposantesAttaque {
   const base = situation.bonusOverride ?? attaque.bonus;
@@ -52,7 +54,24 @@ export function composantesAttaque(
     situation.arme && attaquant.famillePredilection && (attaque.familles ?? []).includes(attaquant.famillePredilection)
       ? 1
       : 0;
-  return { base, modEffets, modDistance, predilection, bonus: base + modEffets + modDistance + predilection };
+  const bonusTalents = bonusAttaqueTalents(
+    {
+      capacites: attaquant.capacites,
+      sorts: attaquant.sorts,
+      profil: attaquant.profil,
+      caracs: attaquant.caracs,
+      niveau: attaquant.niveau,
+    },
+    attaque,
+    !!situation.distance
+  );
+  return {
+    base,
+    modEffets,
+    modDistance,
+    predilection,
+    bonus: base + modEffets + modDistance + predilection + bonusTalents,
+  };
 }
 
 /** Seuil à atteindre : DEF + effets de la cible (ou difficulté fixe du sort). */

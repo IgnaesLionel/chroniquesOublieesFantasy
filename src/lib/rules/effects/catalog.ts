@@ -41,6 +41,9 @@ export const EFFECT_CATALOG: EffectTemplate[] = [
   { key: "saignement", nom: "Saignement", description: "Perd 2 PV au début de son tour (générique).", dureeDefaut: 3, modificateurs: { pvParTour: -2 } },
   { key: "protection", nom: "Protection", description: "+2 défense (générique).", dureeDefaut: 3, modificateurs: { defense: 2 } },
   { key: "bonus-attaque", nom: "Bonus d'attaque", description: "+2 attaque (générique).", dureeDefaut: 2, modificateurs: { attaque: 2 } },
+  // Bénédiction (Prêtre, Voie de la prière) : chant de groupe, +1 aux tests et
+  // attaques (le +2 du rang 5 reste à ajuster par le MJ).
+  { key: "benediction", nom: "Bénédiction", description: "Chant sacré : +1 aux tests et attaques (+2 au rang 5, à ajuster par le MJ).", dureeDefaut: null, modificateurs: { attaque: 1 } },
   { key: "brulure", nom: "Brûlure", description: "Perd 1 PV au début de son tour (Feu, générique).", dureeDefaut: 2, modificateurs: { pvParTour: -1 } },
   { key: "gele", nom: "Gelé", description: "−1 attaque, ralenti (Glace, générique).", dureeDefaut: 1, modificateurs: { attaque: -1 } },
   { key: "concentration", nom: "Concentration", description: "Marqueur, aucun modificateur.", dureeDefaut: null, modificateurs: {} },

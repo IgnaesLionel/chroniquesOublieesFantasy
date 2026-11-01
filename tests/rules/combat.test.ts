@@ -4,7 +4,7 @@ import type { AttackDef } from "@/src/lib/rules/types";
 import type { ArmeFamille } from "@/src/lib/rules/world/types";
 import { DEFAULT_COMBAT_OPTIONS } from "@/src/lib/rules/combat/types";
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives } from "@/src/lib/rules/combat/initiative";
-import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, estCadavre, estZombie, etatLimite, animerCadavre, animerCadavreProfil, profilAnimable, bonusOppositionContact, frapperCibles, frapperZone, invoquer, invoquerCompagnon, payerCoutSort, protegerAllie, raisonExigeVivant, raisonSeuilPv, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, tailleAcceptee, tenterSortieEnseveli, utiliserCapacite, MALUS_ANIMATION, NC_MAX_ANIMATION } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyCoutPV, appliquerResultatsCombat, castSoutien, checkEnd, construireLoupCompagnon, coutEffectifSort, depenserChanceApresCoup, estAttaqueContact, estCadavre, estZombie, estZonePersistanteSort, etatLimite, animerCadavre, animerCadavreProfil, profilAnimable, bonusOppositionContact, frapperCibles, frapperZone, lancerZonePersistante, appliquerZonePersistante, zonePersistanteATraiter, invoquer, invoquerCompagnon, payerCoutSort, protegerAllie, raisonExigeVivant, raisonSeuilPv, renvoyerSort, reporterRessource, resolveAttack, resynchroniserDepuisFiche, sortUtilisable, tailleAcceptee, tenterSortieEnseveli, utiliserCapacite, MALUS_ANIMATION, NC_MAX_ANIMATION } from "@/src/lib/rules/combat/attack";
 import { monsterInstances, nomBaseInstance, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import { fixedRng, parseDiceExpression, substituerDesEvolutifs, substituerStats } from "@/src/lib/rules/dice/roller";
 import { SEED_MONSTERS, SEED_CHARACTERS } from "@/src/lib/data/seeds";
@@ -12,7 +12,7 @@ import { SEED_ITEMS } from "@/src/lib/data/worldSeeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import { CAPACITES } from "@/src/lib/data/capacites";
 import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
-import { createEffect, pvParTourTotal } from "@/src/lib/rules/effects/effects";
+import { createEffect, canAct, pvParTourTotal } from "@/src/lib/rules/effects/effects";
 import { maxZombiesControles, normaliserNomCapacite } from "@/src/lib/rules/personnage";
 
 function pj(nom = "Guerrier", defense = 18): CombatParticipant {
@@ -580,6 +580,29 @@ describe("sorcier (voies du livre)", () => {
     expect(() => resolveAttack(r1.state, a, t, "sort:e", fixedRng([0.9, 0.1]))).toThrow(/limite 1\/combat/);
   });
 
+  it("Ensevelissement (fiche réelle) : un seul lancer par combat, même raté", () => {
+    const sort = SEED_SORTS.find((s) => s.id === "sort-ensevelissement")!;
+    // Fiche réelle (même chemin qu'en combat : complétion depuis le grimoire,
+    // attaque magique niv+VOL) : le verrou doit tenir aussi via l'interface.
+    const fiche = {
+      ...SEED_CHARACTERS.find((c) => c.id === "pj-sorcier-humain")!,
+      niveau: 10,
+      pvMax: 40,
+      pv: 40,
+      ressources: { mana: { max: 20, actuel: 20 }, chance: { max: 1, actuel: 1 } },
+      sorts: [sort],
+    };
+    const atk = participantFromCharacter(fiche);
+    const s = createCombat([atk, pj("Tank", 10)]);
+    const [a, t] = s.participants.map((p) => p.instanceId);
+    const attackId = `sort:${sort.id}`;
+    // 1 naturel : échec automatique, mais le lancer est consommé (1/combat).
+    const r1 = resolveAttack(s, a, t, attackId, fixedRng([0.0, 0.9]));
+    expect(r1.resolution.touche).toBe(false);
+    expect(r1.state.participants[0].usagesSorts?.[sort.id]?.n).toBe(1);
+    expect(() => resolveAttack(r1.state, a, t, attackId, fixedRng([0.9, 0.1]))).toThrow(/limite 1\/combat/);
+  });
+
   it("limite par cible (Malédiction) : même cible refusée, autre acceptée", () => {
     const sort = { id: "m", nom: "Malédiction", type: "offensif" as const, limiteParCible: true, cout: { ressource: "mana", montant: 1 } };
     const atk = {
@@ -640,12 +663,14 @@ describe("sorcier (voies du livre)", () => {
     expect(state.participants[0].ressources.mana.actuel).toBe(5);
   });
 
-  it("zone (Armée des morts) : tous les ennemis, alliés épargnés, 1/combat", () => {
+  it("zone générique (DoT) : tous les ennemis, alliés épargnés, 1/combat", () => {
     const armee = {
       id: "am", nom: "Armée des morts", type: "utilitaire" as const, rang: 5,
       action: "limitee" as const, degats: "2d4",
       effetCle: "Armée des morts", effetDuree: null, effetDegats: "2d4",
-      limiteCombat: 1, zone: true, cout: { ressource: "mana", montant: 5 },
+      // Zone générique de test : `false` explicite la distingue de la zone
+      // persistante canonique (les copies héritées sans drapeau sont reconnues).
+      limiteCombat: 1, zone: true, zonePersistante: false, cout: { ressource: "mana", montant: 5 },
     };
     const caster = { ...sorcier(), sorts: [armee] };
     const s = createCombat([caster, pj("Allié"), gobelin("A", 8), gobelin("B", 8)]);
@@ -660,12 +685,13 @@ describe("sorcier (voies du livre)", () => {
     expect(() => frapperZone(state, a, armee, fixedRng([0.5]))).toThrow(/limite 1\/combat/);
   });
 
-  it("zone évolutive (2d4° -> 2d6 au niv. 7)", () => {
+  it("zone générique évolutive (2d4° -> 2d6 au niv. 7)", () => {
     const armee = {
       id: "am", nom: "Armée des morts", type: "utilitaire" as const, rang: 5,
       action: "limitee" as const, degats: "2d4°",
       effetCle: "Armée des morts", effetDuree: null, effetDegats: "2d4°",
-      limiteCombat: 1, zone: true, cout: { ressource: "mana", montant: 5 },
+      // Zone générique de test (cf. test précédent) : non persistante explicite.
+      limiteCombat: 1, zone: true, zonePersistante: false, cout: { ressource: "mana", montant: 5 },
     };
     const caster = { ...sorcier(), niveau: 7, sorts: [armee] };
     const s = createCombat([caster, gobelin("A", 20), gobelin("B", 20)]);
@@ -1779,6 +1805,10 @@ describe("outre-tombe (corrections LDB)", () => {
     const s = createCombat([pj("A"), victime, gobelin("G")]);
     const [a, v, g] = s.participants.map((p) => p.instanceId);
     expect(() => resolveAttack(s, a, v, "epee", fixedRng([0.9]))).toThrow(/inciblable/);
+    // Enseveli = aucune action (canAct faux), sauf sortir de terre. Attaquer
+    // depuis la tombe doit être refusé par le moteur.
+    expect(canAct(victime.effets)).toBe(false);
+    expect(() => resolveAttack(s, v, a, "epee", fixedRng([0.9]))).toThrow(/ne peut pas agir/);
     const sortFeu = { id: "feu", nom: "Feu", type: "offensif" as const, degats: "1d6" };
     const lanceurFeu = { ...pj("A"), attaques: [{ id: "sort:feu", nom: "✦ Feu", bonus: 5, degats: "1d6" }], sorts: [sortFeu] };
     const sf = createCombat([lanceurFeu, victime]);
@@ -1856,19 +1886,109 @@ describe("outre-tombe (corrections LDB)", () => {
     expect(maxZombiesControles(["Animation des morts", "Lien de sang"])).toBe(2);
   });
 
-  it("armée : sans immédiat, durée NIVEAU rounds", () => {
+  it("armée des morts : zone persistante, sélection au lancer puis à chaque tour", () => {
     const sort = SEED_SORTS.find((x) => x.id === "sort-armee-morts")!;
-    expect(sort.degats).toBeUndefined();
-    expect(sort.effetDuree).toBe("NIVEAU");
+    expect(sort.zonePersistante).toBe(true);
     const lanceur = { ...sorcier(), sorts: [sort], attaques: [] };
-    const s = createCombat([lanceur, gobelin("G")]);
+    const s = createCombat([lanceur, pj("Allié"), gobelin("G1", 20), gobelin("G2", 20)]);
+    const [a, al, g1] = s.participants.map((p) => p.instanceId);
+    // Lancer : le MJ coche G1 seul (2d4 = 3+3 = 6 immédiats).
+    const r = lancerZonePersistante(s, a, sort, [g1], fixedRng([0.5, 0.5]));
+    expect(r.state.participants[0].ressources["mana"].actuel).toBe(5);
+    expect(r.state.participants[1].pv).toBe(40); // allié épargné
+    expect(r.state.participants[2].pv).toBe(14); // G1 touché
+    expect(r.state.participants[3].pv).toBe(20); // G2 non coché
+    expect(r.state.participants[0].usagesSorts?.[sort.id]?.n).toBe(1);
+    const zone = r.state.zonesPersistantes?.[0];
+    expect(zone).toMatchObject({
+      lanceurId: a,
+      mancheDebut: 1,
+      mancheFin: 5, // NIVEAU 5 rounds
+      derniereApplication: 1,
+      cibles: [g1],
+    });
+    // 1/combat et un seul tick par round.
+    expect(() => lancerZonePersistante(r.state, a, sort, [g1], fixedRng([0.5, 0.5]))).toThrow(/limite 1\/combat/);
+    expect(() => appliquerZonePersistante(r.state, zone!.id, [g1], fixedRng([0.5, 0.5]))).toThrow(/déjà appliquée/);
+    // L'ancienne frappe de zone ne peut pas contourner la sélection persistante.
+    expect(() => frapperZone(r.state, a, sort, fixedRng([0.5]))).toThrow(/zone persistante/);
+    // Jamais un allié ni le lanceur dans la zone.
+    expect(() => lancerZonePersistante(s, a, sort, [al], fixedRng([0.5]))).toThrow(/pas un ennemi/);
+  });
+
+  it("armée des morts : copie héritée sans drapeau reconnue (pas de retour au DoT)", () => {
+    const modele = SEED_SORTS.find((x) => x.id === "sort-armee-morts")!;
+    const herite = { ...modele };
+    delete (herite as { zonePersistante?: boolean }).zonePersistante;
+    expect(estZonePersistanteSort(herite)).toBe(true);
+    // Un `false` explicite reste respecté.
+    expect(estZonePersistanteSort({ ...herite, zonePersistante: false })).toBe(false);
+    const lanceur = { ...sorcier(), sorts: [herite], attaques: [] };
+    const s = createCombat([lanceur, gobelin("G", 20)]);
     const [a, g] = s.participants.map((p) => p.instanceId);
-    const r = frapperZone(s, a, sort, fixedRng([0.5, 0.5, 0.5]), {}, [g]);
-    // Pas de hit initial : PV intacts, effet NIVEAU (5) rounds appliqué.
-    expect(r.resolution.degatsTotal).toBe(0);
-    expect(s.participants[1].pv).toBe(r.state.participants[1].pv);
-    const effet = r.state.participants[1].effets.find((e) => e.nom === "Armée des morts");
-    expect(effet?.toursRestants).toBe(5);
+    // L'ancien chemin de zone instantanée refuse la copie héritée.
+    expect(() => frapperZone(s, a, herite, fixedRng([0.5]))).toThrow(/zone persistante/);
+    // Le chemin persistant l'accepte et applique le premier round.
+    const r = lancerZonePersistante(s, a, herite, [g], fixedRng([0.5, 0.5]));
+    expect(r.state.participants[1].pv).toBe(14);
+    expect(r.state.zonesPersistantes?.[0].sortId).toBe(herite.id);
+  });
+
+  it("armée des morts : pop-up à chaque tour du sorcier, cibles recochées", () => {
+    const sort = SEED_SORTS.find((x) => x.id === "sort-armee-morts")!;
+    const lanceur = { ...sorcier(), sorts: [sort], attaques: [] };
+    let s = createCombat([lanceur, gobelin("G1", 20), gobelin("G2", 20)]);
+    const [a, g1, g2] = s.participants.map((p) => p.instanceId);
+    s = lancerZonePersistante(s, a, sort, [g1, g2], fixedRng([0.5, 0.5])).state;
+    const zoneId = s.zonesPersistantes![0].id;
+    expect(s.participants[1].pv).toBe(14);
+    expect(s.participants[2].pv).toBe(14);
+    // Fin du tour du sorcier : la zone n'est pas due dans la même manche.
+    s = nextTurn(s, false);
+    expect(s.manche).toBe(1);
+    expect(zonePersistanteATraiter(s, s.participants[s.tourIndex].instanceId)).toBeNull();
+    s = nextTurn(s, false);
+    s = nextTurn(s, false); // retour au sorcier, manche 2
+    expect(s.manche).toBe(2);
+    const due = zonePersistanteATraiter(s, a);
+    expect(due?.id).toBe(zoneId);
+    // Le MJ ne recoche que G2 : G1 reste à 14, G2 passe à 8.
+    const r = appliquerZonePersistante(s, zoneId, [g2], fixedRng([0.5, 0.5]));
+    expect(r.state.participants[1].pv).toBe(14);
+    expect(r.state.participants[2].pv).toBe(8);
+    expect(r.state.zonesPersistantes?.[0]).toMatchObject({ cibles: [g2], derniereApplication: 2 });
+    expect(zonePersistanteATraiter(r.state, a)).toBeNull();
+    // Manche suivante : personne dans la zone -> aucun dégât, round consommé.
+    let s3 = r.state;
+    while (s3.manche < 3) s3 = nextTurn(s3, false);
+    expect(zonePersistanteATraiter(s3, a)).not.toBeNull();
+    const vide = appliquerZonePersistante(s3, zoneId, [], fixedRng([0.5, 0.5]));
+    expect(vide.state.participants[1].pv).toBe(14);
+    expect(vide.state.participants[2].pv).toBe(8);
+    expect(vide.state.zonesPersistantes?.[0].derniereApplication).toBe(3);
+  });
+
+  it("armée des morts : expire après NIVEAU rounds", () => {
+    const sort = SEED_SORTS.find((x) => x.id === "sort-armee-morts")!;
+    const lanceur = { ...sorcier(), sorts: [sort], attaques: [] };
+    let s = createCombat([lanceur, gobelin("G1", 20), gobelin("G2", 20)]);
+    const [a, g1] = s.participants.map((p) => p.instanceId);
+    s = lancerZonePersistante(s, a, sort, [g1], fixedRng([0.5, 0.5])).state;
+    while (s.manche < 6) s = nextTurn(s, false);
+    expect(s.manche).toBe(6);
+    expect(s.zonesPersistantes ?? []).toHaveLength(0);
+    expect(s.log.some((l) => l.message.includes("prend fin"))).toBe(true);
+  });
+
+  it("armée des morts : enseveli inciblable épargné par la zone", () => {
+    const sort = SEED_SORTS.find((x) => x.id === "sort-armee-morts")!;
+    const enterre = { ...gobelin("Enterré", 20), effets: [createEffect("enseveli", { dureeTours: null })] };
+    const lanceur = { ...sorcier(), sorts: [sort], attaques: [] };
+    const s = createCombat([lanceur, enterre]);
+    const [a, v] = s.participants.map((p) => p.instanceId);
+    const r = lancerZonePersistante(s, a, sort, [v], fixedRng([0.5, 0.5]));
+    expect(r.state.participants[1].pv).toBe(20);
+    expect(r.state.log.some((l) => l.message.includes("inciblable"))).toBe(true);
   });
 });
 

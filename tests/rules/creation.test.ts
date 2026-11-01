@@ -318,7 +318,8 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(sortDuTalent("Boule de feu", SEED_SORTS)).toBeUndefined();
     // Grimoire sans l'entrée : rien.
     expect(sortDuTalent("Un pied dans la tombe", [])).toBeUndefined();
-    // Apprendre le talent crée aussi le sort (+ mana), full mana + full vie (niveau).
+    // Apprendre le talent crée aussi le sort (+ mana), full mana ; les PV
+    // courants sont conservés (apprendre n'est pas une montée de niveau).
     const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
     const vierge: Character = { ...mae, pv: 2, capacites: ["Malédiction"], sorts: [], ressources: { ...mae.ressources, mana: { max: 4, actuel: 1 } } };
     expect(mae.caracteristiques.VOL).toBe(4);
@@ -327,7 +328,8 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     expect(r.sorts.map((s) => s.nom)).toContain("Un pied dans la tombe");
     expect(r.ressources.mana.max).toBe(5); // VOL 4 + 1 sort
     expect(r.ressources.mana).toEqual({ max: 5, actuel: 5 }); // +1 sort => +1 mana, à fond
-    expect(r.pv).toBe(r.pvMax); // full vie
+    expect(r.pv).toBe(2); // pas de soin à l'apprentissage
+    expect(r.pvMax).toBe(7);
     expect(vierge.sorts).toHaveLength(0); // non muté
     // Pas de doublon si le sort existe déjà.
     const r2 = apprendreTalentComplet(r, "Un pied dans la tombe", SEED_SORTS);
@@ -337,6 +339,30 @@ describe("création niv. 1 : points de capacité (COF V2)", () => {
     const r3 = apprendreTalentComplet(vierge, "Robustesse", SEED_SORTS);
     expect(r3.capacites).toContain("Robustesse");
     expect(r3.sorts).toHaveLength(0);
+  });
+
+  it("apprendre une capacité à une fiche blessée ne soigne pas (niveau 12, 24 pts)", () => {
+    // Cas signalé : Maë niv. 12 à 2 PV, 0/24 pts, toutes capacités retirées.
+    // L'ajout était perdu car l'apprentissage remettait les PV au max : la
+    // garde PV du stockage bloquait l'écriture et resynchronisait la fiche.
+    const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
+    const blesse: Character = {
+      ...mae,
+      niveau: 12,
+      pv: 2,
+      capacites: [],
+      sorts: [],
+      migreSorts: true,
+    };
+    expect(compterCapacites(blesse).restants).toBe(24);
+    expect(peutApprendre(blesse, { nom: "Un pied dans la tombe", voie: "Voie de l'outre-tombe", rang: 1 }).ok).toBe(true);
+    const r = apprendreTalentComplet(blesse, "Un pied dans la tombe", SEED_SORTS);
+    expect(r.capacites).toEqual(["Un pied dans la tombe"]);
+    expect(r.sorts.map((s) => s.nom)).toContain("Un pied dans la tombe");
+    expect(r.pv).toBe(2); // pas de soin
+    expect(r.pvMax).toBeGreaterThan(2);
+    expect(compterCapacites(r).restants).toBe(23);
+    expect(blesse.capacites).toHaveLength(0); // non muté
   });
 
   it("desapprendreTalentComplet : le sort lié part avec le talent", () => {

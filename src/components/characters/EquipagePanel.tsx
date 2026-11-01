@@ -7,6 +7,8 @@ import { libelleMains, peutEquiper, validerEquipement } from "@/src/lib/rules/eq
 import { verifierArmurePortee } from "@/src/lib/rules/limitesArmures";
 import { apprendreTalentComplet, compterCapacites, desapprendreTalentComplet, normaliserNomCapacite, peutApprendre, peutDesapprendre, sortDuTalent, talentsRang2Gratuits } from "@/src/lib/rules/creation";
 import { actionDeCapacite, actionDeTalent, voiesDe } from "@/src/lib/data/capacites";
+import { resumeTalent } from "@/src/lib/data/aptitudes";
+import { traitsInitiaux } from "@/src/lib/data/peuples";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
 import {
   chargesInitialesObjet,
@@ -34,6 +36,9 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
   const [voieOuverte, setVoieOuverte] = useState<string | null>(null);
   const inv = character.inventaire ?? [];
   const sorts = character.sorts ?? [];
+  const traitsPeuple = [
+    ...new Set([...traitsInitiaux(character.peuple ?? ""), ...(character.traitsPeuple ?? [])]),
+  ];
   const talents = character.capacites ?? [];
   const profil = (character.profil ?? "").trim() || (character.classe ?? "").trim();
   const compte = compterCapacites(character);
@@ -244,41 +249,70 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
         <div className="text-xs uppercase text-zinc-400 font-bold mb-1.5">Sorts ({sorts.length})</div>
         <p className="text-xs text-zinc-500 mb-1.5">Créer un sort : onglet Sorts & Capacités (avec coûts et attribution).</p>
         <div className="space-y-1">
-          {sorts.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 text-sm">
-              <span className="flex-1">
-                {s.type === "offensif" ? "✦ " : "🛡 "}{s.nom}
-                <ActionBadge action={s.action} className="ml-1.5" />
-                <span className="text-zinc-500 text-xs">
-                  {" "}· {s.type}{s.ecole ? ` ${s.ecole}` : ""}{s.voie ? ` · ${s.voie}${s.rang ? ` R${s.rang}` : ""}` : s.rang ? ` · R${s.rang}` : ""}
-                  {s.degats ? ` · ${s.degats}` : ""}{s.soin ? ` · +${s.soin}` : ""}
-                  {s.effetCle ? ` · ✦${s.effetCle}` : ""}{s.cout ? ` · ${s.cout.montant} ${s.cout.ressource}` : ""}
-                </span>
-              </span>
-              {(() => {
-                const porte = peutDesapprendre(character, s.nom, "sorts");
-                return porte.ok ? (
-                  <button
-                    onClick={() => removeSort(s.id)}
-                    className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-red-900"
-                    title="Désapprendre le sort"
-                  >
-                    ✕
-                  </button>
-                ) : (
-                  <span
-                    title={porte.raisons.join(" · ")}
-                    className="text-xs px-2 py-0.5 rounded bg-zinc-900 text-zinc-600 cursor-not-allowed"
-                  >
-                    🔒
+          {sorts.map((s) => {
+            const description =
+              s.description ??
+              SEED_SORTS.find((x) => normaliserNomCapacite(x.nom) === normaliserNomCapacite(s.nom))?.description;
+            return (
+              <div key={s.id}>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="flex-1">
+                    {s.type === "offensif" ? "✦ " : "🛡 "}{s.nom}
+                    <ActionBadge action={s.action} className="ml-1.5" />
+                    <span className="text-zinc-500 text-xs">
+                      {" "}· {s.type}{s.ecole ? ` ${s.ecole}` : ""}{s.voie ? ` · ${s.voie}${s.rang ? ` R${s.rang}` : ""}` : s.rang ? ` · R${s.rang}` : ""}
+                      {s.degats ? ` · ${s.degats}` : ""}{s.soin ? ` · +${s.soin}` : ""}
+                      {s.effetCle ? ` · ✦${s.effetCle}` : ""}{s.cout ? ` · ${s.cout.montant} ${s.cout.ressource}` : ""}
+                    </span>
                   </span>
-                );
-              })()}
-            </div>
-          ))}
+                  {(() => {
+                    const porte = peutDesapprendre(character, s.nom, "sorts");
+                    return porte.ok ? (
+                      <button
+                        onClick={() => removeSort(s.id)}
+                        className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-red-900"
+                        title="Désapprendre le sort"
+                      >
+                        ✕
+                      </button>
+                    ) : (
+                      <span
+                        title={porte.raisons.join(" · ")}
+                        className="text-xs px-2 py-0.5 rounded bg-zinc-900 text-zinc-600 cursor-not-allowed"
+                      >
+                        🔒
+                      </span>
+                    );
+                  })()}
+                </div>
+                {description && (
+                  <p className="text-xs text-zinc-500 leading-snug ml-4">{description}</p>
+                )}
+              </div>
+            );
+          })}
         </div>
         
       </div>
+
+      {traitsPeuple.length > 0 && (
+        <div>
+          <div className="text-xs uppercase text-zinc-400 font-bold mb-1.5">Traits de peuple ({traitsPeuple.length})</div>
+          <div className="space-y-1">
+            {traitsPeuple.map((t) => {
+              const resume = resumeTalent(t, character);
+              return (
+                <div key={t}>
+                  <div className="text-sm">◈ {t}</div>
+                  {resume && (
+                    <p className="text-xs text-zinc-500 leading-snug ml-4">{resume}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="text-xs uppercase text-zinc-400 font-bold mb-1.5">Talents ({talents.length})</div>
@@ -287,45 +321,53 @@ export function EquipagePanel({ character, stock, onUpdate }: Props) {
           {compte.rang2Nom ? ` · R2 gratuit : ${compte.rang2Nom} ✓` : optsR2.length > 0 ? " · R2 gratuit : disponible" : ""}
         </div>
         <div className="space-y-1">
-          {talents.map((t) => (
-            <div key={t} className="flex items-center gap-2 text-sm">
-              <span className="flex-1">◈ {t} <ActionBadge action={actionDeTalent(t, profil)} className="ml-1.5" /></span>
-              {(() => {
-                const sort = sortDuTalent(t, SEED_SORTS);
-                const q = normaliserNomCapacite(t);
-                const lanceable = character.sorts.some((s) => normaliserNomCapacite(s.nom) === q);
-                if (!sort || lanceable) return null;
-                return (
-                  <button
-                    onClick={() => learnTalent(t)}
-                    title={`Créer le sort lançable (${sort.cout ? `${sort.cout.montant} PM` : "sans coût"})`}
-                    className="text-xs px-2 py-0.5 rounded bg-violet-900 hover:bg-violet-800"
-                  >
-                    ✦
-                  </button>
-                );
-              })()}
-              {(() => {
-                const porte = peutDesapprendre(character, t, "talents");
-                return porte.ok ? (
-                  <button
-                    onClick={() => removeTalent(t)}
-                    className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-red-900"
-                    title="Désapprendre le talent"
-                  >
-                    ✕
-                  </button>
-                ) : (
-                  <span
-                    title={porte.raisons.join(" · ")}
-                    className="text-xs px-2 py-0.5 rounded bg-zinc-900 text-zinc-600 cursor-not-allowed"
-                  >
-                    🔒
-                  </span>
-                );
-              })()}
-            </div>
-          ))}
+          {talents.map((t) => {
+            const resume = resumeTalent(t, character);
+            return (
+              <div key={t}>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="flex-1">◈ {t} <ActionBadge action={actionDeTalent(t, profil)} className="ml-1.5" /></span>
+                  {(() => {
+                    const sort = sortDuTalent(t, SEED_SORTS);
+                    const q = normaliserNomCapacite(t);
+                    const lanceable = character.sorts.some((s) => normaliserNomCapacite(s.nom) === q);
+                    if (!sort || lanceable) return null;
+                    return (
+                      <button
+                        onClick={() => learnTalent(t)}
+                        title={`Créer le sort lançable (${sort.cout ? `${sort.cout.montant} PM` : "sans coût"})`}
+                        className="text-xs px-2 py-0.5 rounded bg-violet-900 hover:bg-violet-800"
+                      >
+                        ✦
+                      </button>
+                    );
+                  })()}
+                  {(() => {
+                    const porte = peutDesapprendre(character, t, "talents");
+                    return porte.ok ? (
+                      <button
+                        onClick={() => removeTalent(t)}
+                        className="text-xs px-2 py-0.5 rounded bg-zinc-800 hover:bg-red-900"
+                        title="Désapprendre le talent"
+                      >
+                        ✕
+                      </button>
+                    ) : (
+                      <span
+                        title={porte.raisons.join(" · ")}
+                        className="text-xs px-2 py-0.5 rounded bg-zinc-900 text-zinc-600 cursor-not-allowed"
+                      >
+                        🔒
+                      </span>
+                    );
+                  })()}
+                </div>
+                {resume && (
+                  <p className="text-xs text-zinc-500 leading-snug ml-4">{resume}</p>
+                )}
+              </div>
+            );
+          })}
         </div>
         <div className="mt-2 space-y-1.5">
           <div className="text-xs text-zinc-500 font-bold">Choisir par voie (dépenser les points)</div>

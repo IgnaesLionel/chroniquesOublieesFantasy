@@ -5,6 +5,7 @@ import { SEED_CHARACTERS, SEED_MONSTERS, migrerGrainesPersonnages } from "@/src/
 import { SEED_SCENARIOS } from "@/src/lib/data/scenarioSeeds";
 import { SEED_NPCS } from "@/src/lib/data/worldSeeds";
 import { SEED_SORTS } from "@/src/lib/data/sorts";
+import { completerSortsDepuisGrimoire } from "@/src/lib/rules/personnage";
 import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Npc } from "@/src/lib/rules/world/types";
 import type { Scenario } from "@/src/lib/rules/scenario/types";
@@ -44,7 +45,12 @@ export function useScenarios() {
 }
 
 export function useSorts() {
-  return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS, { libelle: "sorts" });
+  return useLocalCollection<Sort>(STORAGE_KEYS.sorts, SEED_SORTS, {
+    libelle: "sorts",
+    // Grimoire persisté : comble les champs mécaniques ajoutés depuis
+    // (ex. zonePersistante d'Armée des morts) sans écraser une valeur du MJ.
+    migrer: (sorts) => completerSortsDepuisGrimoire(sorts, SEED_SORTS),
+  });
 }
 
 export function useSessions() {

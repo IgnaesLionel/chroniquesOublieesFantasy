@@ -114,7 +114,8 @@ export const SEED_CHARACTERS: Character[] = [
         voie: "Voie de la prière", rang: 1,
         description: "Chant : alliés en vue +1 aux tests et attaques pendant CHA minutes.",
         familles: ["Prêtre"],
-        effetCle: "bonus-attaque", effetDuree: null,
+        effetCle: "benediction", effetDuree: "CHA*6",
+        ciblesAllies: true,
         cout: { ressource: "mana", montant: 1 },
       },
       {
@@ -307,10 +308,47 @@ export function avecEquipementGrainesPersonnages(personnages: Character[]): Char
   return touche ? liste : personnages;
 }
 
+/**
+ * Bénédiction : la durée officielle est CHA minutes, soit CHA × 6 tours avec
+ * la règle de table (1 minute = 6 tours) ; le sort est de groupe (pop-up de
+ * sélection) et applique l'effet dédié +1 (au lieu du générique +2).
+ * Les fiches créées avant ces règles portent l'ancien encodage ×10 — ou null
+ * pour la graine d'Isildeen — et resteraient sinon à 10 tours par point de
+ * CHA (voire permanentes). On ne touche qu'à ce sort, par son nom ; une clé
+ * d'effet personnalisée par le MJ est conservée.
+ */
+export function avecBenedictionAJour(personnages: Character[]): Character[] {
+  const cle = (n: string) => normaliserNomCapacite(n);
+  let touche = false;
+  const liste = personnages.map((p) => {
+    if (!(p.sorts ?? []).some((s) => cle(s.nom) === "bénédiction")) return p;
+    let modifie = false;
+    const sorts = p.sorts.map((s) => {
+      if (cle(s.nom) !== "bénédiction") return s;
+      if (s.effetDuree === "CHA*6" && s.ciblesAllies === true && s.effetCle === "benediction") return s;
+      if (s.effetDuree !== null && s.effetDuree !== "CHA*6" && s.effetDuree !== "CHA*10") return s;
+      modifie = true;
+      return {
+        ...s,
+        effetDuree: "CHA*6" as const,
+        ciblesAllies: true,
+        // Clé personnalisée (homebrew MJ) préservée ; l'ancien défaut générique suit.
+        effetCle: s.effetCle === undefined || s.effetCle === "bonus-attaque" ? "benediction" : s.effetCle,
+      };
+    });
+    if (!modifie) return p;
+    touche = true;
+    return { ...p, sorts };
+  });
+  return touche ? liste : personnages;
+}
+
 /** Migrations des fiches graines enregistrées (nom, révisions de création puis équipement). Idempotente. */
 export function migrerGrainesPersonnages(personnages: Character[]): Character[] {
-  return avecEquipementGrainesPersonnages(
-    avecRevisionsGrainesPersonnages(avecNomsGrainesPersonnages(personnages))
+  return avecBenedictionAJour(
+    avecEquipementGrainesPersonnages(
+      avecRevisionsGrainesPersonnages(avecNomsGrainesPersonnages(personnages))
+    )
   );
 }
 

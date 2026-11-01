@@ -1,8 +1,11 @@
 // Usages par défaut des talents en combat : quel effet appliquer quand on
 // utilise tel talent, et sur qui par défaut. Le MJ peut toujours choisir un
 // autre effet (ou aucun : usage noté au journal) dans le panneau Capacités.
-// Seuls les cas mécaniquement directs y figurent ; le reste se gère au cas
-// par cas (durées variables, dés bonus non modélisés, etc.).
+// Les cas mécaniquement directs sont listés ci-dessous ; tous les autres
+// talents actifs reçoivent un usage générique (question MJ + journal), afin
+// qu'aucun talent de classe, de voie ou de peuple ne reste inutilisable.
+import { CAPACITES } from "./capacites";
+import { VOIES_PEUPLE, VOIE_MAGE } from "./peuples";
 import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
 
 export type CibleCapacite = "allies" | "ennemis" | "tous" | "soi";
@@ -22,6 +25,12 @@ export interface CapaciteUsable {
   coutPV?: string;
   /** Soin en dés du lanceur (ex: "4d4°+CON", Increvable). */
   soin?: string;
+  /**
+   * Dégâts automatiques infligés à la cible (sans jet d'attaque), en dés
+   * (ex: "3d4+FOR", Fureur du dragon). Les talents qui demandent un jet
+   * d'attaque passent par le panneau Attaque.
+   */
+  degats?: string;
   /** Montant saisi par le MJ au lieu d'un jet (ex: Siphon = NC PV) : "soin". */
   montantMJ?: "soin" | "lien";
   /** Purge les états non permanents de la cible (ex: Increvable). */
@@ -39,6 +48,13 @@ export interface CapaciteUsable {
   questionMJ?: string;
   /** Écart éventuel avec le texte DRS (approximation moteur). */
   note?: string;
+  /**
+   * Nature de l'usage. `actif` = bouton dans le panneau Capacités (même sans
+   * effet mécanique : le MJ tranche via la question). `passif` = appliqué aux
+   * dérivés ou seulement décrit, jamais proposé comme action. `narratif` =
+   * hors combat / géré ailleurs (sort lié, panneau Attaque...).
+   */
+  mode?: "actif" | "passif" | "narratif";
 }
 
 export const CAPACITES_USABLES: CapaciteUsable[] = [ {
@@ -205,20 +221,6 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     note: "1/combat (L) : critique auto + sournoise non doublée (MJ).",
   },
   {
-    talent: "Mon armure est une arme",
-    effetCle: null,
-    dureeTours: null,
-    cibles: "ennemis",
-    note: "1/combat (G) : 1d4+FOR auto + renversé/étourdi/recul si FOR inférieure (MJ).",
-  },
-  {
-    talent: "Fureur du dragon",
-    effetCle: null,
-    dureeTours: null,
-    cibles: "ennemis",
-    note: "1/combat (L) : 3d4+FOR auto à tous au contact + FOR 10 ou renversés (MJ).",
-  },
-  {
     talent: "Maître du poison",
     effetCle: null,
     dureeTours: null,
@@ -275,20 +277,6 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     note: "(M) : mains nues, +1d4/attaque comptabilisés puis libérés sur test contact (L) dans l'heure (MJ).",
   },
   {
-    talent: "Rage du berserk",
-    effetCle: null,
-    dureeTours: null,
-    cibles: "soi",
-    note: "1/jour (L) : +1d4 DM contact, −2 DEF (Équip. DEF), dé bonus VOL ; ni sorts ni concentration (MJ).",
-  },
-  {
-    talent: "Furie du berserk",
-    effetCle: null,
-    dureeTours: null,
-    cibles: "soi",
-    note: "2 rages (L) : +2d4 au lieu d'1d4, −4 DEF (MJ), fin sur VOL 20 (MJ).",
-  },
-  {
     talent: "Défier la mort",
     effetCle: null,
     dureeTours: null,
@@ -336,13 +324,6 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     dureeTours: null,
     cibles: "soi",
     note: "1/round (G) : test d'attaque magique opposé pour ignorer un sort, dé malus si hybride (MJ).",
-  },
-  {
-    talent: "Charge fantastique",
-    effetCle: null,
-    dureeTours: null,
-    cibles: "allies",
-    note: "1/combat (G) : +10 m puis dé bonus et +1d4 DM — cocher Parfaite (MJ).",
   },
   {
     talent: "Manœuvre",
@@ -413,6 +394,60 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
     note: "Rôdeur (L) : télépathie + 1 PV rôdeur = 1 PV loup (2 PV avec Tactiques), sans limite. Saisir les PV dépensés.",
   },
   {
+    talent: "Mon armure est une arme",
+    effetCle: null,
+    dureeTours: 1,
+    cibles: "ennemis",
+    degats: "1d4+FOR",
+    questionMJ: "Mon armure est une arme : la cible est-elle au contact et de FOR inférieure au chevalier ? Le coup d'armure est-il utilisable (1/combat) ?",
+    note: "Chevalier (G), 1/combat : coup d'armure automatique 1d4+FOR ; cible de FOR inférieure renversée, étourdie 1 round ou reculée de 3 m (choix MJ).",
+  },
+  {
+    talent: "Fureur du dragon",
+    effetCle: null,
+    dureeTours: 1,
+    cibles: "ennemis",
+    degats: "3d4+FOR",
+    questionMJ: "Fureur du dragon : toutes les cibles au contact sont-elles dans la zone de 5 m ? Appliquer 3d4+FOR à chacune ; FOR 10 ou renversées.",
+    note: "Moine (L), 1/combat : 3d4+FOR automatiques à toutes les cibles au contact ; FOR 10 ou renversées. Utiliser le bouton cible par cible.",
+  },
+  {
+    talent: "Cri de guerre",
+    effetCle: "cri-de-guerre",
+    dureeTours: 1,
+    cibles: "ennemis",
+    mods: { attaque: -1 },
+    questionMJ: "Cri de guerre : les ennemis dans 10 m ont-ils une FOR inférieure au barbare ?",
+    note: "Barbare (G), 1/combat : hurlement 10 m ; FOR inférieure = dé malus aux attaques au contact. Sans peur : rang+2 en VOL contre la peur (MJ).",
+  },
+  {
+    talent: "Rage du berserk",
+    effetCle: "rage",
+    dureeTours: null,
+    cibles: "soi",
+    mods: { attaque: 2, defense: -2 },
+    questionMJ: "Rage du berserk : la rage est-elle déclenchée (1/jour, jusqu'à la fin du combat) ?",
+    note: "Barbare (L), 1/jour : rage jusqu'à la fin du combat, +1d4° DM au contact via le sélecteur de talent d'attaque, −2 DEF, pas de fuite ni de distance, ni sorts ni concentration.",
+  },
+  {
+    talent: "Furie du berserk",
+    effetCle: "rage-furieuse",
+    dureeTours: null,
+    cibles: "soi",
+    mods: { attaque: 2, defense: -4 },
+    questionMJ: "Furie du berserk : coûte 2 rages, −4 DEF, fin prématurée sur VOL 20 ; la rage est-elle active ?",
+    note: "Barbare (L) : +2d4° DM au contact via le sélecteur de talent d'attaque, −4 DEF, fin sur VOL 20.",
+  },
+  {
+    talent: "Charge fantastique",
+    effetCle: "charge-fantastique",
+    dureeTours: 1,
+    cibles: "allies",
+    mods: { attaque: 1, degats: 1 },
+    questionMJ: "Charge fantastique : les alliés en vue sont-ils à portée du +10 m de déplacement, puis dé bonus et +1d4 DM à leurs attaques ?",
+    note: "Chevalier (G), 1/combat : alliés en vue + lui, +10 m de déplacement puis dé bonus et +1d4° DM aux attaques (1 round).",
+  },
+  {
     talent: "Animer un cadavre",
     effetCle: null,
     dureeTours: null,
@@ -429,15 +464,201 @@ export const CAPACITES_USABLES: CapaciteUsable[] = [ {
  * les manœuvres gérées par le panneau Attaque et les talents narratifs
  * sont exclus du panneau Capacités (ni sorts ni effets à appliquer).
  */
+const PASSIFS_AUTOMATIQUES = new Set(
+  [
+    "Travail d'équipe", "Tactiques de meute", "Archer émérite", "Tir chirurgical",
+    "Parade croisée", "Attaque à suivre", "Droite-gauche", "Double peine",
+    "Instinct de survie", "Force d'âme", "Immortel", "Fils du roc", "Ténacité",
+    "Haches et marteaux", "Lumière intérieure", "Lumière des étoiles",
+    "Habitant des tunnels", "Supériorité elfique", "Esprit supérieur",
+    "Robustesse", "Vivacité", "Résilient", "Dur à cuire", "Rempart",
+    "Armes de prédilection", "Spécialisation", "Riposte", "Piqûre de rappel",
+    "Teigneux", "Enchaînement", "Attaque sournoise", "Attaque par surprise",
+    "Discrétion", "Doigts agiles", "Aux aguets", "Attaque en finesse",
+    "Frappe chirurgicale", "Ambidextrie", "Botte secrète", "Précision",
+    "Grâce féline", "Agile", "Réflexes félins", "Souplesse du félin",
+    "Liberté d'action", "Éclectique", "Charmant", "Dentelle et rapière",
+    "Enfant de la forêt", "Talent pour la magie", "Touche-à-tout",
+    "Polyvalence", "Pacte ténébreux", "Exsangue", "Armure d'os",
+    "Armure lourde", "Combattant aguerri", "Combattant héroïque",
+    "Constitution héroïque", "Force héroïque", "Charisme héroïque",
+    "Agilité héroïque", "Perception héroïque", "Volonté héroïque",
+    "Pilier de bar", "Proche de la nature", "Vigueur", "Argument de taille",
+    "Mécanismes", "Arme à répétition", "Canon double", "Poudre puissante",
+    "Plus vite que son ombre", "Joli coup", "Tir précis", "As de la gâchette",
+    "Petit compagnon", "Le loup", "Loup alpha",
+    "Langage des animaux", "Peau de pierre", "Tatouages", "Peau d'acier",
+    "Réflexes éclair", "Course du vent", "Pas du vent", "Peau de fer",
+    "Mains d'énergie", "Poings de fer", "Griffes du tigre", "Puissance du ki",
+    "Maîtrise du ki", "Runes de défense", "Grosse tête", "Endurer",
+    "Bâton de mage", "Morsure de la forge", "Métal brûlant", "Magnétisme",
+    "Armure de mana", "Peau d'écorce", "Maîtrise des éléments", "Familier",
+    "Tour de magie", "Murmures dans le vent", "Divination", "Armure de pierre",
+    "Déphasage", "Invisibilité", "Vol", "Ailes célestes", "Forme éthérée",
+    "Forme gazeuse", "Lévitation", "Respiration aquatique", "Accélération",
+    "Interruption du temps", "Marche des plans", "Téléportation", "Clairvoyance",
+    "Détection de l'invisible", "Compréhension des langues", "Déguisement",
+    "Mirage", "Imitation", "Serviteur invisible", "Porte dimensionnelle",
+    "Mur de mana", "Ouverture-fermeture", "Statuette", "Rune de puissance",
+    "Rune de protection", "Rune d'énergie", "Rune de garde",
+    "Cercle de protection", "Chute ralentie", "Lumière", "Baies magiques",
+    "Régénération", "Forêt vivante", "Forme d'arbre", "Animation d'un arbre",
+    "Porte végétale", "Prison végétale", "Nuée d'insectes",
+    "Masque du prédateur", "Forme animale",
+  ].map(normaliserNomCapacite)
+);
+
+/** Toutes les capacités de profil + de peuple (recherche du texte DRS). */
+function toutesLesCapacites(): { nom: string; resume: string; action?: string; sortId?: string }[] {
+  const out: { nom: string; resume: string; action?: string; sortId?: string }[] = [];
+  for (const voies of Object.values(CAPACITES)) {
+    for (const v of voies) for (const c of v.capacites) out.push(c);
+  }
+  for (const v of [...VOIES_PEUPLE, VOIE_MAGE]) {
+    for (const c of v.capacites) out.push(c);
+  }
+  return out;
+}
+
+let indexCapacites: Map<string, { nom: string; resume: string; action?: string; sortId?: string }> | null = null;
+function capaciteParNom(nom: string) {
+  if (!indexCapacites) {
+    indexCapacites = new Map();
+    for (const c of toutesLesCapacites()) {
+      const q = normaliserNomCapacite(c.nom);
+      if (!indexCapacites.has(q)) indexCapacites.set(q, c);
+    }
+  }
+  return indexCapacites.get(normaliserNomCapacite(nom));
+}
+
+/** Heuristique : le résumé décrit-il une action utilisable en combat ? */
+function resumeActif(resume: string): boolean {
+  return /(^|\b)(action\s+(gratuite|limitée|limitee|mouvement|d'?attaque)|sort\s+(d'?attaque|de|\(|\p{L})|test\s+oppos|jet\s+d'?attaque|utilise\s+une\s+action|en\s+action)/iu.test(
+    resume
+  );
+}
+
+function ciblesDepuisResume(resume: string): CibleCapacite {
+  if (/\b(soi|sur soi|seul|lanceur|personnel)\b/i.test(resume)) return "soi";
+  if (/\b(alli|compagnon|groupe|patients|protég|protege)/i.test(resume)) return "allies";
+  if (/\b(ennemi|adversaire|victime|cible|créature|creature|mort-vivant|demon|démon)/i.test(resume)) return "ennemis";
+  return "tous";
+}
+
+/**
+ * Usage d'un talent : entrée spécifique si elle existe, sinon fallback
+ * générique construit depuis le texte DRS. Le fallback actif ouvre une
+ * question MJ et journalise l'usage ; il ne prétend pas automatiser une
+ * règle complexe (portée, contact, choix de caractéristique...).
+ */
+/** Talents déjà résolus par le panneau Attaque (cases Coup spécial ou sélecteur). */
+const NARRATIFS_ATTAQUE = new Set([
+  "attaque puissante",
+  "attaque brutale",
+  "double attaque",
+  "attaque circulaire",
+  "charge",
+  "attaque bondissante",
+  "tir de barrage",
+  "tir de grenaille",
+  "attaque tourbillon",
+  "frappe du justicier",
+  "as de la gâchette",
+  "ouverture mortelle",
+  "maître du poison",
+  "feinte",
+  "provocation",
+  "pression mortelle",
+]);
+
+/** Passifs explicites : appliqués aux dérivés, jamais proposés comme action. */
+const PASSIFS_EXPLICITES = new Set(["armure d'os", "exsangue"]);
+
+/** Actions explicitement narratives mais non couvertes par le panneau Attaque. */
+const ACTIFS_EXPLICITES = new Set([
+  "résistance à la magie",
+  "défier la mort",
+  "manœuvre",
+  "manouvre",
+  "intelligence du combat",
+  "esquive acrobatique",
+  "repli",
+  "disparition",
+  "baratin",
+  "acrobaties",
+  "esquive de la magie",
+  "démolition",
+  "piège explosif",
+]);
+
+export function usageTalent(nom: string, profil?: string): CapaciteUsable | undefined {
+  const q = normaliserNomCapacite(nom);
+  const direct = CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q);
+  if (direct) {
+    const mode: CapaciteUsable["mode"] = PASSIFS_EXPLICITES.has(q)
+      ? "passif"
+      : NARRATIFS_ATTAQUE.has(q)
+        ? "narratif"
+        : ACTIFS_EXPLICITES.has(q)
+          ? "actif"
+          : (direct.mode ??
+            (direct.effetCle ||
+            direct.coutPV ||
+            direct.soin ||
+            direct.degats ||
+            direct.montantMJ ||
+            direct.nettoie ||
+            direct.actionSpeciale
+              ? "actif"
+              : "passif"));
+    if (mode === direct.mode && direct.questionMJ) return direct;
+    return {
+      ...direct,
+      mode,
+      ...(mode === "actif" && !direct.questionMJ
+        ? {
+            questionMJ: `Le MJ valide les conditions, la cible et l'effet exact de « ${direct.talent} » (texte DRS).`,
+          }
+        : {}),
+    };
+  }
+  const c = capaciteParNom(nom);
+  if (!c) return undefined;
+  const mode: CapaciteUsable["mode"] = c.sortId
+    ? "narratif"
+    : PASSIFS_AUTOMATIQUES.has(q) || (!c.action && !resumeActif(c.resume))
+      ? "passif"
+      : "actif";
+  return {
+    talent: c.nom,
+    effetCle: null,
+    dureeTours: null,
+    cibles: ciblesDepuisResume(c.resume),
+    mode,
+    ...(mode === "actif"
+      ? {
+          questionMJ: `Le MJ valide les conditions, la cible et l'effet exact de « ${c.nom} » (texte DRS).`,
+        }
+      : {}),
+    note: c.resume,
+  };
+}
+
+/**
+ * Un talent est-il utilisable depuis le panneau Capacités ? Les passifs et
+ * les sorts liés (panneau des sorts / Attaque) en sont exclus. Un talent
+ * actif sans effet automatisé reste utilisable : le MJ tranche dans la
+ * pop-up et l'usage est journalisé.
+ */
 export function estLancable(u: CapaciteUsable | undefined): boolean {
   if (!u) return false;
-  return !!(u.effetCle || u.mods || u.coutPV || u.soin || u.montantMJ || u.nettoie || u.actionSpeciale);
+  if (u.mode === "passif" || u.mode === "narratif") return false;
+  if (u.mode === "actif") return true;
+  return !!(u.effetCle || u.mods || u.coutPV || u.soin || u.degats || u.montantMJ || u.nettoie || u.actionSpeciale);
 }
 
 /** Talents lançables parmi des noms connus (panneau Capacités, badge). */
-export function talentsLancables(talents: string[]): string[] {
-  return talents.filter((t) => {
-    const q = normaliserNomCapacite(t);
-    return estLancable(CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q));
-  });
+export function talentsLancables(talents: string[], profil?: string): string[] {
+  return talents.filter((t) => estLancable(usageTalent(t, profil)));
 }

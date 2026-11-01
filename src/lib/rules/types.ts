@@ -160,6 +160,8 @@ export interface Sort {
   effetDuree?: number | string | null;
   /** Dégâts par tour de l'effet, lancés au toucher (ex: "1d4", Saignements) -> pvParTour. */
   effetDegats?: string;
+  /** Purge les états non permanents de la cible au lancer (ex: Délivrance). */
+  nettoie?: boolean;
   /** Modificateurs supplémentaires de l'effet (ex: { deMalus: 1 }, Strangulation). */
   effetMods?: Record<string, number>;
   /** Jet de sauvegarde de l'effet (ex: CON 10 du Pied) : réussi = pas d'effet.
@@ -198,6 +200,12 @@ export interface Sort {
   /** Frappe de zone : dégâts + effet à tous les ennemis actifs (ex: Armée des morts). */
   zone?: boolean;
   /**
+   * Zone persistante (ex: Armée des morts) : le MJ choisit les ennemis dans la
+   * zone au lancer, puis une pop-up redemande à chaque tour du lanceur qui s'y
+   * trouve, tant que le sort dure. Voir lancerZonePersistante.
+   */
+  zonePersistante?: boolean;
+  /**
    * Rituel hors combat uniquement (ex: Rétablissement, 10 min, patients au repos
    * dans 5 m) : refusé en combat via castSoutien / panneaux. Hors combat via
    * lancerRetablissement (multi-patients, 1/jour).
@@ -211,6 +219,13 @@ export interface Sort {
   ciblesMax?: number;
   /** Plusieurs cibles au choix sans nombre fixé (ex: Appel de la foudre : résoudre une fois par cible). */
   ciblesLibres?: boolean;
+  /**
+   * Sort de soutien de groupe (ex: Bénédiction : alliés en vue et prêtre) :
+   * au lancer en combat, une pop-up choisit les bénéficiaires (tous les
+   * personnages joueurs sont cochés par défaut) et le coût n'est payé qu'une
+   * fois pour l'ensemble. Voir castSoutienGroupe.
+   */
+  ciblesAllies?: boolean;
   /**
    * Restriction d'espèce : le sort ne blesse que ces espèces (libellés
    * comparés via normaliserCategorie, ex: Destruction du mal -> ["Mort-vivant"]).

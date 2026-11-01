@@ -16,6 +16,7 @@ import { ActionBadge } from "@/src/components/ui/ActionBadge";
 import { ACTION_LABEL } from "@/src/lib/data/capacites";
 import { aideAction } from "@/src/lib/ui/actions";
 import { ArmeSortSelect, type OptionArmeSort } from "@/src/components/combat/ArmeSortSelect";
+import { TALENTS_ATTAQUE, type TalentAttaqueOption } from "@/src/lib/data/talents-attaque";
 
 interface Props {
   participants: CombatParticipant[];
@@ -60,6 +61,8 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const [double, setDouble] = useState(false);
   const [circulaire, setCirculaire] = useState(false);
   const [equipeContact, setEquipeContact] = useState(false);
+  /** Talent d'attaque hors cases « Coup spécial » (sélecteur générique). */
+  const [talentAttaque, setTalentAttaque] = useState("");
   const [mod, setMod] = useState("");
   const [dm, setDm] = useState("");
   const [cibles, setCibles] = useState<string[] | null>(null);
@@ -92,6 +95,37 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
   const proposeDouble = connaitDoubleArme && armeContact;
   const proposeCirculaire = connaitCirculaireArme && armeContact;
   const choixMultiples = (!!onMulti && (estZoneTop || estMultiTop)) || (circulaire && proposeCirculaire && !!onMultiArmes);
+  // Talents d'attaque non couverts par les cases Coup spécial (attaque
+  // brutale, charge, sournoise, tir rapide...) : le sélecteur n'apparaît que
+  // pour une attaque d'arme compatible.
+  const mainsNuesTop = !!selAttaqueTop && (
+    (selAttaqueTop.familles ?? []).includes("mains-nues") ||
+    /mains nues|poing|griffe/i.test(selAttaqueTop.nom ?? "")
+  );
+  const armeLegereTop = !!selAttaqueTop && (
+    (selAttaqueTop.familles ?? []).includes("dagues") ||
+    (selAttaqueTop.familles ?? []).includes("epees") ||
+    /dague|épée courte|epee courte|rapière|rapiere/i.test(selAttaqueTop.nom ?? "")
+  );
+  const distanceTop = !!selAttaqueTop && estAttaqueDistance(selAttaqueTop);
+  const contactTop = !!selAttaqueTop && estAttaqueContact(selAttaqueTop, !!selSortTop);
+  const dejaCouvert = new Set([
+    "dans le mille", "attaque flamboyante", "morsure du serpent",
+    "poings de fer", "griffes du tigre",
+  ]);
+  const optionsTalents: TalentAttaqueOption[] = !selAttaqueTop || selSortTop
+    ? []
+    : TALENTS_ATTAQUE.filter((t) => {
+        if (!talents.has(normaliserNomCapacite(t.talent))) return false;
+        if (dejaCouvert.has(normaliserNomCapacite(t.talent))) return false;
+        if (!t.arme || t.arme === "toutes") return true;
+        if (t.arme === "contact") return contactTop;
+        if (t.arme === "distance") return distanceTop;
+        if (t.arme === "mains-nues") return mainsNuesTop;
+        if (t.arme === "legere") return armeLegereTop;
+        return false;
+      });
+  const talentAttaqueOpt = optionsTalents.find((t) => t.talent === talentAttaque);
   const ennemisTop = (attacker ? participants.filter((p) => p.statut === "actif" && p.camp !== attacker.camp && p.instanceId !== attacker.instanceId) : []).map((p) => p.instanceId);
   // Pré-sélection : ennemis (plafonnée pour ×N). null = auto ; réinitialisée
   // à chaque attaquant/attaque (état dérivé au rendu, pas d'effet).
@@ -106,6 +140,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     setAttenteContact(false);
     setDouble(false);
     setCirculaire(false);
+    setTalentAttaque("");
     setAttenteMj(null);
   }
   const [modeLancement, setModeLancement] = useState<"mana" | "brulure">("mana");
@@ -127,7 +162,14 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     concentration && !!selSortTop && (selSortTop.action ?? "attaque") === "attaque" && (selSortTop.cout?.montant ?? 0) > 0;
   const actionAffichee: ActionDRS =
     actionPosture
-    ?? ((double && proposeDouble) || (circulaire && proposeCirculaire) || actionConcentration ? "limitee" : actionBase);
+    ?? (
+      (double && proposeDouble) ||
+      (circulaire && proposeCirculaire) ||
+      talentAttaqueOpt?.action === "L" ||
+      actionConcentration
+        ? "limitee"
+        : actionBase
+    );
   const libelleActionAffichee =
     tactique === "riposte" ? "Limitée (L) ou action (A)" : ACTION_LABEL[actionAffichee];
   const aideActionAffichee =
@@ -235,6 +277,18 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
     // cible) — armes au contact ; le −2 est passé aux résolutions de la page.
     if (double && connaitDoubleArme) opts.modAttaque = (opts.modAttaque ?? 0) - 2;
     if (circulaire && connaitCirculaireArme) opts.modAttaque = (opts.modAttaque ?? 0) - 2;
+    // Talent d'attaque supplémentaire (sélecteur générique). Les conditions
+    // de contact, de cible et de monture sont validées par la question MJ.
+    if (talentAttaqueOpt) {
+      if (talentAttaqueOpt.modAttaque) opts.modAttaque = (opts.modAttaque ?? 0) + talentAttaqueOpt.modAttaque;
+      if (talentAttaqueOpt.deBonus) opts.deBonus = true;
+      if (talentAttaqueOpt.deMalus) opts.deMalus = true;
+      if (talentAttaqueOpt.degatsBonus?.length) {
+        opts.degatsBonus = [...(opts.degatsBonus ?? []), ...talentAttaqueOpt.degatsBonus];
+      }
+      if (talentAttaqueOpt.bonusDM) opts.bonusDM = (opts.bonusDM ?? 0) + talentAttaqueOpt.bonusDM;
+      if (talentAttaqueOpt.effetSupp) opts.effetSupp = talentAttaqueOpt.effetSupp;
+    }
     // Mode de lancement du sort (incantation / brûlure + concentration éventuelle).
     const selAttaque = attacker?.attaques.find((x) => x.id === (attackId ?? attacker?.attaques[0]?.id));
     const selSort = attacker && selAttaque && selAttaque.id.startsWith("sort:")
@@ -260,6 +314,9 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
       ...(eclair && connaitEclair ? [{ cle: "att:eclair", question: "Attaque éclair : le déplacement jusqu'à la cible est-il possible (≤ 10 m, +10 m au rang 5) ?" }] : []),
       ...(double && connaitDoubleArme ? [{ cle: "att:double", question: "Attaque double : les deux coups sont-ils portés au contact de la cible ?" }] : []),
       ...(circulaire && connaitCirculaireArme ? [{ cle: "att:circ", question: "Attaque circulaire : tous les ennemis cochés sont-ils au contact ?" }] : []),
+      ...(talentAttaqueOpt?.questionMJ
+        ? [{ cle: `att:talent:${normaliserNomCapacite(talentAttaqueOpt.talent)}`, question: talentAttaqueOpt.questionMJ }]
+        : []),
       ...(tactiqueEff === "soutenir" && attacker ? [{ cle: "att:soutenir", question: "Soutenir un allié : l'allié est-il au contact de son adversaire ?" }] : []),
       ...(selSort ? (selSort.questionMJ
         ? [{ cle: `sort:${selSort.id}`, question: selSort.questionMJ }]
@@ -566,7 +623,7 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
           😱 Effroi : cible protégée retirée de la liste ({vivants.filter((p) => attaqueInterdite(attacker.effets, p.instanceId)).map((p) => p.nom).join(", ")}).
         </p>
       )}
-      {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair || proposeDouble || proposeCirculaire) && (
+      {(connaitPuissante || connaitParfaite || connaitMille || connaitFleche || connaitEclair || proposeDouble || proposeCirculaire || optionsTalents.length > 0) && (
         <div className="rounded border border-zinc-800 p-2 space-y-1.5 text-sm">
           <div className="text-xs uppercase text-zinc-500 font-bold">Coup spécial</div>
           {connaitPuissante && (
@@ -641,6 +698,30 @@ export function AttackPanel({ participants, attackerId, attackId, targetId, last
               />
               <span>Circulaire (L) : 1 attaque à −2 par ennemi au contact</span>
             </label>
+          )}
+          {optionsTalents.length > 0 && (
+            <div className="pt-1 border-t border-zinc-800 space-y-1">
+              <label className="flex items-center gap-2">
+                <span className="shrink-0">Talent d&apos;attaque</span>
+                <select
+                  value={talentAttaque}
+                  onChange={(e) => setTalentAttaque(e.target.value)}
+                  className="flex-1 bg-zinc-800 rounded px-1.5 py-0.5 text-xs"
+                >
+                  <option value="">Aucun</option>
+                  {optionsTalents.map((t) => (
+                    <option key={t.talent} value={t.talent}>
+                      {t.talent}{t.action ? ` (${t.action})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {talentAttaqueOpt && (
+                <p className="text-[11px] text-amber-200/90">
+                  {talentAttaqueOpt.note}
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}

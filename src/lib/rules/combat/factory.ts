@@ -3,7 +3,7 @@ import type { Item } from "@/src/lib/rules/world/types";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import { categoriesMonstre } from "@/src/lib/rules/categories";
 import { substituerDeEvolutif, substituerDesEvolutifs, substituerStats, dureeEffetSort, resoudreFormuleSort } from "@/src/lib/rules/dice/roller";
-import { bonusBouclier, deEvolutif, deriverPersonnage, niveauAttaque, rangMaxVoie } from "@/src/lib/rules/personnage";
+import { bonusBouclier, caracteristiquesEffectives, deEvolutif, deriverPersonnage, niveauAttaque, rangMaxVoie } from "@/src/lib/rules/personnage";
 import { compterCapacites, niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { completerSortsDepuisGrimoire } from "@/src/lib/rules/personnage";
 
@@ -90,10 +90,11 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     const a = attaqueFromItem(item);
     if (a) attaques.push(a);
   }
-  const magique = niveauAttaque(c.niveau) + c.caracteristiques.VOL;
+  const caracsEff = caracteristiquesEffectives(c);
+  const magique = niveauAttaque(c.niveau) + caracsEff.VOL;
   for (const sort of sortsRef) {
     const rangVoie = rangMaxVoie(c, sort.voie ?? "");
-    const a = attaqueFromSort(sort, magique, c.caracteristiques, c.niveau, rangVoie);
+    const a = attaqueFromSort(sort, magique, caracsEff, c.niveau, rangVoie);
     if (a) attaques.push(a);
   }
   // Verrou de niveau par sort (gratuité Mage déduite) pour les panneaux.
@@ -127,8 +128,10 @@ export function participantFromCharacter(c: Character, catalogue: Item[] = []): 
     // Bouclier manié (mod. DEF) : prérequis Voie du bouclier, figé à l'entrée.
     bouclierBonus: bonusBouclier(c.inventaire ?? [], catalogue),
     bonusMagique: magique,
-    caracs: { ...c.caracteristiques },
+    caracs: caracteristiquesEffectives(c),
     profil: c.profil || c.classe,
+    peuple: c.peuple,
+    traitsPeuple: [...(c.traitsPeuple ?? [])],
     usagesSorts: {},
     // Compteurs journaliers de la fiche (mineure, phénix...) : suivis en combat.
     ...(c.usagesJournaliers ? { usagesJournaliers: { ...c.usagesJournaliers } } : {}),

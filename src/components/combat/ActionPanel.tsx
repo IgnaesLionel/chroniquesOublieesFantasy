@@ -3,7 +3,8 @@ import { useState } from "react";
 import type { AttackResolution, CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { Character, MonsterTemplate, Sort } from "@/src/lib/rules/types";
 import type { Item } from "@/src/lib/rules/world/types";
-import { canAct } from "@/src/lib/rules/effects/effects";
+import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
+import type { SortieEnseveliResolution } from "@/src/lib/rules/combat/attack";
 import {
   actionDeAttaque,
   etatLimite,
@@ -12,17 +13,20 @@ import {
   sortUtilisable,
   estCadavre,
   estLoupCompagnon,
+  estZonePersistanteSort,
   trouverMaitreLoup,
   profilAnimable,
   NC_MAX_ANIMATION,
+  lireUsages,
   type AttaqueOpts,
   type PaiementSort,
 } from "@/src/lib/rules/combat/attack";
 import { capacitesCreature } from "@/src/lib/rules/combat/fiche-creature";
-import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
+import { talentsLancables, usageTalent } from "@/src/lib/data/capacites-usables";
 import { actionDeTalent, infererAction } from "@/src/lib/data/capacites";
 import { normaliserNomCapacite } from "@/src/lib/rules/personnage";
 import { AttackPanel } from "@/src/components/combat/AttackPanel";
+import { SortieEnseveli } from "@/src/components/combat/SortieEnseveli";
 import { CapacitesPanel } from "@/src/components/combat/CapacitesPanel";
 import { ObjetPanel } from "@/src/components/combat/ObjetPanel";
 import { SoutienPanel } from "@/src/components/combat/SoutienPanel";
@@ -59,6 +63,12 @@ interface Props {
   onMultiArmes?: (attackerId: string, attackId: string, cibleIds: string[], opts?: AttaqueOpts) => void;
   onChance: () => void;
   onCastSoutien: (lanceurId: string, cibleId: string, sort: Sort, paiement?: PaiementSort) => void;
+  /** Sort de soutien de groupe (Bénédiction) : plusieurs bénéficiaires, coût unique. */
+  onCastSoutienGroupe?: (lanceurId: string, cibleIds: string[], sort: Sort, paiement?: PaiementSort) => void;
+  /** Zone persistante (Armée des morts) : ennemis cochés au lancer puis à chaque tour. */
+  onCastZone?: (lanceurId: string, cibleIds: string[], sort: Sort, paiement?: PaiementSort) => void;
+  /** Sortie d'Ensevelissement (action limitée) : seule action d'un enseveli. */
+  onSortieEnseveli?: (cibleId: string, carac: "FOR" | "AGI", aides: number) => SortieEnseveliResolution | null;
   onUtiliserCapacite: (
     lanceurId: string,
     cibleId: string,
@@ -71,6 +81,7 @@ interface Props {
       actionSpeciale: "renvoi" | "proteger" | "vigueur" | "lien-empathique" | "animer" | undefined;
       soin: string | undefined;
       soinFixe: number | undefined;
+      degats: string | undefined;
       nettoie: boolean | undefined;
       outrepasserSoin: boolean | undefined;
       modeVigueur: "auto" | "test" | undefined;
@@ -116,10 +127,13 @@ export function ActionPanel(props: Props) {
   const manaActuel = mana?.actuel ?? 0;
   const actifs = participants.filter((p) => p.statut === "actif");
   const bloque = acteur ? !canAct(acteur.effets) : false;
+  // Enseveli (Ensevelissement) : aucune action possible, SAUF sortir de terre
+  // (action limitée, test FOR/AGI diff 15). Le panneau n'affiche donc que ça.
+  const enseveli = acteur ? getModifier(acteur.effets, "inciblable") > 0 : false;
 
   const entrees: EntreeActionCombat[] = [];
 
-  if (acteur) {
+  if (acteur && !enseveli) {
     // ── Attaques : armes + sorts offensifs fusionnés par la fiche ─────────
     for (const a of acteur.attaques) {
       const sort = a.id.startsWith("sort:")
@@ -155,7 +169,7 @@ export function ActionPanel(props: Props) {
         a.volDeVie ? "vol de vie" : "",
         a.seuilPv != null ? `≤ ${Math.round(a.seuilPv * 100)} % PV` : "",
         a.exigeVivant ? "cible vivante" : "",
-        sort?.limiteCombat != null && !sort.limiteParCible ? `1×${sort.limiteCombat}/combat` : "",
+        sort?.limiteCombat != null && !sort.limiteParCible ? `${lireUsages(acteur, sort.id).n}/${sort.limiteCombat} lancé(s) ce combat` : "",
         sort?.limiteParCible ? "1/combat/cible" : "",
         sort?.zone ? "zone" : "",
         sort?.ciblesMax != null && sort.ciblesMax > 1 ? `×${sort.ciblesMax} cibles` : "",
@@ -184,6 +198,8 @@ export function ActionPanel(props: Props) {
       const u = sortUtilisable(acteur.niveau, s);
       if (!u.ok && u.raison) raisons.push(u.raison);
       if (s.rituelHorsCombat) raisons.push("rituel hors combat");
+      const lim = etatLimite(acteur, s);
+      if (!lim.ok && lim.raison) raisons.push(lim.raison);
       if (cout > 0 && manaActuel < cout) {
         if (manaActuel === 0 && acteur.deRecuperation && !s.soin) notes.push("brûlure possible");
         else raisons.push("mana insuffisant");
@@ -194,9 +210,9 @@ export function ActionPanel(props: Props) {
         ...notes,
         s.coutPV ? `${s.coutPV} PV` : "",
         s.invocation ? "invocation" : "",
-        s.zone ? "zone" : "",
+        estZonePersistanteSort(s) ? "zone persistante" : s.zone ? "zone" : "",
         s.attaqueAccordee ? "+attaque" : "",
-        s.limiteCombat != null && !s.limiteParCible ? `1×${s.limiteCombat}/combat` : "",
+        s.limiteCombat != null && !s.limiteParCible ? `${lireUsages(acteur, s.id).n}/${s.limiteCombat} lancé(s) ce combat` : "",
         s.limiteParCible ? "1/combat/cible" : "",
         s.questionMJ ? "⚖️ MJ" : "",
       ].filter(Boolean).join(" · ");
@@ -213,10 +229,8 @@ export function ActionPanel(props: Props) {
     }
 
     // ── Capacités lançables ──────────────────────────────────────────────
-    for (const t of talentsLancables(acteur.capacites ?? [])) {
-      const defaut = CAPACITES_USABLES.find(
-        (u) => normaliserNomCapacite(u.talent) === normaliserNomCapacite(t)
-      );
+    for (const t of talentsLancables(acteur.capacites ?? [], acteur.profil)) {
+      const defaut = usageTalent(t, acteur.profil);
       const action = actionDeTalent(t, acteur.profil) ?? infererAction(defaut?.note ?? "");
       const raisons: string[] = [];
       const notes: string[] = [];
@@ -392,6 +406,18 @@ export function ActionPanel(props: Props) {
 
       {!acteur ? (
         <p className="text-xs text-zinc-500">Choisissez un acteur pour afficher ses actions.</p>
+      ) : enseveli ? (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200">
+            <span className="font-bold text-red-300">Enseveli :</span> aucune action, aucun déplacement,
+            aucune capacité. Seule la sortie de terre est possible (action limitée).
+          </div>
+          {props.onSortieEnseveli ? (
+            <SortieEnseveli participant={acteur} onSortie={props.onSortieEnseveli} />
+          ) : (
+            <p className="text-xs text-zinc-500">Sortie de terre indisponible (MJ).</p>
+          )}
+        </div>
       ) : entrees.length === 0 ? (
         <p className="text-xs text-zinc-500">
           {acteur.nom} n&apos;a aucune action utilisable en combat. Équipez une arme ou vérifiez sa fiche.
@@ -438,6 +464,8 @@ export function ActionPanel(props: Props) {
                   onSortChange={(id) => setSelection({ type: "soutien", id })}
                   masquerSelecteur
                   onCast={props.onCastSoutien}
+                  onCastGroupe={props.onCastSoutienGroupe}
+                  onCastZone={props.onCastZone}
                   onLogMJ={props.onLogMJ}
                 />
               )}

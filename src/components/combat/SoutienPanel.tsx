@@ -2,8 +2,8 @@
 import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { Sort } from "@/src/lib/rules/types";
-import { canAct } from "@/src/lib/rules/effects/effects";
-import { sortUtilisable, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { canAct, getModifier } from "@/src/lib/rules/effects/effects";
+import { sortUtilisable, etatLimite, estZonePersistanteSort, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { usagesMineureRestants, quotaMineureParJour, rangVoieSoins, nbRang3AutresVoiesPretre } from "@/src/lib/rules/soins";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { PopupValidationMJ } from "@/src/components/combat/PopupValidationMJ";
@@ -13,6 +13,9 @@ import { FamilleBadge } from "@/src/components/ui/Famille";
 import { ActionBadge } from "@/src/components/ui/ActionBadge";
 import { ACTION_LABEL, ACTION_LETTER } from "@/src/lib/data/capacites";
 import { aideAction } from "@/src/lib/ui/actions";
+import { dureeEffetSort } from "@/src/lib/rules/dice/roller";
+import { PopupBenediction } from "@/src/components/combat/PopupBenediction";
+import { PopupZonePersistante } from "@/src/components/combat/PopupZonePersistante";
 
 interface Props {
   participants: CombatParticipant[];
@@ -23,6 +26,10 @@ interface Props {
   /** Masquer le sélecteur local : la palette d'actions fait office de sélecteur. */
   masquerSelecteur?: boolean;
   onCast: (lanceurId: string, cibleId: string, sort: Sort, paiement?: PaiementSort) => void;
+  /** Sort de groupe (ciblesAllies) : plusieurs bénéficiaires, coût payé une fois. */
+  onCastGroupe?: (lanceurId: string, cibleIds: string[], sort: Sort, paiement?: PaiementSort) => void;
+  /** Zone persistante (Armée des morts) : ennemis cochés au lancer puis à chaque tour. */
+  onCastZone?: (lanceurId: string, cibleIds: string[], sort: Sort, paiement?: PaiementSort) => void;
   /** Trace « MJ a validé » au journal de combat. */
   onLogMJ?: (message: string) => void;
 }
@@ -34,6 +41,8 @@ export function SoutienPanel({
   onSortChange,
   masquerSelecteur = false,
   onCast,
+  onCastGroupe,
+  onCastZone,
   onLogMJ,
 }: Props) {
   const lanceur = participants.find((p) => p.instanceId === lanceurId) ?? null;
@@ -46,16 +55,23 @@ export function SoutienPanel({
   const [outrepasserSoin, setOutrepasserSoin] = useState(false);
   /** Question MJ en attente (pop-up ouverte) : bloque la résolution. */
   const [attenteMj, setAttenteMj] = useState<string | null>(null);
+  /** Pop-up de choix des bénéficiaires (sorts de groupe, ex: Bénédiction). */
+  const [popupGroupe, setPopupGroupe] = useState(false);
+  /** Pop-up de choix des ennemis dans la zone (Armée des morts). */
+  const [popupZone, setPopupZone] = useState(false);
   const choisirSort = (id: string) => {
     if (onSortChange) onSortChange(id);
     else setSortIdInterne(id);
     setAttenteMj(null);
+    setPopupGroupe(false);
+    setPopupZone(false);
   };
 
   if (!lanceur || soutiens.length === 0) return null;
   const jouables = soutiens.filter((s) => sortUtilisable(lanceur.niveau, s).ok);
   const sort = soutiens.find((s) => s.id === sortId) ?? jouables[0] ?? soutiens[0];
   const sortJouable = sortUtilisable(lanceur.niveau, sort);
+  const limite = etatLimite(lanceur, sort);
   // Alliés ciblables : les KO restent soignables (le sort les relève dès que
   // les PV remontent), les morts jamais. Les actifs passent devant pour rester
   // la cible par défaut.
@@ -63,6 +79,19 @@ export function SoutienPanel({
     .filter((p) => p.camp === lanceur.camp && p.statut !== "mort")
     .sort((a, b) => Number(b.statut === "actif") - Number(a.statut === "actif"));
   const cible = allies.find((p) => p.instanceId === cibleId) ?? allies[0] ?? null;
+  /** Sort de groupe (Bénédiction) : plusieurs bénéficiaires, coût unique. */
+  const estGroupe = !!sort.ciblesAllies;
+  const dureeGroupe = estGroupe
+    ? dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, Math.max(1, Math.floor(lanceur.niveau)))
+    : null;
+  /** Zone persistante (Armée des morts) : pop-up ennemis au lancer puis à chaque tour. */
+  const estZonePersistante = estZonePersistanteSort(sort);
+  const dureeZone = estZonePersistante
+    ? dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, Math.max(1, Math.floor(lanceur.niveau)))
+    : null;
+  const ennemisZone = participants.filter(
+    (p) => p.statut === "actif" && p.camp !== lanceur.camp && getModifier(p.effets, "inciblable") <= 0
+  );
   const bloque = !canAct(lanceur.effets);
   const mana = lanceur.ressources["mana"];
   const coutBase = sort.cout?.montant ?? 0;
@@ -93,6 +122,35 @@ export function SoutienPanel({
     onCast(lanceur.instanceId, cible.instanceId, sort, { mode: burnActive ? "brulure" : "mana", concentration: concActive, outrepasserSoin });
   };
 
+  /** Lancer de groupe : un seul paiement, un effet par bénéficiaire coché. */
+  const executerLancementGroupe = (cibleIds: string[]) => {
+    if (cibleIds.length === 0) return;
+    if (sort.questionMJ) onLogMJ?.(`⚖️ MJ validé — 🛡️ ${sort.nom} : ${sort.questionMJ}`);
+    const paiement = { mode: burnActive ? "brulure" : "mana", concentration: concActive, outrepasserSoin } as const;
+    if (onCastGroupe) onCastGroupe(lanceur.instanceId, cibleIds, sort, paiement);
+    // Repli (panneau utilisé sans branchement groupe) : bénéficiaire unique.
+    else onCast(lanceur.instanceId, cibleIds[0], sort, paiement);
+    setPopupGroupe(false);
+  };
+
+  /** Lancer de zone persistante : ennemis cochés dans les 10 m. */
+  const executerLancementZone = (cibleIds: string[]) => {
+    if (cibleIds.length === 0) return;
+    if (sort.questionMJ) onLogMJ?.(`⚖️ MJ validé — 🦴 ${sort.nom} : ${sort.questionMJ}`);
+    const paiement = { mode: burnActive ? "brulure" : "mana", concentration: concActive, outrepasserSoin } as const;
+    if (onCastZone) onCastZone(lanceur.instanceId, cibleIds, sort, paiement);
+    // Repli (panneau utilisé sans branchement zone) : première cible.
+    else onCast(lanceur.instanceId, cibleIds[0], sort, paiement);
+    setPopupZone(false);
+  };
+
+  /** Après la validation MJ éventuelle : pop-up de groupe ou lancer direct. */
+  const poursuivreLancement = () => {
+    if (estGroupe) setPopupGroupe(true);
+    else if (estZonePersistante) setPopupZone(true);
+    else executerLancement();
+  };
+
   return (
     <div className="rounded-lg border border-emerald-900 bg-zinc-900 p-4 space-y-2.5">
       <h2 className="font-bold text-sm uppercase text-emerald-300">
@@ -114,7 +172,7 @@ export function SoutienPanel({
                 s.cout ? `${s.cout.montant} ${s.cout.ressource}` : "",
                 s.coutPV ? `${s.coutPV} PV` : "",
                 s.invocation ? "invoque" : "",
-                s.zone ? "zone" : "",
+                s.zonePersistante ? "zone persistante" : s.zone ? "zone" : "",
                 s.rituelHorsCombat ? "rituel HC" : "",
                 s.attaqueAccordee ? "+attaque" : "",
               ].filter(Boolean).join(" · ");
@@ -161,16 +219,27 @@ export function SoutienPanel({
           <span>{cible.nom} déjà soigné ce combat — outrepasser MJ (1 soin/combat)</span>
         </label>
       )}
-      <label className="block text-sm">Bénéficiaire
-        {cible && <FamilleBadge famille={cible.camp === "pj" ? familleDuProfil(cible.profil) : null} className="ml-2" />}
-        <select id="soutien-cible" name="soutien-cible" value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
-          {allies.map((p) => (
-            <option key={p.instanceId} value={p.instanceId}>
-              {p.nom} — {p.pv}/{p.pvMax} PV{p.statut === "ko" ? " (KO — soin possible)" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+      {estGroupe ? (
+        <div className="rounded border border-violet-900 bg-violet-950/30 px-2.5 py-2 text-xs text-violet-200">
+          Bénéficiaires : tous les personnages joueurs (pop-up au lancement, décochables). Le coût n&apos;est payé qu&apos;une fois.
+        </div>
+      ) : estZonePersistante ? (
+        <div className="rounded border border-violet-900 bg-violet-950/30 px-2.5 py-2 text-xs text-violet-200">
+          🦴 Zone persistante : pop-up au lancement pour cocher les ennemis dans les 10 m, puis à chaque tour du sorcier
+          pendant {dureeZone ?? "NIVEAU"} round(s). Les positions sont validées par le MJ.
+        </div>
+      ) : (
+        <label className="block text-sm">Bénéficiaire
+          {cible && <FamilleBadge famille={cible.camp === "pj" ? familleDuProfil(cible.profil) : null} className="ml-2" />}
+          <select id="soutien-cible" name="soutien-cible" value={cible?.instanceId ?? ""} onChange={(e) => setCibleId(e.target.value)} className="mt-1 w-full bg-zinc-800 rounded px-2 py-2">
+            {allies.map((p) => (
+              <option key={p.instanceId} value={p.instanceId}>
+                {p.nom} — {p.pv}/{p.pvMax} PV{p.statut === "ko" ? " (KO — soin possible)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {coutBase > 0 && (
         <div className={`rounded border border-zinc-800 p-2 space-y-1.5 text-sm fam-rail ${classeFamille(familleDuSort(sort))}`}>
           <div className="text-xs uppercase text-zinc-500 font-bold">Lancement du sort</div>
@@ -199,18 +268,18 @@ export function SoutienPanel({
       <button
         onClick={() => {
           const question = sort.questionMJ;
-          if (!cible) return;
+          if (!estGroupe && !estZonePersistante && !cible) return;
           if (question && !mjDejaValide(`sort:${sort.id}`)) {
             setAttenteMj(question);
             return;
           }
-          executerLancement();
+          poursuivreLancement();
         }}
-        disabled={bloque || !cible || estRituel || cibleDejaSoignee || !sortJouable.ok || (estMineure && (restantsMineure ?? 1) <= 0)}
+        disabled={bloque || (!estGroupe && !estZonePersistante && !cible) || (estZonePersistante && ennemisZone.length === 0) || estRituel || cibleDejaSoignee || !sortJouable.ok || !limite.ok || (estMineure && (restantsMineure ?? 1) <= 0)}
         className="w-full py-2.5 rounded bg-violet-700 hover:bg-violet-600 font-bold disabled:opacity-40"
-        title={!sortJouable.ok ? sortJouable.raison : estRituel ? "Rituel hors combat — lancez hors combat" : cibleDejaSoignee ? "Cible déjà soignée ce combat (outrepasser MJ pour forcer)" : undefined}
+        title={!sortJouable.ok ? sortJouable.raison : !limite.ok ? limite.raison : estRituel ? "Rituel hors combat — lancez hors combat" : estZonePersistante && ennemisZone.length === 0 ? "Aucun ennemi actif ciblable pour la zone" : cibleDejaSoignee ? "Cible déjà soignée ce combat (outrepasser MJ pour forcer)" : undefined}
       >
-        Lancer {sort.nom}
+        {estZonePersistante ? `Lancer ${sort.nom} — choisir la zone` : `Lancer ${sort.nom}`}
       </button>
       {attenteMj && (
         <PopupValidationMJ
@@ -218,9 +287,33 @@ export function SoutienPanel({
           questions={[{ cle: `sort:${sort.id}`, question: attenteMj }]}
           onValider={() => {
             setAttenteMj(null);
-            executerLancement();
+            poursuivreLancement();
           }}
           onAnnuler={() => setAttenteMj(null)}
+        />
+      )}
+      {popupGroupe && estGroupe && (
+        <PopupBenediction
+          lanceurNom={lanceur.nom}
+          sortNom={sort.nom}
+          dureeTours={dureeGroupe}
+          cha={lanceur.caracs?.CHA ?? null}
+          participants={participants}
+          candidats={allies.map((p) => p.instanceId)}
+          onValider={executerLancementGroupe}
+          onAnnuler={() => setPopupGroupe(false)}
+        />
+      )}
+      {popupZone && estZonePersistante && (
+        <PopupZonePersistante
+          mode="lancer"
+          sortNom={sort.nom}
+          lanceurNom={lanceur.nom}
+          degats={sort.effetDegats ?? sort.degats ?? "0"}
+          participants={participants}
+          candidats={ennemisZone.map((p) => p.instanceId)}
+          onValider={executerLancementZone}
+          onAnnuler={() => setPopupZone(false)}
         />
       )}
     </div>

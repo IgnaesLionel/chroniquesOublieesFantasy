@@ -262,16 +262,91 @@ function modEffectif(c: Character): number {
   return c.defenseMod ?? 0;
 }
 
-/** Noms connus (talents + sorts), normalisés, pour les bonus dérivés. */
-function nomsConnus(c: Pick<Character, "capacites" | "sorts">): Set<string> {
+/** Noms connus (talents + traits de peuple + sorts), normalisés, pour les bonus dérivés. */
+type SourceNoms = { capacites?: string[]; sorts?: Sort[]; traitsPeuple?: string[]; peuple?: string };
+function nomsConnus(c: SourceNoms): Set<string> {
   const s = new Set((c.capacites ?? []).map((t) => normaliserNomCapacite(t)));
+  for (const t of c.traitsPeuple ?? []) s.add(normaliserNomCapacite(t));
   for (const x of c.sorts ?? []) s.add(normaliserNomCapacite(x.nom));
   return s;
 }
 
+/** Caractéristiques de base, que la source soit une fiche ou un combattant. */
+function caracsDe(c: { caracteristiques?: Caracteristiques; caracs?: Record<string, number> }): Caracteristiques {
+  return (c.caracteristiques ?? c.caracs ?? { AGI: 0, CON: 0, FOR: 0, PER: 0, CHA: 0, INT: 0, VOL: 0 }) as Caracteristiques;
+}
+
+/**
+ * Bonus permanents de caractéristiques accordés par les talents et traits de
+ * peuple (DRS). Les choix explicites (Combattant héroïque AGI/FOR,
+ * Supériorité elfique INT/CHA) sont tranchés par défaut en faveur de la
+ * première option ; la fiche peut toujours être éditée par le MJ.
+ */
+export function bonusCaracteristiquesTalents(
+  c: SourceNoms & { profil?: string; classe?: string; caracteristiques?: Caracteristiques; caracs?: Record<string, number> }
+): Partial<Caracteristiques> {
+  const noms = nomsConnus(c);
+  const bonus: Partial<Caracteristiques> = {};
+  const ajouter = (cle: keyof Caracteristiques, n = 1) => {
+    bonus[cle] = (bonus[cle] ?? 0) + n;
+  };
+  if (noms.has(normaliserNomCapacite("Force héroïque"))) ajouter("FOR");
+  if (
+    noms.has(normaliserNomCapacite("Constitution héroïque")) ||
+    noms.has(normaliserNomCapacite("Pacte ténébreux")) ||
+    noms.has(normaliserNomCapacite("Ténacité")) ||
+    noms.has(normaliserNomCapacite("Ascétisme")) ||
+    noms.has(normaliserNomCapacite("Endurer"))
+  ) {
+    ajouter("CON");
+  }
+  if (noms.has(normaliserNomCapacite("Agilité héroïque"))) ajouter("AGI");
+  if (noms.has(normaliserNomCapacite("Combattant héroïque"))) ajouter("AGI");
+  if (noms.has(normaliserNomCapacite("Perception héroïque"))) ajouter("PER");
+  if (noms.has(normaliserNomCapacite("Charisme héroïque"))) ajouter("CHA");
+  if (noms.has(normaliserNomCapacite("Volonté héroïque"))) ajouter("VOL");
+  if (noms.has(normaliserNomCapacite("Esprit supérieur"))) {
+    ajouter("INT");
+    ajouter("VOL");
+  }
+  if (noms.has(normaliserNomCapacite("Ténacité"))) ajouter("VOL");
+  if (noms.has(normaliserNomCapacite("Supériorité elfique"))) {
+    if (/demi-elfe/i.test(`${c.peuple ?? ""} ${c.profil ?? ""} ${c.classe ?? ""}`)) {
+      ajouter("AGI");
+      ajouter("PER");
+    } else {
+      ajouter("VOL");
+      ajouter("INT");
+    }
+  }
+  if (noms.has(normaliserNomCapacite("Polyvalence"))) {
+    ajouter("VOL");
+    // +1 à la plus faible caractéristique (hors VOL déjà traité).
+    const car = caracsDe(c);
+    const cles: (keyof Caracteristiques)[] = ["AGI", "CON", "FOR", "PER", "CHA", "INT"];
+    const faible = cles.reduce((a, b) => (car[a] <= car[b] ? a : b));
+    ajouter(faible);
+  }
+  return bonus;
+}
+
+/** Caractéristiques effectives (base + talents/traits permanents). */
+export function caracteristiquesEffectives<T extends { caracteristiques: Caracteristiques } & SourceNoms & { profil?: string; classe?: string }>(
+  c: T
+): Caracteristiques {
+  const car = { ...c.caracteristiques };
+  for (const [cle, n] of Object.entries(bonusCaracteristiquesTalents(c))) {
+    car[cle] = (car[cle] ?? 0) + (n ?? 0);
+  }
+  return car;
+}
+
 /** Rang max connu dans une voie du profil (0 si voie absente) : dégâts et
  *  difficultés de sorts au rang de voie, Exsangue +3 au rang 5, etc. */
-export function rangMaxVoie(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">, voie: string): number {
+export function rangMaxVoie(
+  c: { capacites?: string[]; sorts?: Sort[]; profil?: string; classe?: string; traitsPeuple?: string[] },
+  voie: string
+): number {
   const noms = nomsConnus(c);
   const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
   const v = (CAPACITES[profil] ?? []).find((x) => x.voie === voie);
@@ -289,13 +364,25 @@ export function rangMaxVoie(c: Pick<Character, "capacites" | "sorts" | "profil" 
  * - Grand pas +1 en nature (+1 au rang 5 = Increvable, MJ : extérieur)
  * - Tactiques +1 par rang 5 en voie du profil. */
 export function bonusDefenseTalents(
-  c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">,
+  c: SourceNoms & {
+    profil?: string;
+    classe?: string;
+    caracteristiques?: Caracteristiques;
+    caracs?: Record<string, number>;
+    compagnon?: unknown;
+  },
   catalogue: Item[] = [],
   inventaire: InventaireEntree[] = []
 ): number {
   const noms = nomsConnus(c);
   const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
   const voies = CAPACITES[profil] ?? [];
+  const car = caracsDe(c);
+  const armureTorse = inventaire.some(
+    (e) => e.equipe && catalogue.some((i) => i.id === e.itemId && estTorse(i))
+  );
+  const sansArmure = !armureTorse;
+  const rang = (voie: string) => rangMaxVoie(c, voie);
   const compteRang = (rang: number, prefixeVoie?: string): number => {
     let n = 0;
     for (const v of voies) {
@@ -348,6 +435,50 @@ export function bonusDefenseTalents(
       if (torseMundane) bonus -= 1;
     }
   }
+  // Défenses passives de voies / peuples (DRS).
+  if (noms.has(normaliserNomCapacite("Peau de pierre"))) {
+    bonus += 1 + (rang("Voie du pagne") >= 4 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Réflexes éclair"))) {
+    bonus += 1 + (rang("Voie du pourfendeur") >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Souplesse du félin"))) {
+    bonus += 2 + (rang("Voie de l'aventurier") >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Agile"))) {
+    const r = rang("Voie du déplacement");
+    bonus += 1 + (r >= 3 ? 1 : 0) + (r >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Peau de fer"))) {
+    bonus += 2 + (rang("Voie du poing") >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Course du vent"))) {
+    bonus += 1 + (rang("Voie du vent") >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Grâce féline"))) {
+    bonus += 1 + (rang("Voie du saltimbanque") >= 4 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Maîtrise du ki"))) {
+    bonus += 2 + (rang("Voie de la méditation") >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Armure de vent"))) {
+    bonus += sansArmure ? (rang("Voie du primitif") >= 5 ? 3 : 2) : 1;
+  }
+  if (noms.has(normaliserNomCapacite("Dentelle et rapière")) && sansArmure) {
+    bonus += Math.min(Math.max(0, car.CHA), Math.max(1, rang("Voie de la séduction")));
+  }
+  if (noms.has(normaliserNomCapacite("Runes de défense"))) {
+    const r = rang("Voie des runes");
+    bonus += 2 + (r >= 3 ? 1 : 0) + (r >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Armure lourde"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Combattant aguerri"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Combat de masse"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Tour de magie"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Murmures dans le vent"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Divination"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Familier"))) bonus += 2;
+  if (noms.has(normaliserNomCapacite("Petit compagnon")) && c.compagnon) bonus += 2;
   return bonus;
 }
 
@@ -413,24 +544,60 @@ export function bonusConTalents(c: Pick<Character, "capacites" | "sorts">): numb
   return nomsConnus(c).has(normaliserNomCapacite("Pacte ténébreux")) ? 1 : 0;
 }
 
-/** Bonus PV max permanent des talents connus (DRS) : Robustesse (Guerrier) +rang+2
- * où rang = rang max connu en Voie de la résistance. */
-export function bonusPvTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
-  const noms = nomsConnus(c);
-  if (!noms.has(normaliserNomCapacite("Robustesse"))) return 0;
-  const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
-  const voie = (CAPACITES[profil] ?? []).find((v) => v.voie === "Voie de la résistance");
-  if (!voie) return 0;
-  const rangs = voie.capacites.filter((x) => noms.has(normaliserNomCapacite(x.nom))).map((x) => x.rang);
-  if (rangs.length === 0) return 0;
-  return Math.max(...rangs) + 2;
+type SourceDerives = SourceNoms & {
+  profil?: string;
+  classe?: string;
+  caracteristiques?: Caracteristiques;
+  caracs?: Record<string, number>;
+};
+
+/** Bonus de mana permanent (Tour de magie : +2 PM en l'apprenant). */
+export function bonusManaTalents(c: SourceNoms): number {
+  return nomsConnus(c).has(normaliserNomCapacite("Tour de magie")) ? 2 : 0;
 }
 
-/** Bonus INIT permanent des talents connus (Vivacité +3 ; Archer émérite +1 par rang dans la voie, version arc). */
-export function bonusInitiativeTalents(c: Pick<Character, "capacites" | "sorts" | "profil" | "classe">): number {
+/** Bonus PV max permanent des talents et traits connus (DRS). */
+export function bonusPvTalents(c: SourceDerives): number {
   const noms = nomsConnus(c);
+  const car = caracsDe(c);
+  let bonus = 0;
+  if (noms.has(normaliserNomCapacite("Robustesse"))) {
+    const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
+    const voie = (CAPACITES[profil] ?? []).find((v) => v.voie === "Voie de la résistance");
+    if (voie) {
+      const rangs = voie.capacites.filter((x) => noms.has(normaliserNomCapacite(x.nom))).map((x) => x.rang);
+      if (rangs.length > 0) bonus += Math.max(...rangs) + 2;
+    }
+  }
+  if (noms.has(normaliserNomCapacite("Argument de taille"))) bonus += Math.max(0, car.FOR);
+  if (noms.has(normaliserNomCapacite("Vigueur"))) bonus += rangMaxVoie(c, "Voie du pagne");
+  if (noms.has(normaliserNomCapacite("Proche de la nature"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Grosse tête"))) bonus += Math.max(0, car.INT);
+  if (noms.has(normaliserNomCapacite("Maîtrise du ki"))) bonus += Math.max(0, car.VOL);
+  return bonus;
+}
+
+/** Bonus INIT permanent des talents, traits et sorts connus. */
+export function bonusInitiativeTalents(c: SourceDerives): number {
+  const noms = nomsConnus(c);
+  const car = caracsDe(c);
+  const rang = (voie: string) => rangMaxVoie(c, voie);
   let bonus = 0;
   if (noms.has(normaliserNomCapacite("Vivacité"))) bonus += 3;
+  if (noms.has(normaliserNomCapacite("Réflexes éclair"))) bonus += 3;
+  if (noms.has(normaliserNomCapacite("Souplesse du félin"))) bonus += 2 + (rang("Voie de l'aventurier") >= 5 ? 1 : 0);
+  if (noms.has(normaliserNomCapacite("Agile"))) {
+    const r = rang("Voie du déplacement");
+    bonus += 1 + (r >= 3 ? 1 : 0) + (r >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Grâce féline"))) bonus += Math.max(0, car.CHA);
+  if (noms.has(normaliserNomCapacite("Attaque en finesse"))) bonus += Math.max(0, car.AGI);
+  if (noms.has(normaliserNomCapacite("Pas du vent"))) bonus += 3;
+  if (noms.has(normaliserNomCapacite("Plus vite que son ombre"))) bonus += 5;
+  if (noms.has(normaliserNomCapacite("Maîtrise du ki"))) bonus += Math.max(0, car.VOL);
+  if (noms.has(normaliserNomCapacite("Murmures dans le vent"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Divination"))) bonus += 1;
+  if (noms.has(normaliserNomCapacite("Familier"))) bonus += 2;
   if (noms.has(normaliserNomCapacite("Archer émérite"))) {
     const profil = (c.profil ?? "").trim() || (c.classe ?? "").trim();
     const voie = (CAPACITES[profil] ?? []).find((v) => v.voie === "Voie de l'archer");
@@ -444,15 +611,136 @@ export function bonusInitiativeTalents(c: Pick<Character, "capacites" | "sorts" 
   return bonus;
 }
 
+type SourceAttaque = SourceDerives & { niveau?: number };
+
+type AttaqueMin = { nom?: string; familles?: string[] };
+
+function famillesDe(attaque: AttaqueMin): string[] {
+  return attaque.familles ?? [];
+}
+
+function estMainsNues(attaque: AttaqueMin): boolean {
+  return famillesDe(attaque).includes("mains-nues") || /mains nues|poing|griffe/i.test(attaque.nom ?? "");
+}
+
+function estArmeLegere(attaque: AttaqueMin): boolean {
+  const f = famillesDe(attaque);
+  return f.includes("dagues") || f.includes("epees") || /dague|épée courte|epee courte|rapière|rapiere/i.test(attaque.nom ?? "");
+}
+
+/**
+ * Bonus permanents au jet d'attaque (talents/traits). Les substitutions de
+ * caractéristique (AGI au lieu de FOR) sont converties en écart positif.
+ */
+export function bonusAttaqueTalents(
+  c: SourceAttaque,
+  attaque: AttaqueMin,
+  distance = false
+): number {
+  const noms = nomsConnus(c);
+  const car = caracsDe(c);
+  const f = famillesDe(attaque);
+  const mainsNues = estMainsNues(attaque);
+  const leger = estArmeLegere(attaque);
+  let bonus = 0;
+  if (noms.has(normaliserNomCapacite("Haches et marteaux")) && (f.includes("haches") || f.includes("masses"))) {
+    bonus += 1;
+  }
+  if (noms.has(normaliserNomCapacite("Mains d'énergie")) && mainsNues) {
+    bonus += rangMaxVoie(c, "Voie de l'énergie vitale") + 2;
+  }
+  if (noms.has(normaliserNomCapacite("Poings de fer")) && mainsNues) {
+    bonus += Math.max(0, car.AGI - car.FOR);
+  }
+  if (
+    (noms.has(normaliserNomCapacite("Attaque en finesse")) || noms.has(normaliserNomCapacite("Précision"))) &&
+    leger &&
+    !distance
+  ) {
+    bonus += Math.max(0, car.AGI - car.FOR);
+  }
+  if (noms.has(normaliserNomCapacite("Attaque flamboyante")) && leger && !distance) {
+    bonus += Math.max(0, car.CHA);
+  }
+  if (noms.has(normaliserNomCapacite("Poudre puissante")) && distance) {
+    bonus += 1;
+  }
+  return bonus;
+}
+
+/** Bonus permanents aux DM (talents/traits), hors dés conditionnels. */
+export function bonusDegatsTalents(
+  c: SourceAttaque,
+  attaque: AttaqueMin,
+  distance = false
+): number {
+  const noms = nomsConnus(c);
+  const car = caracsDe(c);
+  const f = famillesDe(attaque);
+  const leger = estArmeLegere(attaque);
+  let bonus = 0;
+  if (noms.has(normaliserNomCapacite("Haches et marteaux")) && (f.includes("haches") || f.includes("masses"))) {
+    bonus += 1;
+  }
+  if (noms.has(normaliserNomCapacite("Attaque flamboyante")) && leger && !distance) {
+    bonus += Math.max(0, car.CHA);
+  }
+  if (noms.has(normaliserNomCapacite("Doigts agiles")) && distance && f.includes("dagues")) {
+    const r = rangMaxVoie(c, "Voie du roublard");
+    bonus += 1 + (r >= 3 ? 1 : 0) + (r >= 5 ? 1 : 0);
+  }
+  if (noms.has(normaliserNomCapacite("Poudre puissante")) && distance) {
+    bonus += 1 + (rangMaxVoie(c, "Voie des explosifs") >= 5 ? 1 : 0);
+  }
+  return bonus;
+}
+
+/** Réduction fixe des DM subis (Fils du roc, Peau d'acier), minimum 1 DM. */
+export function reductionDegatsPassifs(c: SourceNoms & { niveau?: number }): number {
+  const noms = nomsConnus(c);
+  let rd = 0;
+  if (noms.has(normaliserNomCapacite("Fils du roc"))) rd += (c.niveau ?? 1) >= 10 ? 3 : 2;
+  if (noms.has(normaliserNomCapacite("Peau d'acier"))) rd += 3;
+  return rd;
+}
+
+/** Seuil de critique permanent (19-20, 18-20...) selon talents/peuple. */
+export function seuilCritiqueTalents(
+  c: SourceAttaque,
+  attaque: AttaqueMin,
+  distance = false
+): number {
+  const noms = nomsConnus(c);
+  const f = famillesDe(attaque);
+  const mainsNues = estMainsNues(attaque);
+  const leger = estArmeLegere(attaque);
+  let seuil = 20;
+  if (noms.has(normaliserNomCapacite("Briseur d'os")) && !distance) seuil = Math.min(seuil, 19);
+  if (noms.has(normaliserNomCapacite("Morsure du serpent")) && mainsNues) seuil = Math.min(seuil, 19);
+  if (noms.has(normaliserNomCapacite("Tir précis")) && distance) {
+    seuil = Math.min(seuil, rangMaxVoie(c, "Voie de la précision") >= 5 ? 18 : 19);
+  }
+  if (noms.has(normaliserNomCapacite("Frappe chirurgicale")) && leger && !distance) seuil = Math.min(seuil, 18);
+  if (
+    noms.has(normaliserNomCapacite("Archer émérite")) &&
+    distance &&
+    f.includes("arcs") &&
+    /demi-elfe/i.test(`${c.peuple ?? ""} ${(c.traitsPeuple ?? []).join(" ")}`)
+  ) {
+    seuil = Math.min(seuil, 19);
+  }
+  return seuil;
+}
+
 /** Calcule toutes les valeurs dérivées d'un personnage COF. */
 export function deriverPersonnage(c: Character, catalogue: Item[] = []): DerivePersonnage {
   const profil = profilEffectif(c);
   const famille = familleEffective(c);
-  const car = c.caracteristiques;
+  // Caractéristiques effectives : base + talents/traits permanents
+  // (Force héroïque, Ténacité, Pacte ténébreux, Supériorité elfique...).
+  const car = caracteristiquesEffectives(c);
   const nbSorts = c.sorts?.length ?? 0;
-  // CON effective : base + talents (Pacte ténébreux +1). Les tests de CON
-  // et le dé bonus en CON restent au jugement du MJ (comme Robustesse).
-  const con = car.CON + bonusConTalents(c);
+  const con = car.CON;
   return {
     famille,
     initiative: initiativeBase(car) + bonusInitiativeTalents(c),
@@ -461,7 +749,7 @@ export function deriverPersonnage(c: Character, catalogue: Item[] = []): DeriveP
     chanceMax: chanceMax(car.CHA, profil, famille, c.capacites ?? []),
     drType: drType(profil, famille),
     drNombre: drNombre(con, profil, famille, c.capacites ?? [], car.VOL),
-    manaMax: manaMax(car.VOL, nbSorts),
+    manaMax: manaMax(car.VOL, nbSorts) + bonusManaTalents(c),
     attaques: attaquesBase(c.niveau, car),
     de: deEvolutif(c.niveau),
   };
@@ -647,7 +935,7 @@ export function normaliserPersonnage(input: Record<string, unknown>): Character 
     migreSorts = true;
   }
   // Le max de mana suit VOL + sorts connus (l'actuel est conservé, plafonné).
-  const manaFormule = Math.max(0, manaMax(caracteristiques.VOL, sorts.length));
+  const manaFormule = Math.max(0, manaMax(caracteristiques.VOL, sorts.length) + bonusManaTalents({ capacites, sorts }));
   const mana = ressources.mana
     ? { max: Math.max(ressources.mana.max, manaFormule), actuel: Math.min(ressources.mana.actuel, Math.max(ressources.mana.max, manaFormule)) }
     : { max: manaFormule, actuel: manaFormule };
@@ -734,8 +1022,10 @@ export function fusionnerEditionPersonnage(courant: Character, edite: Character)
 
 /**
  * Fait apprendre un sort du grimoire à un personnage (copie avec un nouvel id).
- * Le mana max suit la formule VOL + sorts connus (+1 par sort appris) et le
- * personnage est remis à fond (montée de niveau) : mana actuel = max, PV au max.
+ * Le mana max suit la formule VOL + sorts connus (+1 par sort appris) et la
+ * mana est remise à fond. Les PV courants sont conservés : apprendre un sort
+ * n'est pas une montée de niveau et ne doit pas soigner (la garde PV du
+ * stockage bloquerait l'écriture d'une fiche blessée).
  */
 export function apprendreSort<T extends Character>(c: T, modele: Sort): T {
   const sort: Sort = { ...modele, id: `sort-${Date.now().toString(36)}` };
@@ -744,7 +1034,6 @@ export function apprendreSort<T extends Character>(c: T, modele: Sort): T {
   return {
     ...c,
     sorts,
-    pv: c.pvMax,
     ressources: { ...(c.ressources ?? {}), mana: { max, actuel: max } },
   };
 }
@@ -764,18 +1053,45 @@ const CHAMPS_SORTS_COMPLETABLES = [
   "effetCle", "effetDuree", "effetDegats", "effetMods", "effetSauvegarde",
   "degats", "degatsParRangVoie", "demiDegatsSiRate", "difficulteAttaque",
   "testOppose", "exigeVivant", "tailleMax",
-  "limiteCombat", "limiteParCible", "zone", "rituelHorsCombat", "patientsParCha", "concentrationInterdite", "ciblesMax", "ciblesLibres",
+  "limiteCombat", "limiteParCible", "zone", "zonePersistante", "rituelHorsCombat", "patientsParCha", "concentrationInterdite", "ciblesMax", "ciblesLibres", "ciblesAllies",
   "invocation", "attaqueAccordee", "coutPV", "action", "bonus", "soin", "cout",
 ] as const;
 
+/**
+ * Ancienne conversion des durées "en minutes" (×10 tours) devenue fausse avec
+ * la règle de table : 1 minute = 6 tours. Utilisée uniquement quand le
+ * grimoire porte déjà la valeur corrigée, pour réaligner les fiches existantes.
+ */
+const DUREES_MINUTES_HERITEES: Record<string, string> = {
+  "CHA*10": "CHA*6",
+  "INT*10": "INT*6",
+  "PER*10": "PER*6",
+};
+
+/** Clé de correspondance tolérante (casse, accents, espaces) pour les copies héritées. */
+function cleNomSortHerite(nom: string): string {
+  return nom
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export function completerSortsDepuisGrimoire(sorts: Sort[], grimoire: Sort[] = SEED_SORTS): Sort[] {
-  const refs = new Map(grimoire.map((s) => [s.nom.trim().toLowerCase(), s]));
+  const refs = new Map(grimoire.map((s) => [cleNomSortHerite(s.nom), s]));
   let touche = false;
   const complete = sorts.map((s) => {
-    if (CHAMPS_SORTS_COMPLETABLES.every((ch) => s[ch] !== undefined)) return s;
-    const ref = refs.get(s.nom.trim().toLowerCase());
+    const ref = refs.get(cleNomSortHerite(s.nom));
     if (!ref) return s;
     let out = s;
+    // Règle de table 1 minute = 6 tours : les durées encodées avec l'ancienne
+    // conversion ×10 sont réalignées sur le grimoire (idempotent).
+    const heritee = typeof out.effetDuree === "string" ? DUREES_MINUTES_HERITEES[out.effetDuree] : undefined;
+    if (heritee && ref.effetDuree === heritee) {
+      out = { ...out, effetDuree: heritee };
+      touche = true;
+    }
     for (const champ of CHAMPS_SORTS_COMPLETABLES) {
       if (out[champ] === undefined && ref[champ] !== undefined) {
         const v = ref[champ] as unknown;
@@ -791,8 +1107,10 @@ export function completerSortsDepuisGrimoire(sorts: Sort[], grimoire: Sort[] = S
 
 /**
  * Fait apprendre une capacité (talent de voie, sans PM) : ajoute son nom aux
- * capacités du personnage (sans doublon). Montée de niveau : PV au max et
- * mana remis à fond (max inchangé). Doublon / nom vide : inchangé.
+ * capacités du personnage (sans doublon) et remet la mana à fond (max
+ * inchangé). Les PV courants sont conservés : apprendre une capacité n'est
+ * pas une montée de niveau et ne doit pas soigner (la garde PV du stockage
+ * bloquerait l'écriture d'une fiche blessée). Doublon / nom vide : inchangé.
  */
 export function ajouterCapacite<T extends Character>(c: T, nom: string): T {
   const n = nom.trim();
@@ -801,7 +1119,6 @@ export function ajouterCapacite<T extends Character>(c: T, nom: string): T {
   return {
     ...c,
     capacites: [...(c.capacites ?? []), n],
-    pv: c.pvMax,
     ressources: mana
       ? { ...(c.ressources ?? {}), mana: { ...mana, actuel: mana.max } }
       : c.ressources,

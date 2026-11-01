@@ -271,13 +271,13 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     expect(sansMage.traitsPeuple).toEqual(["Diversité"]);
   });
 
-  it("ajouterCapacite : apprend un talent sans doublon, PV et mana à fond (niveau)", () => {
+  it("ajouterCapacite : apprend un talent sans doublon, PV conservés et mana à fond", () => {
     const c = SEED_CHARACTERS.find((x) => x.id === "pj-guerrier-nain")!;
     expect(c.capacites).not.toContain("Vivacité");
     const blesse = { ...c, pv: 3, ressources: { ...c.ressources, mana: { max: 0, actuel: 0 } } };
     const r = ajouterCapacite(blesse, "Vivacité");
     expect(r.capacites).toContain("Vivacité");
-    expect(r.pv).toBe(r.pvMax); // full vie
+    expect(r.pv).toBe(3); // pas de soin à l'apprentissage
     expect(r.ressources.mana).toEqual({ max: 0, actuel: 0 });
     expect(c.capacites).not.toContain("Vivacité"); // non muté
     const r2 = ajouterCapacite(r, "Vivacité");
@@ -288,7 +288,7 @@ describe("COF Fantasy : modèles Personnage (4 fiches + tableau)", () => {
     const mae = SEED_CHARACTERS.find((x) => x.id === "pj-sorcier-humain")!;
     const blessee = { ...mae, pv: 1, ressources: { ...mae.ressources, mana: { max: 6, actuel: 2 } } };
     const r3 = ajouterCapacite(blessee, "Robustesse");
-    expect(r3.pv).toBe(r3.pvMax);
+    expect(r3.pv).toBe(1);
     expect(r3.ressources.mana).toEqual({ max: 6, actuel: 6 });
   });
 
@@ -474,6 +474,15 @@ describe("complétion des sorts depuis le grimoire", () => {
     // Valeur définie préservée (dégâts immédiats maison conservés).
     expect(complete.degats).toBe("1d4");
     expect(vieux).not.toHaveProperty("effetCle");
+  });
+  it("remplit zonePersistante sur une copie héritée (nom tolérant accents/casse)", () => {
+    const ancienne = {
+      id: "sort-ancien-zone", nom: "Armee des Morts", type: "utilitaire" as const,
+      zone: true, cout: { ressource: "mana", montant: 5 },
+    };
+    const [complete] = completerSortsDepuisGrimoire([ancienne]);
+    expect(complete.zonePersistante).toBe(true);
+    expect(ancienne).not.toHaveProperty("zonePersistante");
   });
   it("ne touche ni aux valeurs définies (homebrew MJ) ni aux sorts inconnus", () => {
     const maison = { ...stale, id: "x", toucheAuto: false as const, cibleEspeces: ["Végétal"] };

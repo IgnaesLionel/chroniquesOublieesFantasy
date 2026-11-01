@@ -2,7 +2,7 @@ import { rollDie, type Rng } from "@/src/lib/rules/dice/roller";
 import type { ActiveEffect } from "@/src/lib/rules/types";
 import type { CombatLogEntry, CombatParticipant, CombatState } from "@/src/lib/rules/combat/types";
 import { decrementerFinDeTour, marquerPose, pvParTourTotal } from "@/src/lib/rules/effects/effects";
-import { checkEnd } from "@/src/lib/rules/combat/attack";
+import { checkEnd, purgerZonesPersistantes } from "@/src/lib/rules/combat/attack";
 
 function entry(manche: number, message: string): CombatLogEntry {
   return { id: `${Date.now()}-${Math.floor(Math.random() * 1e6)}`, at: new Date().toISOString(), manche, message };
@@ -33,6 +33,7 @@ export function rollInitiatives(state: CombatState, rng: Rng = Math.random): Com
     participants: rolled,
     tourIndex: 0,
     manche: 1,
+    zonesPersistantes: undefined,
     log: [
       ...state.log,
       ...rolled.map((p) => entry(1, `Initiative ${p.nom} : ${p.initiative} (mod ${p.initMod >= 0 ? "+" : ""}${p.initMod})`)),
@@ -165,7 +166,7 @@ export function nextTurn(state: CombatState, sauterKO = true): CombatState {
     if (!nettoye.attaquesGratuites?.some((g) => g.lancee != null && g.lancee < manche)) return nettoye;
     return { ...nettoye, attaquesGratuites: nettoye.attaquesGratuites.filter((g) => !g.lancee || g.lancee >= manche) };
   });
-  return checkEnd({ ...state, participants, tourIndex: idx, manche, log });
+  return checkEnd(purgerZonesPersistantes({ ...state, participants, tourIndex: idx, manche, log }));
 }
 
 /** Ajoute un effet à un participant (pur). Tamponne le tour de pose. */

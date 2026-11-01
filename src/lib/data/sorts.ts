@@ -1,4 +1,5 @@
 import type { Sort } from "@/src/lib/rules/types";
+import { enrichirSort } from "./sorts-complements";
 
 // Grimoire officiel — sorts transcrits du DRS Chroniques Oubliées Fantasy :
 //   Prêtre : https://drs.chroniques-oubliees.fr/fantasy/profils/pretre
@@ -8,10 +9,12 @@ import type { Sort } from "@/src/lib/rules/types";
 // des voies (passives, sans coût) n'en font pas partie.
 // Les pages Guerrier et Rôdeur ne contiennent aucun sort à PM.
 // Règle COF : le coût en PM d'un sort = son rang (ressource "mana" dans l'app).
+// Durées "en minutes" : règle de table = 1 minute = 6 tours (et non 10),
+// donc CHA minutes = CHA × 6 tours (Arme de lumière, Bénédiction, Chant des héros).
 // Les descriptions sont des résumés ; voir le DRS pour le texte intégral.
 // `familles` = profils pouvant apprendre le sort ; [] = toutes classes.
 
-export const SEED_SORTS: Sort[] = [
+const SORTS_BRUTS: Sort[] = [
   // ---------------------------------------------------------- PRÊTRE
   {
     id: "sort-miracle-mineur", nom: "Miracle mineur", type: "defensif",
@@ -27,7 +30,7 @@ export const SEED_SORTS: Sort[] = [
     action: "mouvement",
     description: "Enchante l'arme du prêtre (CHA minutes, mouvement ; limitée sur allié au rang 5) : lumière 5 m, dé bonus en attaque et +1d4 DM contre démons et morts-vivants (+2d4 au rang 5 sur soi). Fin si l'arme quitte les mains.",
     familles: ["Prêtre"],
-    effetCle: "bonus-attaque", effetDuree: "CHA*10",
+    effetCle: "bonus-attaque", effetDuree: "CHA*6",
     cout: { ressource: "mana", montant: 3 },
   },
   {
@@ -78,7 +81,9 @@ export const SEED_SORTS: Sort[] = [
     action: "limitee",
     description: "Chant : alliés en vue et prêtre +1 aux tests et attaques pendant CHA minutes (+2 au rang 5). Rang+2 en théologie/cosmologie.",
     familles: ["Prêtre"],
-    effetCle: "bonus-attaque", effetDuree: "CHA*10",
+    effetCle: "benediction", effetDuree: "CHA*6",
+    // Groupe : pop-up de sélection des bénéficiaires au lancer (tous les PJ cochés).
+    ciblesAllies: true,
     cout: { ressource: "mana", montant: 1 },
   },
   {
@@ -273,10 +278,10 @@ export const SEED_SORTS: Sort[] = [
     id: "sort-armee-morts", nom: "Armée des morts", type: "utilitaire",
     voie: "Voie de l'outre-tombe", rang: 5,
     action: "limitee",
-    description: "1/jour (moteur : 1/combat — plusieurs combats/jour : MJ), squelettes pendant NIVEAU rounds : tous les ennemis dans 10 m (zone centrée sur le sorcier, MJ) subissent 2d4° automatiques par round. Déplacements /2 dans la zone, y compris le sorcier (MJ). Squelettes visuels (pas de fiches individuelles).",
+    description: "1/jour (moteur : 1/combat — plusieurs combats/jour : MJ), squelettes pendant NIVEAU rounds : à chaque tour du sorcier, pop-up pour cocher les ennemis présents dans les 10 m (zone centrée sur le sorcier, MJ) — 2d4° automatiques par round. Déplacements /2 dans la zone, y compris le sorcier (MJ). Squelettes visuels (pas de fiches individuelles).",
     familles: ["Sorcier"],
     effetCle: "Armée des morts", effetDuree: "NIVEAU", effetDegats: "2d4°",
-    limiteCombat: 1, zone: true,
+    limiteCombat: 1, zone: true, zonePersistante: true,
     cout: { ressource: "mana", montant: 5 },
   },
   {
@@ -359,7 +364,7 @@ export const SEED_SORTS: Sort[] = [
     voie: "Voie du musicien", rang: 1,
     description: "Chant (action limitée) : alliés à portée de voix +1 aux tests pendant CHA minutes (+2 au rang 5). Fredonne en action gratuite.",
     familles: ["Barde"],
-    effetCle: "bonus-attaque", effetDuree: "CHA*10",
+    effetCle: "bonus-attaque", effetDuree: "CHA*6",
     cout: { ressource: "mana", montant: 1 },
   },
   {
@@ -931,6 +936,14 @@ export const SEED_SORTS: Sort[] = [
     cout: { ressource: "mana", montant: 5 },
   },
 ];
+
+/**
+ * Grimoire enrichi : chaque sort dispose d'une mécanique (dégâts, soin, effet,
+ * invocation, zone) ou, à défaut, d'un marqueur narratif lançable avec
+ * validation MJ. Les sorts existants gardent leurs champs ; les compléments
+ * n'écrasent que les clés explicitement prévues.
+ */
+export const SEED_SORTS: Sort[] = SORTS_BRUTS.map(enrichirSort);
 
 /** Les 30 voies dont sont issus les sorts du grimoire (29 de profils + voie du mage). */
 export const VOIES_SORTS: string[] = [

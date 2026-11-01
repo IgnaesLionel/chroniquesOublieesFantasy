@@ -86,7 +86,7 @@ describe("grimoire des sorts (DRS)", () => {
     }
   });
 
-  it("apprendreSort : copie avec nouvel id + mana recalculé (VOL + sorts), full mana et full vie", () => {
+  it("apprendreSort : copie avec nouvel id + mana recalculé (VOL + sorts), full mana, PV conservés", () => {
     const pretre = SEED_CHARACTERS.find((x) => x.id === "pj-pretre-elfe-haut")!;
     expect(pretre.sorts).toHaveLength(2); // Bénédiction + Récupération mineure (seeds)
     const modele = SEED_SORTS.find((s) => s.id === "sort-sanctuaire")!;
@@ -99,7 +99,7 @@ describe("grimoire des sorts (DRS)", () => {
     expect(modele.id).toBe("sort-sanctuaire"); // le modèle n'est pas muté
     expect(r.ressources.mana.max).toBe(manaMax(2, 3)); // VOL 2 + 3 sorts = 5
     expect(r.ressources.mana).toEqual({ max: 5, actuel: 5 }); // +1 sort => +1 mana, à fond
-    expect(r.pv).toBe(r.pvMax); // full vie (niveau)
+    expect(r.pv).toBe(2); // pas de soin à l'apprentissage
     const r2 = apprendreSort(r, SEED_SORTS.find((s) => s.id === "sort-benediction")!);
     expect(r2.sorts).toHaveLength(4);
     expect(r2.ressources.mana).toEqual({ max: 6, actuel: 6 });

@@ -3,7 +3,7 @@ import { canAct, createEffect, getModifier, marquerPose, attaqueInterdite } from
 import { cibleEspeceAcceptee, estVivant } from "@/src/lib/rules/categories";
 import { niveauMinRang, normaliserNomCapacite } from "@/src/lib/rules/creation";
 import { ARME_FAMILLES } from "@/src/lib/rules/world/types";
-import { drType, niveauAttaque, rangVoieBouclier } from "@/src/lib/rules/personnage";
+import { bonusDegatsTalents, drType, niveauAttaque, rangVoieBouclier, reductionDegatsPassifs, seuilCritiqueTalents } from "@/src/lib/rules/personnage";
 import { CAPACITES } from "@/src/lib/data/capacites";
 import {
   CLE_MINEURE,
@@ -41,6 +41,7 @@ import type {
   PhenixEnAttente,
   SortAbsorbe,
   TypeAttaqueGratuite,
+  ZonePersistante,
 } from "@/src/lib/rules/combat/types";
 import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/combat/types";
 import { composantesAttaque, seuilDefense } from "@/src/lib/rules/combat/touche";
@@ -204,11 +205,21 @@ function exigerSoinMagiqueUnique(
 
 /** Applique dégâts (plancher 0). KO si pv 0. Mort gérée manuellement / Phase 5. */
 export function applyDamage(state: CombatState, targetId: string, amount: number, rng: Rng = Math.random): CombatState {
-  const participants = state.participants.map((p) =>
-    p.instanceId === targetId
-      ? { ...p, pv: Math.max(0, p.pv - Math.max(0, amount)), statut: p.pv - Math.max(0, amount) <= 0 ? ("ko" as const) : p.statut }
-      : p
-  );
+  const participants = state.participants.map((p) => {
+    if (p.instanceId !== targetId) return p;
+    const rd =
+      reductionDegatsPassifs({
+        capacites: p.capacites,
+        traitsPeuple: p.traitsPeuple,
+        peuple: p.peuple,
+        niveau: p.niveau,
+      }) + Math.max(0, getModifier(p.effets, "rd"));
+    // RD passive : les DM ne descendent jamais sous 1 (règle Fils du roc /
+    // Peau d'acier), sauf dégâts nuls explicitement.
+    const subis = amount > 0 && rd > 0 ? Math.max(1, amount - rd) : Math.max(0, amount);
+    const pv = Math.max(0, p.pv - subis);
+    return { ...p, pv, statut: pv <= 0 ? ("ko" as const) : p.statut };
+  });
   return appliquerPhenixAutomatique(checkEnd({ ...state, participants }), rng);
 }
 
@@ -486,7 +497,18 @@ export function resolveAttack(
     .map((e) => e.modificateurs["seuilCrit"])
     .filter((v): v is number => typeof v === "number");
   const critiqueAuto = matchPredilection && talentConnu(attaquant, "Science du critique");
-  const seuilCrit = Math.min(...(seuils.length ? seuils : [20]), critiqueAuto ? 19 : 20);
+  const seuilCritPassif = seuilCritiqueTalents(
+    {
+      capacites: attaquant.capacites,
+      sorts: attaquant.sorts,
+      profil: attaquant.profil,
+      caracs: attaquant.caracs,
+      niveau: attaquant.niveau,
+    },
+    attaque,
+    estAttaqueDistance(attaque)
+  );
+  const seuilCrit = Math.min(...(seuils.length ? seuils : [20]), critiqueAuto ? 19 : 20, seuilCritPassif);
   if (attaque.toucheAuto) {
     touche = true;
   } else if (critOpts.nat1EchecAuto && jetNaturel === 1) {
@@ -644,8 +666,26 @@ export function resolveAttack(
       ? Math.min(6, Math.max(0, attaquant.bonusSpecialisation ?? 0))
       : 0;
     if (bonusSpecialisation) degatsTotal += bonusSpecialisation;
-    if (bonusDetails.length > 0 || attaqueOpts.bonusDM || bonusEmerite || bonusSpecialisation) {
-      const parties = [...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : []), ...(bonusEmerite ? [`${bonusEmerite} (Archer émérite)`] : []), ...(bonusSpecialisation ? [`${bonusSpecialisation} (Spécialisation)`] : [])];
+    // Talents/traits passifs à DM fixe (Haches et marteaux, Attaque
+    // flamboyante, Doigts agiles, Poudre puissante...).
+    const bonusTalents = bonusDegatsTalents(
+      {
+        capacites: attaquant.capacites,
+        sorts: attaquant.sorts,
+        profil: attaquant.profil,
+        caracs: attaquant.caracs,
+        niveau: attaquant.niveau,
+      },
+      attaque,
+      estAttaqueDistance(attaque)
+    );
+    if (bonusTalents) degatsTotal += bonusTalents;
+    // Bonus de DM porté par un effet actif (Arme élémentaire, Morsure de la
+    // forge, Masque du prédateur...).
+    const bonusEffet = getModifier(attaquant.effets, "degats");
+    if (bonusEffet) degatsTotal += bonusEffet;
+    if (bonusDetails.length > 0 || attaqueOpts.bonusDM || bonusEmerite || bonusSpecialisation || bonusTalents || bonusEffet) {
+      const parties = [...bonusDetails, ...(attaqueOpts.bonusDM ? [`${attaqueOpts.bonusDM}`] : []), ...(bonusEmerite ? [`${bonusEmerite} (Archer émérite)`] : []), ...(bonusSpecialisation ? [`${bonusSpecialisation} (Spécialisation)`] : []), ...(bonusTalents ? [`${bonusTalents} (talents)`] : []), ...(bonusEffet ? [`${bonusEffet} (effet)`] : [])];
       bonusLog = `+${parties.join(" + ")}${bonusDetails.length > 0 || attaqueOpts.bonusDM ? " (coup spécial)" : ""}`;
     }
     degatsTotal = degatsTotal * (critique ? critOpts.multiplicateur : 1);
@@ -1174,6 +1214,8 @@ export interface CapaciteResolution {
   talentNom: string;
   effetNom: string | null;
   soinTotal?: number;
+  /** Dégâts automatiques éventuels infligés par le talent. */
+  degatsTotal?: number;
 }
 
 /**
@@ -1750,7 +1792,7 @@ export function utiliserCapacite(
   lanceurId: string,
   cibleId: string,
   talentNom: string,
-  opts: { effetCle?: string | null; dureeTours?: number | null; mods?: Record<string, number>; coutPV?: string; soin?: string; soinFixe?: number; nettoie?: boolean; outrepasserSoin?: boolean; modeVigueur?: "auto" | "test" } = {},
+  opts: { effetCle?: string | null; dureeTours?: number | null; mods?: Record<string, number>; coutPV?: string; soin?: string; soinFixe?: number; degats?: string; nettoie?: boolean; outrepasserSoin?: boolean; modeVigueur?: "auto" | "test" } = {},
   rng: Rng = Math.random
 ): { state: CombatState; resolution: CapaciteResolution & { testMagique?: { jetLanceur: number; totalLanceur: number; jetCible: number | null; totalCible: number | null; reussi: boolean } | null } } {
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
@@ -1772,8 +1814,34 @@ export function utiliserCapacite(
   let s = state;
   if (opts.coutPV) s = applyCoutPV(s, lanceurId, opts.coutPV, rng, niveauEffectif(lanceur)).state;
 
+  // Dégâts automatiques éventuels (talents sans jet : Fureur du dragon,
+  // Boulet explosif...). Le jet est résolu avec les caracs du lanceur, puis
+  // appliqué avant le soin/effet pour que la cible soit dans le bon état.
+  let degatsTotal = 0;
+  let degatsDetails: number[] = [];
+  if (opts.degats) {
+    const lanceurDegats = s.participants.find((p) => p.instanceId === lanceurId)!;
+    const roll = rollDiceExpression(
+      parseDiceExpression(substituerStats(substituerDesEvolutifs(opts.degats, niveauEffectif(lanceur)), lanceurDegats.caracs ?? {})),
+      rng
+    );
+    degatsDetails = roll.rolls;
+    degatsTotal = Math.max(0, roll.total);
+    if (degatsTotal > 0) s = applyDamage(s, cibleId, degatsTotal, rng);
+  }
+
+  const effetLisible = !!opts.effetCle && /^[a-z0-9-]+$/.test(opts.effetCle);
   const base = opts.effetCle
-    ? createEffect(opts.effetCle, { dureeTours: opts.dureeTours ?? null, source: lanceur.nom })
+    ? createEffect(opts.effetCle, {
+        dureeTours: opts.dureeTours ?? null,
+        source: lanceur.nom,
+        ...(effetLisible
+          ? {
+              nom: talentNom,
+              description: `Capacité « ${talentNom} » — voir le texte DRS et l'arbitrage du MJ.`,
+            }
+          : {}),
+      })
     : null;
   const effetBrut = base ? { ...base, modificateurs: { ...base.modificateurs, ...(opts.mods ?? {}) } } : null;
   // Tamponné au tour de pose (consommé seulement à la fin d'un tour complet).
@@ -1858,6 +1926,7 @@ export function utiliserCapacite(
   const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   const log = [...s.log];
   log.push({ id: id("cap"), at: stamp(), manche: s.manche, message: `${lanceur.nom} utilise ${talentNom} sur ${cible.nom}` });
+  if (degatsTotal > 0) log.push({ id: id("cdmg"), at: stamp(), manche: s.manche, message: `Dégâts : ${opts.degats} -> [${degatsDetails.join(", ")}] = ${degatsTotal}` });
   if (soinTotal > 0) log.push({ id: id("csoin"), at: stamp(), manche: s.manche, message: soinFixeLog ?? `Soin : ${opts.soin} -> [${soinDetails.join(", ")}] = ${soinTotal}` });
   if (purgeVigueurLog) log.push({ id: id("cnet"), at: stamp(), manche: s.manche, message: purgeVigueurLog });
   else if (opts.nettoie) log.push({ id: id("cnet"), at: stamp(), manche: s.manche, message: `${cible.nom} : états non permanents purgés` });
@@ -1868,6 +1937,7 @@ export function utiliserCapacite(
     resolution: {
       lanceurNom: lanceur.nom, cibleNom: cible.nom, talentNom, effetNom: effet?.nom ?? null,
       soinTotal,
+      ...(degatsTotal > 0 ? { degatsTotal } : {}),
       ...(testMagique ? { testMagique } : {}),
     },
   };
@@ -2431,11 +2501,42 @@ export function transfererVieAuLoup(
   };
 }
 
+/** Clé de nom de sort : sans accents, casse et espaces superflus. */
+function cleNomSort(valeur: string | undefined): string {
+  return (valeur ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** Zones persistantes connues : copies apprises avant l'ajout du drapeau. */
+const ZONES_PERSISTANTES_HERITEES = new Set(["armee des morts"]);
+
 /**
- * Frappe de zone (Armée des morts) : dégâts immédiats + effet de zone
- * (dégâts par tour lancés). 1 utilisation décomptée.
+ * Vrai si le sort est une zone persistante. Le drapeau reste la source de
+ * vérité ; une copie héritée (fiche ou staging créé avant son introduction)
+ * est reconnue par son nom ou sa clé d'effet, pour ne jamais retomber sur
+ * l'ancien DoT de frapperZone. `false` explicite reste respecté.
+ */
+export function estZonePersistanteSort(
+  sort: Pick<Sort, "id" | "zone" | "zonePersistante" | "nom" | "effetCle">
+): boolean {
+  if (!sort.zone) return false;
+  if (sort.zonePersistante !== undefined) return sort.zonePersistante;
+  if (sort.id === "sort-armee-morts") return true;
+  return [sort.nom, sort.effetCle]
+    .map((v) => cleNomSort(v))
+    .some((n) => ZONES_PERSISTANTES_HERITEES.has(n));
+}
+
+/**
+ * Frappe de zone instantanée (Explosion de feu, Mot de pouvoir...) : dégâts
+ * immédiats + effet de zone (dégâts par tour lancés). 1 utilisation décomptée.
  * Cibles = tous les ennemis actifs par défaut ; le MJ peut ajuster
  * (ex: Explosion de feu inclut les alliés dans son rayon).
+ * Les zones persistantes (Armée des morts) passent par lancerZonePersistante.
  */
 export function frapperZone(
   state: CombatState,
@@ -2448,6 +2549,9 @@ export function frapperZone(
   const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
   if (!lanceur) throw new Error("Lanceur introuvable.");
   if (!sort.zone) throw new Error(`${sort.nom} n'est pas une frappe de zone.`);
+  if (estZonePersistanteSort(sort)) {
+    throw new Error(`${sort.nom} : zone persistante — sélection des cibles à chaque tour du lanceur.`);
+  }
   if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
   const lim = etatLimite(lanceur, sort);
   if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
@@ -2468,7 +2572,7 @@ export function frapperZone(
     dotParTour = -Math.max(0, rollDiceExpression(parseDiceExpression(substituerDesEvolutifs(sort.effetDegats, nivLanceur)), rng).total);
   }
   const effetBase = sort.effetCle
-    ? createEffect(sort.effetCle, { dureeTours: dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, nivLanceur), source: lanceur.nom })
+    ? createEffect(sort.effetCle, { dureeTours: dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, nivLanceur), source: lanceur.nom, nom: sort.nom, description: sort.description })
     : null;
   const effetBrut = effetBase
     ? {
@@ -2583,6 +2687,219 @@ export function frapperZone(
     state: appliquerPhenixAutomatique(checkEnd({ ...s, participants, log }), rng),
     resolution: { lanceurNom: lanceur.nom, sortNom: sort.nom, degatsTotal, touches },
   };
+}
+
+/** Cibles d'une zone persistante : uniquement des ennemis actifs (doublons ignorés). */
+function ciblesZoneValides(
+  state: CombatState,
+  lanceur: CombatParticipant,
+  cibleIds: string[],
+  sortNom: string
+): CombatParticipant[] {
+  const vus = new Set<string>();
+  const cibles: CombatParticipant[] = [];
+  for (const id of cibleIds) {
+    if (vus.has(id)) continue;
+    vus.add(id);
+    const c = state.participants.find((p) => p.instanceId === id);
+    if (!c) throw new Error(`${sortNom} : cible introuvable (${id}).`);
+    if (c.instanceId === lanceur.instanceId) {
+      throw new Error(`${sortNom} : le lanceur ne peut pas être dans sa propre zone.`);
+    }
+    if (c.camp === lanceur.camp) throw new Error(`${sortNom} : ${c.nom} n'est pas un ennemi.`);
+    if (c.statut !== "actif") throw new Error(`${sortNom} : ${c.nom} n'est plus actif.`);
+    cibles.push(c);
+  }
+  return cibles;
+}
+
+/** Applique un round de dégâts automatiques de la zone aux cibles cochées. */
+function appliquerTickZone(
+  state: CombatState,
+  zone: ZonePersistante,
+  cibleIds: string[],
+  rng: Rng,
+  entete: string
+): { state: CombatState; resolution: ZoneResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === zone.lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  const ids = new Set(cibleIds);
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  if (ids.size === 0) {
+    return {
+      state: {
+        ...state,
+        log: [
+          ...state.log,
+          { id: id("ztick"), at: stamp(), manche: state.manche, message: `${entete} — ${zone.lanceurNom} : personne dans la zone, aucun dégât.` },
+        ],
+      },
+      resolution: { lanceurNom: zone.lanceurNom, sortNom: zone.nom, degatsTotal: 0, touches: [] },
+    };
+  }
+  const niv = niveauEffectif(lanceur);
+  const expr = substituerDesEvolutifs(zone.degats, niv);
+  const roll = rollDiceExpression(parseDiceExpression(expr), rng);
+  const degats = Math.max(0, roll.total);
+  const touches: ZoneResolution["touches"] = [];
+  const epargnes: string[] = [];
+  const participants = state.participants.map((p) => {
+    if (!ids.has(p.instanceId)) return p;
+    // Ensevelis (inciblables) épargnés par la zone, comme frapperZone.
+    if (p.statut !== "actif" || getModifier(p.effets, "inciblable") > 0) {
+      epargnes.push(p.nom);
+      return p;
+    }
+    const pvAvant = p.pv;
+    const pvApres = Math.max(0, pvAvant - degats);
+    const tombe = pvAvant > 0 && pvApres === 0;
+    touches.push({ cibleNom: p.nom, pvAvant, pvApres, tombe });
+    return { ...p, pv: pvApres, statut: pvApres <= 0 ? ("ko" as const) : p.statut };
+  });
+  const log = [...state.log];
+  log.push({ id: id("ztick"), at: stamp(), manche: state.manche, message: `${entete} — ${zone.lanceurNom} : ${degats} DM automatiques [${roll.rolls.join(", ")}] sur ${touches.length} ennemi(s).` });
+  for (const n of epargnes) {
+    log.push({ id: id("zepar"), at: stamp(), manche: state.manche, message: `${n} : inciblable — épargné par ${zone.nom}.` });
+  }
+  for (const t of touches) {
+    log.push({ id: id("zpv"), at: stamp(), manche: state.manche, message: `${t.cibleNom} : ${t.pvAvant} -> ${t.pvApres} PV` });
+    if (t.tombe) log.push({ id: id("zko"), at: stamp(), manche: state.manche, message: `${t.cibleNom} est hors combat` });
+  }
+  return {
+    state: appliquerPhenixAutomatique(checkEnd({ ...state, participants, log }), rng),
+    resolution: { lanceurNom: zone.lanceurNom, sortNom: zone.nom, degatsTotal: degats, touches },
+  };
+}
+
+/**
+ * Lance une zone persistante (Armée des morts) : le MJ coche les ennemis
+ * présents dans la zone de 10 m. Les dégâts du round sont appliqués
+ * immédiatement, puis une pop-up redemande la sélection à chaque tour du
+ * lanceur jusqu'à la fin de la durée (NIVEAU rounds).
+ */
+export function lancerZonePersistante(
+  state: CombatState,
+  lanceurId: string,
+  sort: Sort,
+  cibleIds: string[],
+  rng: Rng = Math.random,
+  paiement: PaiementSort = {}
+): { state: CombatState; resolution: ZoneResolution } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (!estZonePersistanteSort(sort)) throw new Error(`${sort.nom} n'est pas une zone persistante.`);
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+  const lim = etatLimite(lanceur, sort);
+  if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
+  const cibles = ciblesZoneValides(state, lanceur, cibleIds, sort.nom);
+  if (cibles.length === 0) throw new Error(`${sort.nom} : aucun ennemi actif sélectionné dans la zone.`);
+
+  let s = payerCoutSort(state, lanceurId, sort, paiement, rng).state;
+  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng, niveauEffectif(lanceur)).state;
+
+  const niv = niveauEffectif(lanceur);
+  const duree = Math.max(1, dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, niv) ?? 1);
+  const zone: ZonePersistante = {
+    id: `zone-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6)}`,
+    sortId: sort.id,
+    nom: sort.nom,
+    lanceurId,
+    lanceurNom: lanceur.nom,
+    mancheDebut: s.manche,
+    mancheFin: s.manche + duree - 1,
+    derniereApplication: s.manche,
+    cibles: cibles.map((p) => p.instanceId),
+    degats: sort.effetDegats ?? sort.degats ?? "0",
+  };
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const avecZone: CombatState = {
+    ...s,
+    participants: s.participants.map((p) => (p.instanceId === lanceurId ? enregistrerUsage(p, sort.id) : p)),
+    zonesPersistantes: [...(s.zonesPersistantes ?? []), zone],
+    log: [
+      ...s.log,
+      { id: id("zone"), at: stamp(), manche: s.manche, message: `${lanceur.nom} déchaîne ${sort.nom} : zone de 10 m pendant ${duree} round(s), ${cibles.length} ennemi(s) dedans.` },
+    ],
+  };
+  const tick = appliquerTickZone(avecZone, zone, zone.cibles, rng, `${sort.nom} (round 1/${duree})`);
+  return { state: tick.state, resolution: tick.resolution };
+}
+
+/** Zone persistante à traiter au tour de ce participant (null si aucune). */
+export function zonePersistanteATraiter(
+  state: CombatState,
+  participantId: string
+): ZonePersistante | null {
+  const lanceur = state.participants.find((p) => p.instanceId === participantId);
+  if (!lanceur || lanceur.statut !== "actif") return null;
+  return (
+    (state.zonesPersistantes ?? []).find(
+      (z) =>
+        z.lanceurId === participantId &&
+        state.manche >= z.mancheDebut &&
+        state.manche <= z.mancheFin &&
+        z.derniereApplication < state.manche
+    ) ?? null
+  );
+}
+
+/**
+ * Round suivant d'une zone persistante : applique les dégâts aux ennemis
+ * recochés par le MJ (liste vide = personne dans la zone, aucun dégât).
+ */
+export function appliquerZonePersistante(
+  state: CombatState,
+  zoneId: string,
+  cibleIds: string[],
+  rng: Rng = Math.random
+): { state: CombatState; resolution: ZoneResolution } {
+  const zone = (state.zonesPersistantes ?? []).find((z) => z.id === zoneId);
+  if (!zone) throw new Error("Zone persistante introuvable.");
+  if (state.manche > zone.mancheFin) throw new Error(`${zone.nom} : la zone a expiré.`);
+  if (zone.derniereApplication >= state.manche) {
+    throw new Error(`${zone.nom} : déjà appliquée à ce round.`);
+  }
+  const lanceur = state.participants.find((p) => p.instanceId === zone.lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (lanceur.statut !== "actif") throw new Error(`${zone.nom} : le lanceur n'est plus actif.`);
+  const cibles = ciblesZoneValides(state, lanceur, cibleIds, zone.nom);
+  const duree = zone.mancheFin - zone.mancheDebut + 1;
+  const round = state.manche - zone.mancheDebut + 1;
+  const tick = appliquerTickZone(
+    state,
+    zone,
+    cibles.map((p) => p.instanceId),
+    rng,
+    `${zone.nom} (round ${round}/${duree})`
+  );
+  const zones = (tick.state.zonesPersistantes ?? []).map((z) =>
+    z.id === zoneId
+      ? { ...z, cibles: cibles.map((p) => p.instanceId), derniereApplication: state.manche }
+      : z
+  );
+  return { state: { ...tick.state, zonesPersistantes: zones }, resolution: tick.resolution };
+}
+
+/** Retire les zones persistantes expirées ou dont le lanceur est mort. */
+export function purgerZonesPersistantes(state: CombatState): CombatState {
+  const zones = state.zonesPersistantes;
+  if (!zones?.length) return state;
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const log = [...state.log];
+  const restantes = zones.filter((z) => {
+    const lanceur = state.participants.find((p) => p.instanceId === z.lanceurId);
+    if (state.manche > z.mancheFin) {
+      log.push({ id: id("zfin"), at: stamp(), manche: state.manche, message: `${z.nom} (${z.lanceurNom}) prend fin : ${z.mancheFin - z.mancheDebut + 1} round(s) écoulé(s).` });
+      return false;
+    }
+    if (!lanceur || lanceur.statut === "mort") {
+      log.push({ id: id("zfin"), at: stamp(), manche: state.manche, message: `${z.nom} (${z.lanceurNom}) prend fin : lanceur hors combat.` });
+      return false;
+    }
+    return true;
+  });
+  if (restantes.length === zones.length) return state;
+  return { ...state, log, zonesPersistantes: restantes.length ? restantes : undefined };
 }
 
 /**
@@ -2729,7 +3046,7 @@ export function castSoutien(
   const pvAvant = cible.pv;
   const pvApres = Math.min(cible.pvMax, pvAvant + soinTotal);
   const effetBase = sort.effetCle
-    ? createEffect(sort.effetCle, { dureeTours: dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, niveauEffectif(lanceur)), source: lanceur.nom })
+    ? createEffect(sort.effetCle, { dureeTours: dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, niveauEffectif(lanceur)), source: lanceur.nom, nom: sort.nom, description: sort.description })
     : null;
   const effetBrut = effetBase
     ? { ...effetBase, modificateurs: { ...effetBase.modificateurs, ...(sort.effetMods ?? {}) } }
@@ -2747,6 +3064,7 @@ export function castSoutien(
       }
     : null;
   const accordee = attaqueTmp ? sort.attaqueAccordee!.nom : null;
+  let purges = 0;
 
   const participants = s.participants.map((p) => {
     // Lanceur et cible peuvent être le même (soutien sur soi) : cumuler.
@@ -2758,11 +3076,13 @@ export function castSoutien(
       }
     }
     if (p.instanceId === cibleId) {
+      const gardes = sort.nettoie ? q.effets.filter((e) => e.toursRestants === null) : q.effets;
+      if (sort.nettoie) purges = q.effets.length - gardes.length;
       q = {
         ...q,
         pv: pvApres,
         statut: pvApres > 0 ? ("actif" as const) : q.statut,
-        effets: effet ? [...q.effets, effet] : q.effets,
+        effets: effet ? [...gardes, effet] : gardes,
         attaques: attaqueTmp ? [...q.attaques.filter((x) => x.id !== attaqueTmp.id), attaqueTmp] : q.attaques,
         ...(soinTotal > 0 ? { soinMagiqueRecu: true } : {}),
       };
@@ -2775,6 +3095,7 @@ export function castSoutien(
   log.push({ id: id("sort"), at: stamp(), manche: s.manche, message: `${lanceur.nom} lance ${sort.nom} sur ${cible.nom}` });
   if (soinTotal > 0) log.push({ id: id("soin"), at: stamp(), manche: s.manche, message: `Soin : ${soinExpression} -> [${soinDetails.join(", ")}] = ${soinTotal} (${pvAvant} -> ${pvApres} PV)` });
   if (effet) log.push({ id: id("seff"), at: stamp(), manche: s.manche, message: `Effet "${effet.nom}" (${effet.toursRestants ?? "∞"} tours) sur ${cible.nom}` });
+  if (sort.nettoie) log.push({ id: id("snet"), at: stamp(), manche: s.manche, message: `${cible.nom} : ${purges} état(s) non permanent(s) purgé(s) par ${sort.nom}` });
   if (accordee) log.push({ id: id("satk"), at: stamp(), manche: s.manche, message: `${cible.nom} gagne l'attaque "${attaqueTmp!.nom}" (${attaqueTmp!.degats})` });
 
   return {
@@ -2784,6 +3105,99 @@ export function castSoutien(
       soinDetails, soinTotal, pvAvant, pvApres, effetNom: effet?.nom ?? null,
       invoque: accordee,
     },
+  };
+}
+
+/**
+ * Lance un sort de soutien de GROUPE (ex: Bénédiction : « alliés en vue et
+ * prêtre ») : le coût n'est payé qu'une fois, puis le même effet est appliqué
+ * à chaque bénéficiaire choisi (pop-up de sélection côté interface, tous les
+ * personnages joueurs cochés par défaut).
+ *
+ * Réservé aux améliorations : pas de soin, d'invocation ni d'attaque accordée
+ * (ces sorts restent à cible unique via castSoutien).
+ */
+export function castSoutienGroupe(
+  state: CombatState,
+  lanceurId: string,
+  cibleIds: string[],
+  sort: Sort,
+  rng: Rng = Math.random,
+  paiement: PaiementSort = {}
+): { state: CombatState; resolutions: SoutienResolution[] } {
+  const lanceur = state.participants.find((p) => p.instanceId === lanceurId);
+  if (!lanceur) throw new Error("Lanceur introuvable.");
+  if (sort.type === "offensif") throw new Error(`${sort.nom} est offensif : utilisez une attaque.`);
+  if (sort.rituelHorsCombat) {
+    throw new Error(`${sort.nom} : rituel hors combat — à lancer hors combat.`);
+  }
+  if (sort.soin || sort.invocation || sort.attaqueAccordee) {
+    throw new Error(`${sort.nom} : sort de groupe réservé aux améliorations (pas de soin, d'invocation ni d'attaque accordée).`);
+  }
+  if (!canAct(lanceur.effets)) throw new Error(`${lanceur.nom} ne peut pas agir (Étourdi/Immobilisé).`);
+  const ids = [...new Set(cibleIds)];
+  if (ids.length === 0) throw new Error("Aucun bénéficiaire sélectionné.");
+  const cibles = ids.map((id) => {
+    const c = state.participants.find((p) => p.instanceId === id);
+    if (!c) throw new Error(`Cible introuvable (${id}).`);
+    if (c.camp !== lanceur.camp) throw new Error(`${sort.nom} : ${c.nom} n'est pas un allié.`);
+    if (c.statut === "mort") throw new Error(`${sort.nom} : ${c.nom} est mort.`);
+    if (getModifier(c.effets, "inciblable") > 0) throw new Error(`${c.nom} est enseveli : inciblable (MJ).`);
+    const lim = etatLimite(lanceur, sort, c.instanceId);
+    if (!lim.ok) throw new Error(`${lanceur.nom} : ${lim.raison}.`);
+    return c;
+  });
+
+  // Un seul paiement pour tout le groupe (mana ou brûlure, concentration comprise).
+  let s = payerCoutSort(state, lanceurId, sort, paiement, rng).state;
+  if (sort.coutPV) s = applyCoutPV(s, lanceurId, sort.coutPV, rng, niveauEffectif(lanceur)).state;
+
+  const duree = dureeEffetSort(sort.effetDuree, lanceur.caracs ?? {}, 1, niveauEffectif(lanceur));
+  // Un effet distinct par bénéficiaire (id unique + marque de pose) pour que
+  // chacun expire à la fin de SON tour, pas à celui du lanceur.
+  const effets = new Map<string, ActiveEffect>();
+  if (sort.effetCle) {
+    for (const c of cibles) {
+      const base = createEffect(sort.effetCle, { dureeTours: duree, source: lanceur.nom, nom: sort.nom, description: sort.description });
+      effets.set(
+        c.instanceId,
+        marquerPose(
+          { ...base, modificateurs: { ...base.modificateurs, ...(sort.effetMods ?? {}) } },
+          s.manche,
+          s.tourIndex
+        )
+      );
+    }
+  }
+
+  const participants = s.participants.map((p) => {
+    // Le lanceur peut être bénéficiaire (Bénédiction inclut le prêtre) : cumuler.
+    let q = p.instanceId === lanceurId ? enregistrerUsage(p, sort.id) : p;
+    const effet = effets.get(p.instanceId);
+    if (effet) q = { ...q, effets: [...q.effets, effet] };
+    return q;
+  });
+
+  const id = (x: string) => `${x}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const log = [...s.log];
+  log.push({ id: id("groupe"), at: stamp(), manche: s.manche, message: `${lanceur.nom} lance ${sort.nom} sur ${cibles.map((c) => c.nom).join(", ")}` });
+  if (sort.effetCle && effets.size > 0) {
+    const nomEffet = [...effets.values()][0].nom;
+    log.push({ id: id("geff"), at: stamp(), manche: s.manche, message: `Effet "${nomEffet}" (${duree ?? "∞"} tours) sur ${effets.size} bénéficiaire(s)` });
+  }
+
+  return {
+    state: checkEnd({ ...s, participants, log }),
+    resolutions: cibles.map((c) => ({
+      lanceurNom: lanceur.nom,
+      cibleNom: c.nom,
+      sortNom: sort.nom,
+      soinDetails: [],
+      soinTotal: 0,
+      pvAvant: c.pv,
+      pvApres: c.pv,
+      effetNom: effets.get(c.instanceId)?.nom ?? null,
+    })),
   };
 }
 
@@ -3159,7 +3573,7 @@ export function lancerSortHorsCombat(
   const pvApres = Math.min(cible.pvMax, pvAvant + soinTotal);
 
   const effetBase = sort.effetCle
-    ? createEffect(sort.effetCle, { dureeTours: dureeEffetSort(sort.effetDuree, lanceur.caracteristiques ?? {}, 1, Math.max(1, Math.floor(lanceur.niveau))), source: lanceur.nom })
+    ? createEffect(sort.effetCle, { dureeTours: dureeEffetSort(sort.effetDuree, lanceur.caracteristiques ?? {}, 1, Math.max(1, Math.floor(lanceur.niveau))), source: lanceur.nom, nom: sort.nom, description: sort.description })
     : null;
   const effet = effetBase
     ? { ...effetBase, modificateurs: { ...effetBase.modificateurs, ...(sort.effetMods ?? {}) } }

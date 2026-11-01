@@ -13,6 +13,7 @@ import { actionDeCapacite, actionDeTalent } from "@/src/lib/data/capacites";
 import type { Character } from "@/src/lib/rules/types";
 import { ARME_FAMILLES, labelFamilleArme } from "@/src/lib/rules/world/types";
 import { EquipagePanel } from "@/src/components/characters/EquipagePanel";
+import { AptitudesPersonnage } from "@/src/components/characters/AptitudesPersonnage";
 import { BoursePanel } from "@/src/components/characters/BoursePanel";
 import { CreateurPersonnage } from "@/src/components/characters/CreateurPersonnage";
 import { HorsCombatPanel } from "@/src/components/combat/HorsCombatPanel";
@@ -540,6 +541,7 @@ export default function CharactersPage() {
                     })}
                   </div>
                 )}
+                <AptitudesPersonnage character={c} className="mt-2 border-t border-zinc-800/70 pt-2" />
                 {c.attaques.length > 0 && <div>{c.attaques.map((a) => `⚔ ${a.nom} +${a.bonus} · ${a.degats}`).join(" · ")}</div>}
                 <div className="text-zinc-500 pt-0.5">🎒 {(c.inventaire ?? []).length} objet(s) · ✦ {(c.sorts ?? []).length} sort(s){c.armure?.nom ? ` · 🛡 ${c.armure.nom}${c.armure.def ? ` (+${c.armure.def})` : ""}` : ""}</div>
                 {(() => {

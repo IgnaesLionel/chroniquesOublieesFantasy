@@ -12,7 +12,7 @@ import { DEFAULT_COMBAT_OPTIONS, LABEL_ATTAQUE_GRATUITE } from "@/src/lib/rules/
 import { createCombat, getActive, nextTurn, prevTurn, rollInitiatives, addParticipantEffect, removeParticipantEffect } from "@/src/lib/rules/combat/initiative";
 import { appliquerAurasDebutCombat } from "@/src/lib/rules/combat/auras";
 import { AURAS_DEBUT_COMBAT } from "@/src/lib/data/auras-combat";
-import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resoudrePhenixEnAttente, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, animerCadavre, animerCadavreProfil, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
+import { applyDamage, applyHeal, appliquerResultatsCombat, attaqueGratuiteDisponible, castSoutien, castSoutienGroupe, depenserChanceApresCoup, ecarterAttaqueGratuite, frapperCibles, frapperZone, estZonePersistanteSort, lancerZonePersistante, appliquerZonePersistante, zonePersistanteATraiter, marquerAttaqueGratuiteLancee, protegerAllie, renvoyerSort, resolveAttack, resoudrePhenixEnAttente, resynchroniserDepuisFiche, signalerAttaqueGratuite, tenterSortieEnseveli, animerCadavre, animerCadavreProfil, transfererVieAuLoup, utiliserCapacite, type AttaqueOpts, type PaiementSort } from "@/src/lib/rules/combat/attack";
 import { construirePJCombat, rafraichirStaging, recibrerCible } from "@/src/lib/rules/combat/staging";
 import { monsterInstances, participantFromCharacter, renommerDoublonsMonstres } from "@/src/lib/rules/combat/factory";
 import {
@@ -22,7 +22,7 @@ import {
   soinPotion,
 } from "@/src/lib/rules/combat/objets";
 import { maxZombiesControles, normaliserNomCapacite, normaliserPersonnage } from "@/src/lib/rules/personnage";
-import { createEffect } from "@/src/lib/rules/effects/effects";
+import { canAct, createEffect, getModifier } from "@/src/lib/rules/effects/effects";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { CombatTable } from "@/src/components/combat/CombatTable";
 import { EquipementPanel } from "@/src/components/combat/EquipementPanel";
@@ -31,6 +31,7 @@ import { EffectsPanel } from "@/src/components/combat/EffectsPanel";
 import { ActionPanel } from "@/src/components/combat/ActionPanel";
 import { ActionEconomie } from "@/src/components/combat/ActionEconomie";
 import { PopupPhenix } from "@/src/components/combat/PopupPhenix";
+import { PopupZonePersistante } from "@/src/components/combat/PopupZonePersistante";
 import { EncounterGenerator } from "@/src/components/encounters/EncounterGenerator";
 import { stagingDepuisRencontre } from "@/src/lib/rules/combat/depuis-rencontre";
 import type { SlotResolu } from "@/src/lib/encounters/types";
@@ -104,6 +105,16 @@ function CombatInner() {
   const active = combat ? getActive(combat) : null;
   /** Onde de Phénix en attente : une pop-up par prêtre déclencheur. */
   const phenixEnAttente = combat?.phenixEnAttente?.[0] ?? null;
+  /** Zone persistante (Armée des morts) à traiter au tour du lanceur. */
+  const zoneATraiter = combat && !combat.termine && active ? zonePersistanteATraiter(combat, active.instanceId) : null;
+  const zoneLanceur = combat && zoneATraiter
+    ? combat.participants.find((p) => p.instanceId === zoneATraiter.lanceurId) ?? null
+    : null;
+  const zoneCandidats = combat && zoneLanceur
+    ? combat.participants
+        .filter((p) => p.statut === "actif" && p.camp !== zoneLanceur.camp && getModifier(p.effets, "inciblable") <= 0)
+        .map((p) => p.instanceId)
+    : [];
 
   const pjNeufs = (c: Character): CombatParticipant[] => construirePJCombat(c, catalogue);
   /** Reconstruit les PJ depuis leurs fiches (staging et demarrage). */
@@ -311,6 +322,9 @@ function CombatInner() {
     const sort = atk?.sorts.find((x) => `sort:${x.id}` === sortId);
     if (!atk || !sort) return;
     try {
+      if (estZonePersistanteSort(sort)) {
+        throw new Error(`${sort.nom} : utilisez la pop-up de zone (sélection à chaque tour).`);
+      }
       if (sort.zone) {
         const { state } = frapperZone(combat, lanceurId, sort, Math.random, paiement, cibleIds);
         setCombat(state);
@@ -330,6 +344,20 @@ function CombatInner() {
         c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
       );
     }
+  };
+
+  /** Round d'une zone persistante : le MJ recoche les ennemis dans la zone. */
+  const appliquerTickZone = (zoneId: string, cibleIds: string[]) => {
+    setCombat((c) => {
+      if (!c) return c;
+      try {
+        return appliquerZonePersistante(c, zoneId, cibleIds, Math.random).state;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Zone impossible.";
+        return { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] };
+      }
+    });
+    setLast(null);
   };
 
   /** Attaque gratuite (G, hors tour) — Riposte au raté adverse, Piqûre de
@@ -551,6 +579,10 @@ function CombatInner() {
     const entree = (fiche?.inventaire ?? []).find((x) => x.itemId === itemId);
     const item = catalogue.find((x) => x.id === itemId);
     if (!cible || !fiche || !entree || !item?.estArme) return;
+    if (!canAct(cible.effets)) {
+      setCombat((x) => x ? { ...x, log: [...x.log, { id: `eq-${Date.now()}`, at: new Date().toISOString(), manche: x.manche, message: `${cible.nom} ne peut pas agir (enseveli/étourdi) : équipement impossible.` }] } : x);
+      return;
+    }
     const updated: Character = { ...fiche, inventaire: (fiche.inventaire ?? []).map((x) => (x.itemId === itemId ? { ...x, equipe: !x.equipe } : x)) };
     setCharacters((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
     appliquerFiche(instanceId, cible.nom, updated);
@@ -572,6 +604,10 @@ function CombatInner() {
     const nature = item ? natureObjetCombat(item) : null;
     const cible = combat.participants.find((p) => p.instanceId === cibleId);
     if (!acteur || !fiche || !entree || entree.quantite <= 0 || !item || !nature || !cible) return;
+    if (!canAct(acteur.effets)) {
+      setCombat((c) => c ? { ...c, log: [...c.log, { id: `obj-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message: `${acteur.nom} ne peut pas agir (enseveli/étourdi) : objet impossible.` }] } : c);
+      return;
+    }
     if (nature === "potion" ? cible.statut === "mort" : cible.statut !== "actif") return;
 
     const chargesAvant =
@@ -880,6 +916,22 @@ function CombatInner() {
           {active.effets.length > 0 && (
             <span className="text-violet-300">✦ {active.effets.map((e) => `${e.nom} (${e.toursRestants ?? "∞"})`).join(", ")}</span>
           )}
+          {(() => {
+            const zone = (combat.zonesPersistantes ?? []).find(
+              (z) =>
+                z.lanceurId === active.instanceId &&
+                combat.manche >= z.mancheDebut &&
+                combat.manche <= z.mancheFin
+            );
+            if (!zone) return null;
+            const round = combat.manche - zone.mancheDebut + 1;
+            const total = zone.mancheFin - zone.mancheDebut + 1;
+            return (
+              <span className="text-violet-300">
+                🦴 {zone.nom} — zone active (round {round}/{total})
+              </span>
+            );
+          })()}
           <ActionEconomie compact className="ml-auto" />
         </div>
       )}
@@ -996,7 +1048,12 @@ function CombatInner() {
                   ? maxZombiesControles(fiche.capacites)
                   : undefined;
                 const invocation = sort.invocation ? { modele, max } : undefined;
-                // Frappe de zone (Armée des morts) : tous les ennemis.
+                // Zone persistante (Armée des morts) : la pop-up fournit les
+                // cibles via onCastZone ; ce chemin direct est un garde-fou.
+                if (estZonePersistanteSort(sort)) {
+                  throw new Error(`${sort.nom} : sélectionnez les ennemis dans la zone (pop-up).`);
+                }
+                // Frappe de zone : sélection passée par le panneau.
                 const { state } = sort.zone
                   ? frapperZone(combat, lanceurId, sort, undefined, paiement)
                   : castSoutien(combat, lanceurId, cibleId, sort, undefined, paiement, invocation);
@@ -1007,6 +1064,45 @@ function CombatInner() {
                 setCombat((c) =>
                   c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
                 );
+              }
+            }}
+            onCastSoutienGroupe={(lanceurId, cibleIds, sort, paiement) => {
+              try {
+                const { state } = castSoutienGroupe(combat, lanceurId, cibleIds, sort, undefined, paiement);
+                setCombat(state);
+                setLast(null);
+              } catch (e) {
+                const message = e instanceof Error ? e.message : "Sort de groupe impossible.";
+                setCombat((c) =>
+                  c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+                );
+              }
+            }}
+            onCastZone={(lanceurId, cibleIds, sort, paiement) => {
+              try {
+                const { state } = lancerZonePersistante(combat, lanceurId, sort, cibleIds, Math.random, paiement);
+                setCombat(state);
+                setLast(null);
+              } catch (e) {
+                const message = e instanceof Error ? e.message : "Zone impossible.";
+                setCombat((c) =>
+                  c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+                );
+              }
+            }}
+            onSortieEnseveli={(cibleId, carac, aides) => {
+              if (!combat) return null;
+              try {
+                const { state, resolution } = tenterSortieEnseveli(combat, cibleId, carac, aides, Math.random);
+                setCombat(state);
+                setLast(null);
+                return resolution;
+              } catch (e) {
+                const message = e instanceof Error ? e.message : "Sortie impossible.";
+                setCombat((c) =>
+                  c ? { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] } : c
+                );
+                return null;
               }
             }}
             onUtiliserCapacite={(lanceurId, cibleId, talentNom, opts) => {
@@ -1042,6 +1138,7 @@ function CombatInner() {
                       coutPV: opts.coutPV,
                       soin: opts.soin,
                       soinFixe: opts.soinFixe,
+                      degats: opts.degats,
                       nettoie: opts.nettoie,
                       outrepasserSoin: (opts as { outrepasserSoin?: boolean }).outrepasserSoin,
                       modeVigueur: (opts as { modeVigueur?: "auto" | "test" }).modeVigueur,
@@ -1079,17 +1176,6 @@ function CombatInner() {
             onRemove={(effetId) =>
               setCombat((c) => (c && attackerId ? removeParticipantEffect(c, attackerId, effetId) : c))
             }
-            onSortie={(cibleId, carac, aides) =>
-              setCombat((c) => {
-                if (!c) return c;
-                try {
-                  return tenterSortieEnseveli(c, cibleId, carac, aides, Math.random).state;
-                } catch (e) {
-                  const message = e instanceof Error ? e.message : "Sortie impossible.";
-                  return { ...c, log: [...c.log, { id: `err-${Date.now()}`, at: new Date().toISOString(), manche: c.manche, message }] };
-                }
-              })
-            }
           />
           {opponentsOf.length > 0 && attackerId && (
             <div className="text-xs text-zinc-500">Cibles suggérées : {opponentsOf.map((p) => (
@@ -1110,6 +1196,21 @@ function CombatInner() {
               c ? resoudrePhenixEnAttente(c, phenixEnAttente.pretreId, cibleIds).state : c
             )
           }
+        />
+      )}
+      {zoneATraiter && combat && zoneLanceur && (
+        <PopupZonePersistante
+          key={`${zoneATraiter.id}-${combat.manche}`}
+          mode="tour"
+          sortNom={zoneATraiter.nom}
+          lanceurNom={zoneATraiter.lanceurNom}
+          degats={zoneATraiter.degats}
+          participants={combat.participants}
+          candidats={zoneCandidats}
+          selectionInitiale={zoneATraiter.cibles}
+          round={combat.manche - zoneATraiter.mancheDebut + 1}
+          roundsTotal={zoneATraiter.mancheFin - zoneATraiter.mancheDebut + 1}
+          onValider={(cibleIds) => appliquerTickZone(zoneATraiter.id, cibleIds)}
         />
       )}
     </div>

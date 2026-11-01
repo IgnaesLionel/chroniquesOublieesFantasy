@@ -99,11 +99,15 @@ export const sortSchema = z.object({
     initiative: z.number().optional(),
   }).optional(),
   zone: z.boolean().optional(),
+  /** Zone persistante (Armée des morts) : sélection des ennemis à chaque tour du lanceur. */
+  zonePersistante: z.boolean().optional(),
   rituelHorsCombat: z.boolean().optional(),
   patientsParCha: z.boolean().optional(),
   concentrationInterdite: z.boolean().optional(),
   ciblesMax: z.number().int().min(2).optional(),
   ciblesLibres: z.boolean().optional(),
+  /** Sort de soutien de groupe (Bénédiction) : pop-up de sélection des alliés. */
+  ciblesAllies: z.boolean().optional(),
   cibleEspeces: z.array(z.string()).optional(),
 });
 

@@ -5,14 +5,21 @@ let counter = 0;
 
 export function createEffect(
   keyOrNom: string,
-  opts: { dureeTours?: number | null; source?: string; modificateurs?: Record<string, number>; description?: string } = {}
+  opts: {
+    dureeTours?: number | null;
+    source?: string;
+    modificateurs?: Record<string, number>;
+    description?: string;
+    /** Nom lisible quand la clé n'est pas au catalogue (marqueur de sort). */
+    nom?: string;
+  } = {}
 ): ActiveEffect {
   const tpl = EFFECT_CATALOG.find((t) => t.key === keyOrNom || t.nom === keyOrNom);
   const duree = opts.dureeTours !== undefined ? opts.dureeTours : tpl?.dureeDefaut ?? null;
   counter += 1;
   return {
     id: `eff-${Date.now().toString(36)}-${counter}`,
-    nom: tpl?.nom ?? keyOrNom,
+    nom: tpl?.nom ?? opts.nom ?? keyOrNom,
     description: opts.description ?? tpl?.description ?? "",
     dureeTours: duree,
     toursRestants: duree,
@@ -42,6 +49,9 @@ export function decrireModificateurs(mods: Record<string, number>): string[] {
   push("attaqueDistance", (v) => `${v > 0 ? "+" : ""}${v} aux attaques à distance (en plus)`);
   push("defense", (v) => `${v > 0 ? "+" : ""}${v} en DEF`);
   push("pvParTour", (v) => `${v > 0 ? "+" : ""}${v} PV au début de son tour`);
+  push("degats", (v) => `${v > 0 ? "+" : ""}${v} aux DM des attaques`);
+  push("rd", (v) => `RD ${v} sur les DM subis (minimum 1)`);
+  push("initiative", (v) => `${v > 0 ? "+" : ""}${v} en Initiative`);
   if ((mods["empecheAgir"] ?? 0) > 0) lignes.push("ne peut pas agir (tour sauté)");
   if ((mods["inciblable"] ?? 0) > 0) lignes.push("inciblable (attaques extérieures impossibles)");
   if ((mods["moribond"] ?? 0) > 0) lignes.push("moribond (décès au prochain tour sauf libération/soin)");

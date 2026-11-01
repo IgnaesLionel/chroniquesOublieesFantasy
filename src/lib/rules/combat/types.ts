@@ -75,6 +75,9 @@ export interface CombatParticipant {
   caracs?: Record<string, number>;
   /** Profil (voies suivies : loup, tactiques...). */
   profil?: string;
+  /** Peuple et traits raciaux (passifs : Ténacité, Fils du roc...). */
+  peuple?: string;
+  traitsPeuple?: string[];
   /**
    * Espèces/catégories normalisées (type + catégorie + sous-catégories du
    * template : "creature", "monstres/creatures", "mort-vivant"...).
@@ -186,6 +189,29 @@ export interface PhenixEnAttente {
   manche: number;
 }
 
+/**
+ * Zone persistante active (Armée des morts) : le lanceur choisit les ennemis
+ * présents dans la zone au lancer, puis le MJ recoche à chaque tour du
+ * lanceur tant que le sort dure. Les positions ne sont pas suivies.
+ */
+export interface ZonePersistante {
+  id: string;
+  sortId: string;
+  nom: string;
+  lanceurId: string;
+  lanceurNom: string;
+  /** Manche du lancer (première application). */
+  mancheDebut: number;
+  /** Dernière manche active (incluse). */
+  mancheFin: number;
+  /** Dernière manche où les dégâts ont été appliqués (évite un double tick). */
+  derniereApplication: number;
+  /** Ennemis choisis lors de la dernière application. */
+  cibles: string[];
+  /** Expression des dégâts par round (ex: "2d4°"), résolue au niveau du lanceur. */
+  degats: string;
+}
+
 export interface CombatState {
   id: string;
   participants: CombatParticipant[];
@@ -197,6 +223,8 @@ export interface CombatState {
   gagnant: Camp | "egalite" | null;
   /** Ondes de Phénix à résoudre par le MJ (une pop-up par prêtre). */
   phenixEnAttente?: PhenixEnAttente[];
+  /** Zones persistantes actives (Armée des morts) : pop-up à chaque tour du lanceur. */
+  zonesPersistantes?: ZonePersistante[];
 }
 
 export interface CritOptions {

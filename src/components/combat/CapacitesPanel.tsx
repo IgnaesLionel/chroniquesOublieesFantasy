@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { CombatParticipant } from "@/src/lib/rules/combat/types";
 import type { MonsterTemplate } from "@/src/lib/rules/types";
-import { CAPACITES_USABLES, talentsLancables } from "@/src/lib/data/capacites-usables";
+import { talentsLancables, usageTalent } from "@/src/lib/data/capacites-usables";
 import { ACTION_LABEL, ACTION_LETTER, actionDeTalent, infererAction } from "@/src/lib/data/capacites";
 import { EFFECT_CATALOG } from "@/src/lib/rules/effects/catalog";
 import { normaliserNomCapacite } from "@/src/lib/rules/creation";
@@ -46,6 +46,7 @@ interface Props {
       actionSpeciale: "renvoi" | "proteger" | "vigueur" | "lien-empathique" | "animer" | undefined;
       soin: string | undefined;
       soinFixe: number | undefined;
+      degats: string | undefined;
       nettoie: boolean | undefined;
       outrepasserSoin: boolean | undefined;
       modeVigueur: "auto" | "test" | undefined;
@@ -58,9 +59,8 @@ interface Props {
   onLogMJ?: (message: string) => void;
 }
 
-function defautPour(nom: string) {
-  const q = normaliserNomCapacite(nom);
-  return CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === q);
+function defautPour(nom: string, profil?: string) {
+  return usageTalent(nom, profil);
 }
 
 export function CapacitesPanel({
@@ -100,13 +100,13 @@ export function CapacitesPanel({
   if (!lanceur) return null;
   // Passifs, manœuvres du panneau Attaque et talents narratifs exclus :
   // seules les capacités lançables (effet, coût, soin, purge, renvoi).
-  const lancables = talentsLancables(lanceur.capacites);
+  const lancables = talentsLancables(lanceur.capacites, lanceur.profil);
   if (lancables.length === 0) return null;
   const talent = lancables.includes(talentNom ?? "") ? talentNom! : lancables[0];
-  const defaut = defautPour(talent);
+  const defaut = defautPour(talent, lanceur.profil);
   /** Type d'action du talent : catalogue des voies, puis note mécanique. */
   const actionTalent = (nom: string) =>
-    actionDeTalent(nom, lanceur.profil) ?? infererAction(defautPour(nom)?.note ?? "");
+    actionDeTalent(nom, lanceur.profil) ?? infererAction(defautPour(nom, lanceur.profil)?.note ?? "");
   const actionSelection = actionTalent(talent);
   const effetActif = effetCle || defaut?.effetCle || "";
   const dureeActive = duree !== "" ? Number(duree) : defaut?.dureeTours ?? null;
@@ -201,6 +201,7 @@ export function CapacitesPanel({
       actionSpeciale: defaut?.actionSpeciale,
       soin: soinFixe !== undefined ? undefined : defaut?.soin,
       soinFixe,
+      degats: defaut?.degats,
       nettoie: estVigueur ? undefined : defaut?.nettoie,
       outrepasserSoin,
       modeVigueur: estVigueur ? modeVigueur : undefined,
@@ -233,7 +234,7 @@ export function CapacitesPanel({
             className="mt-1 w-full bg-zinc-800 rounded px-2 py-2"
           >
             {lancables.map((t) => {
-              const q = CAPACITES_USABLES.find((u) => normaliserNomCapacite(u.talent) === normaliserNomCapacite(t))?.questionMJ;
+              const q = usageTalent(t, lanceur.profil)?.questionMJ;
               const action = actionTalent(t);
               const lettre = action ? ACTION_LETTER[action] : "P";
               return <option key={t} value={t}>[{lettre}] ◈ {t}{q ? " ⚖️" : ""}</option>;
@@ -256,7 +257,7 @@ export function CapacitesPanel({
       {defaut && (
         <p className="text-xs text-zinc-500">
           Effet suggéré : {defaut.effetCle ? (EFFECT_CATALOG.find((t) => t.key === defaut.effetCle)?.nom ?? defaut.effetCle) : "aucun (narratif)"}
-          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {estLien ? "loup compagnon" : defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
+          {defaut.dureeTours != null ? ` (${defaut.dureeTours} tour${defaut.dureeTours > 1 ? "s" : ""})` : ""}{defaut.coutPV ? ` · sacrifie ${defaut.coutPV} PV` : ""}{defaut.soin ? ` · soigne ${defaut.soin}` : ""}{defaut.degats ? ` · ${defaut.degats} DM automatiques` : ""}{defaut.montantMJ ? " · montant saisi par le MJ" : ""}{defaut.nettoie ? " · purge" : ""} · Cibles : {estLien ? "loup compagnon" : defaut.cibles === "allies" ? "alliés" : defaut.cibles === "ennemis" ? "ennemis" : defaut.cibles === "soi" ? "soi-meme" : "tous"}.
           {defaut.note ? ` ${defaut.note}` : ""}
           {defaut.questionMJ ? ` ⚖️ ${defaut.questionMJ}` : ""}
         </p>
